@@ -71,18 +71,18 @@ export class Metro {
     this.setLit(true);
     this.w.teleport(x + 8, z - 1, Math.PI / 2, y);
     this.train.position.x = x + 180; this.state = 'arriving';
-    let t = 0;
-    this.w.updaters.push(dt => { t += dt; const k = Math.min(1, t / 6), e = 1 - Math.pow(1 - k, 3); this.train.position.x = x + 180 - e * (180 + 14.6); if (k >= 1) { this.state = 'docked'; this.onDocked && this.onDocked(); return true; } });
+    const t0 = performance.now();
+    this.w.updaters.push(() => { const t = (performance.now() - t0) / 1000; const k = Math.min(1, t / 6), e = 1 - Math.pow(1 - k, 3); this.train.position.x = x + 180 - e * (180 + 14.6); if (k >= 1) { this.state = 'docked'; this.onDocked && this.onDocked(); return true; } });
   }
 
   // Ride to a destination; calls done() when it's time to come up at the destination.
   ride(done) {
     const w = this.w, { x, y, z } = METRO;
     w.inputLocked = true; w.me.group.visible = false;
-    const start = this.train.position.x; let t = 0;
+    const start = this.train.position.x, t0 = performance.now();
     w.cameraOverride = (cam) => { cam.position.set(this.train.position.x + 3, this.train.position.y + 0.4, this.train.position.z + 0.6); cam.lookAt(this.train.position.x - 30, this.train.position.y + 0.2, this.train.position.z - 1.2); };
-    w.updaters.push(dt => {
-      t += dt; const a = Math.min(t, 2.5) / 2.5;
+    w.updaters.push(() => {
+      const t = (performance.now() - t0) / 1000, a = Math.min(t, 2.5) / 2.5;
       this.train.position.x = start - (t < 2.5 ? 18 * a * t / 2 : 22.5 + (t - 2.5) * 40);
       if (t > 6.2) {
         w.cameraOverride = null; w.me.group.visible = true; w.inputLocked = false; this.setLit(false);
