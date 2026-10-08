@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Banda World Islands</title>
+<meta name="theme-color" content="#1b2a6b">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏝️</text></svg>">
+<link rel="stylesheet" href="/style.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<!-- Language menu -->
+<div id="langMenu" class="screen">
+  <div class="card hero">
+    <div class="logo">🏝️</div>
+    <h1>Banda World Islands</h1>
+    <p>Choose your language · Выберите язык</p>
+    <div class="row">
+      <button class="btn big-btn" data-lang="en">🇬🇧 English</button>
+      <button class="btn big-btn" data-lang="ru">🇷🇺 Русский</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login -->
+<div id="login" class="screen hidden">
+  <div class="card hero">
+    <div class="logo">🏝️</div>
+    <h1 data-i18n="title"></h1>
+    <p id="loginRole" class="pill"></p>
+    <div id="gsiBtn"></div>
+    <p id="loginErr" class="err"></p>
+    <div id="guestBox">
+      <input id="guestName" maxlength="16" autocomplete="off" data-i18n-ph="yourName">
+      <button id="guestGo" class="btn big-btn" data-i18n="play"></button>
+    </div>
+    <div id="teacherBox" class="hidden">
+      <input id="teacherCode" type="password" autocomplete="off" data-i18n-ph="teacherCode">
+    </div>
+    <button class="link" id="changeLang">🌐 English / Русский</button>
+  </div>
+</div>
+
+<div id="loading" class="screen hidden"><div class="card hero"><div class="logo spin">🌍</div><h2 data-i18n="loading"></h2></div></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="me" class="glass">
+    <div id="meName"></div>
+    <div class="stats"><span>⭐ <b id="meStars">0</b></span><span>🏆 <b id="mePoints">0</b> <small data-i18n="points"></small></span></div>
+    <div class="prog"><i id="meProg"></i></div>
+    <small id="meNext"></small>
+  </div>
+  <div id="where" class="glass"></div>
+  <div id="mgHud" class="glass hidden"></div>
+  <div id="topBtns">
+    <button class="ibtn" id="bBoard" title="Leaderboard">🏆</button>
+    <button class="ibtn" id="bMap" title="Map">🗺️</button>
+    <button class="ibtn" id="bMute" title="Sound">🔊</button>
+    <button class="ibtn" id="bLang" title="Language">🌐</button>
+    <button class="ibtn teacher-only" id="bPanel" title="Teacher">🛠️</button>
+    <button class="ibtn" id="bOut" title="Exit">🚪</button>
+  </div>
+  <div id="prompt" class="glass hidden"></div>
+  <div id="chat">
+    <div id="chatLog"></div>
+    <input id="chatIn" maxlength="120" autocomplete="off" data-i18n-ph="chatPh">
+  </div>
+  <div id="mgBtns" class="hidden"><button class="abtn" id="bAction">⚽</button></div>
+  <div id="touch">
+    <div id="joy"><i></i></div>
+    <button class="abtn" id="bJump">⤒</button>
+    <button class="abtn" id="bUse">E</button>
+  </div>
+  <div id="help" class="glass" data-i18n-html="help"></div>
+</div>
+
+<div id="announce" class="hidden"><div class="mega">📢</div><div id="announceText"></div></div>
+<div id="banner" class="hidden"></div>
+<div id="toasts"></div>
+<div id="blind" class="hidden"><div><div class="big">🙈</div><h2 data-i18n="seekerWait"></h2><h1 id="blindN"></h1></div></div>
+<div id="flash" class="hidden"></div>
+
+<!-- Game overlay -->
+<div id="game" class="modal hidden">
+  <div class="sheet">
+    <div class="sheet-head"><h2 id="gameTitle"></h2><button class="ibtn" id="gameClose">✖</button></div>
+    <div id="gameBody"></div>
+  </div>
+</div>
+
+<!-- Leaderboard -->
+<div id="board" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2>🏆 <span data-i18n="leaderboard"></span></h2><button class="ibtn" data-close>✖</button></div>
+    <p class="muted" data-i18n="pointRule"></p>
+    <ol id="boardList"></ol>
+  </div>
+</div>
+
+<!-- Map -->
+<div id="map" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2>🗺️ <span data-i18n="map"></span></h2><button class="ibtn" data-close>✖</button></div>
+    <div id="mapList" class="menu-grid"></div>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="results" class="modal hidden">
+  <div class="sheet small center">
+    <div class="big">🏆</div><h2 id="resTitle"></h2><div id="resLines"></div>
+    <button class="btn big-btn" data-close>OK</button>
+  </div>
+</div>
+
+<!-- Teacher panel -->
+<div id="panel" class="modal hidden">
+  <div class="sheet">
+    <div class="sheet-head"><h2>🛠️ <span data-i18n="teacherPanel"></span></h2><button class="ibtn" data-close>✖</button></div>
+    <div class="tabs" id="ptabs">
+      <button data-tab="announce" class="on">📢 <span data-i18n="tAnnounce"></span></button>
+      <button data-tab="abuse">⚡ <span data-i18n="tAbuse"></span></button>
+      <button data-tab="games">🎮 <span data-i18n="tGames"></span></button>
+      <button data-tab="music">🎵 <span data-i18n="tMusic"></span></button>
+      <button data-tab="kids">👧 <span data-i18n="tKids"></span></button>
+    </div>
+    <div class="tab" data-tab="announce">
+      <textarea id="annText" rows="3" maxlength="200" data-i18n-ph="annPh"></textarea>
+      <div class="row"><button class="btn" id="annSend">📢 <span data-i18n="send"></span></button></div>
+    </div>
+    <div class="tab hidden" data-tab="abuse">
+      <div class="menu-grid" id="abuseGrid"></div>
+      <h3 data-i18n="giveaway"></h3>
+      <div class="row" id="giveRow"></div>
+    </div>
+    <div class="tab hidden" data-tab="games">
+      <h3 data-i18n="duration"></h3>
+      <div class="row" id="durRow"></div>
+      <div class="menu-grid" id="mgGrid"></div>
+      <button class="btn danger" id="mgEnd">⏹ <span data-i18n="endGame"></span></button>
+    </div>
+    <div class="tab hidden" data-tab="music">
+      <div class="menu-grid" id="songGrid"></div>
+      <h3 data-i18n="sounds"></h3>
+      <div class="menu-grid" id="sfxGrid"></div>
+    </div>
+    <div class="tab hidden" data-tab="kids">
+      <p class="muted" data-i18n="kidsHelp"></p>
+      <div id="kidList"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

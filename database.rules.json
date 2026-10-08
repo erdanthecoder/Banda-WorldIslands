@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "banda": {
+      ".read": true,
+      ".write": true,
+      "events": { ".indexOn": ["ts"] },
+      "users": { ".indexOn": ["stars"] }
+    }
+  }
+}
