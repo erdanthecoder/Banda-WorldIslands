@@ -7,6 +7,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 // ---------- deterministic noise ----------
 export function hash(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
@@ -38,6 +39,7 @@ const FLATS = [
   ...ISLANDS.filter(I => I.id !== 'sports').map(I => ({ x: I.x, z: I.z, r: 32, h: I.h })),
   { ...PITCH, hw: PITCH.hw + 9, hd: PITCH.hd + 7 }, { ...COURT, hw: COURT.hw + 6, hd: COURT.hd + 5 }, { x: 0, z: -268, r: 16, h: 3 },
   ...HOUSES.map(([x, z]) => ({ x, z, r: 7, h: 6 })),
+  { x: 16, z: 199, r: 12, h: 7 }, // obby tower
 ];
 
 export function heightAt(x, z) {
@@ -334,7 +336,7 @@ export class World {
       const dry = vnoise(x * 0.05, z * 0.05);
       im.setColorAt(i, c.setHSL(0.19 + rnd() * 0.05 + (1 - dry) * 0.03, 0.38 + rnd() * 0.12, 0.15 + rnd() * 0.07 + dry * 0.04));
     }
-    im.receiveShadow = true; im.frustumCulled = false; this.scene.add(im);
+    im.receiveShadow = true; im.frustumCulled = false; this.scene.add(im); this.grassMesh = im;
   }
 
   _foliageMat(tex) {
@@ -483,7 +485,7 @@ export class World {
       if (inside && zn.onStay) zn.onStay(zn);
     }
   }
-  groundAt(x, z) { for (const g of this.grounds) { const y = g(x, z); if (y !== null) return y; } return heightAt(x, z); }
+  groundAt(x, z, y = 1e9) { let best = null; for (const g of this.grounds) { const v = g(x, z, y); if (v !== null && (best === null || v > best)) best = v; } return best ?? heightAt(x, z); }
 
   // Metro entrance: a canopy over real stairs going down. Walk down to reach the platform.
   metroEntrance(x, z, rot, label, onBottom) {
@@ -697,13 +699,72 @@ export class World {
     }));
   }
 
+  // ---------- fun: trampolines, jump pads, obby tower, hidden stars ----------
+  trampoline(x, z, onBounce) {
+    const h = heightAt(x, z), g = new THREE.Group(), top = h + 0.7;
+    const frame = new THREE.Mesh(new THREE.TorusGeometry(2, 0.12, 10, 40).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2e6fd1, roughness: 0.4 })); frame.position.y = 0.7;
+    const matt = new THREE.Mesh(new THREE.CircleGeometry(1.9, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6 })); matt.position.y = 0.66;
+    g.add(frame, matt);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * 6.28, leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 6), new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.7 })); leg.position.set(Math.cos(a) * 1.9, 0.35, Math.sin(a) * 1.9); g.add(leg); }
+    g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    g.position.set(x, h, z); this.scene.add(g);
+    this.grounds.push((wx, wz, wy) => Math.hypot(wx - x, wz - z) < 2.05 && wy >= top - 0.6 ? top : null);
+    this.zone({ test: (px, py, pz) => Math.hypot(px - x, pz - z) < 1.9 && py <= top + 0.05 && py >= top - 0.3 && this.onGround,
+      onEnter: () => { this.vel.y = 15; this.onGround = false; matt.position.y = 0.45; setTimeout(() => (matt.position.y = 0.66), 150); onBounce && onBounce(); } });
+  }
+  jumpPad(x, z, onJump, power = 20) {
+    const h = heightAt(x, z), pad = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.25, 32), new THREE.MeshStandardMaterial({ color: 0x1b1d21, emissive: 0x39d353, emissiveIntensity: 1.6, roughness: 0.3 }));
+    pad.position.set(x, h + 0.12, z); pad.receiveShadow = true; this.scene.add(pad);
+    const arrow = labelSprite('▲', 0.8, { bg: null, color: '#39d353' }); arrow.position.set(x, h + 1.2, z); this.scene.add(arrow);
+    this.updaters.push((dt, t) => { arrow.position.y = h + 1.1 + Math.sin(t * 4) * 0.25; });
+    this.zone({ x, z, r: 1.2, y: h, onEnter: () => { this.vel.y = power; this.onGround = false; onJump && onJump(); } });
+  }
+  // A spiral parkour tower. Returns the chest position at the top.
+  obby(cx, cz, onWin) {
+    const base = heightAt(cx, cz), S = this.scene, steps = 30, R = 8;
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.6, steps * 0.9 + 4, 24), this.texMat(TEX.concrete, 14, 30)); pillar.position.set(cx, base + (steps * 0.9 + 4) / 2, cz); pillar.castShadow = pillar.receiveShadow = true; S.add(pillar);
+    this.solids.push({ x: cx, z: cz, r: 2.6 });
+    const colors = [0xe74c3c, 0xf39c12, 0xf1c40f, 0x2ecc71, 0x3498db, 0x9b59b6];
+    let top = base;
+    for (let i = 0; i < steps; i++) {
+      const a = i * 0.56, x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R, y = base + 0.9 + i * 0.9, w = i % 5 === 4 ? 1.4 : 2.2;
+      const plat = new THREE.Mesh(new RoundedBox(w, 0.4, w), new THREE.MeshStandardMaterial({ color: colors[i % 6], roughness: 0.35 }));
+      plat.position.set(x, y - 0.2, z); plat.castShadow = plat.receiveShadow = true; S.add(plat);
+      this.grounds.push((wx, wz, wy) => Math.abs(wx - x) < w / 2 + 0.15 && Math.abs(wz - z) < w / 2 + 0.15 && wy >= y - 0.6 ? y : null);
+      top = y;
+    }
+    const tY = base + steps * 0.9 + 4, deck = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.4, 32), new THREE.MeshStandardMaterial({ color: 0xd9d4c7, roughness: 0.6 }));
+    deck.position.set(cx, tY - 0.2, cz); deck.castShadow = deck.receiveShadow = true; S.add(deck);
+    // last platform to the deck
+    const la = steps * 0.56, lx = cx + Math.cos(la) * 5.6, lz = cz + Math.sin(la) * 5.6;
+    this.grounds.push((wx, wz, wy) => Math.hypot(wx - cx, wz - cz) < 4.1 && wy >= tY - 0.6 ? tY : null);
+    const chest = new THREE.Group();
+    const cb = new THREE.Mesh(new RoundedBox(1.2, 0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.6 })); cb.position.y = 0.4;
+    const lid = new THREE.Mesh(new RoundedBox(1.25, 0.3, 0.85), new THREE.MeshStandardMaterial({ color: 0xf5c518, metalness: 0.8, roughness: 0.25, emissive: 0x553300 })); lid.position.y = 0.95;
+    chest.add(cb, lid); chest.position.set(cx, tY, cz); chest.traverse(o => { if (o.isMesh) o.castShadow = true; }); S.add(chest);
+    const flag = labelSprite('🏆', 1.2, { bg: null }); flag.position.set(cx, tY + 2.4, cz); S.add(flag);
+    this.updaters.push((dt, t) => { flag.position.y = tY + 2.3 + Math.sin(t * 2) * 0.2; lid.rotation.x = Math.max(0, Math.sin(t)) * -0.3; });
+    this.zone({ x: cx, z: cz, r: 2.2, test: (px, py, pz) => Math.hypot(px - cx, pz - cz) < 2.4 && py > tY - 0.5, onEnter: () => onWin && onWin() });
+    const sign = labelSprite('OBBY TOWER', 0.9, { bg: 'rgba(14,18,26,0.75)', weight: 800 }); sign.position.set(cx + R + 1, base + 3, cz); S.add(sign);
+    return { x: cx, z: cz, top: tY };
+  }
+  hiddenStars(points, isTaken, onCollect) {
+    const geo = new THREE.OctahedronGeometry(0.45, 0), mat = new THREE.MeshStandardMaterial({ color: 0xffd447, emissive: 0xffa200, emissiveIntensity: 2.2, metalness: 0.8, roughness: 0.2 });
+    points.forEach(([x, z], i) => {
+      if (isTaken(i)) return;
+      const y = heightAt(x, z) + 1.1, m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.y = 1.4; this.scene.add(m);
+      this.updaters.push((dt, t) => { if (!m.parent) return true; m.rotation.y = t * 2 + i; m.position.y = y + Math.sin(t * 2 + i) * 0.2; });
+      const zn = this.zone({ x, z, r: 1.4, onEnter: () => { this.scene.remove(m); zn.off = true; onCollect(i); } });
+    });
+  }
+
   // ---------- interiors (metro platform, research station) ----------
   addInterior(def) { this.interiors.push(def); return def; }
   interiorAt(x, y, z) { return this.interiors.find(I => y < I.floor + 8 && y > I.floor - 3 && x >= I.minX && x <= I.maxX && z >= I.minZ && z <= I.maxZ); }
 
   // ---------- player ----------
   setPlayer(avatar) { this.me = avatar; this.scene.add(avatar.group); this.teleport(-13, 4, -Math.PI / 2 + 0.3); }
-  replacePlayer(avatar) { const old = this.me.group; avatar.group.position.copy(old.position); avatar.group.rotation.y = old.rotation.y; this.scene.remove(old); this.me = avatar; this.scene.add(avatar.group); }
+  replacePlayer(avatar) { this.me.removePet(); const old = this.me.group; avatar.group.position.copy(old.position); avatar.group.rotation.y = old.rotation.y; this.scene.remove(old); this.me = avatar; this.scene.add(avatar.group); }
   teleport(x, z, yaw, y) {
     const p = this.me.group.position, I = y !== undefined ? this.interiorAt(x, y, z) : null;
     p.set(x, I ? I.floor : (y !== undefined && y < 0 ? y : this.groundAt(x, z) + 0.2), z); this.vel.set(0, 0, 0);
@@ -751,7 +812,7 @@ export class World {
     }
     const len = Math.hypot(ix, iz); if (len > 1) { ix /= len; iz /= len; }
     const inside = this.interiorAt(p.x, p.y, p.z);
-    const ground0 = inside ? inside.floor : this.groundAt(p.x, p.z), swim = !inside && ground0 < -1.2;
+    const ground0 = inside ? inside.floor : this.groundAt(p.x, p.z, p.y), swim = !inside && ground0 < -1.2;
     const speed = (this.keys.ShiftLeft || this.keys.ShiftRight || this.joyRun ? 7.5 : 4.2) * (E.speed ? 1.9 : 1) * (swim ? 0.55 : 1);
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     const mx = (fx * iz - fz * ix) * speed, mz = (fz * iz + fx * ix) * speed;
@@ -767,16 +828,16 @@ export class World {
     } else {
       [nx, nz] = this._collide(nx, nz);
       const R = 1400, dc = Math.hypot(nx, nz); if (dc > R) { nx *= R / dc; nz *= R / dc; }
-      if (this.groundAt(nx, nz) - ground0 > 0.6 && this.onGround) { nx = p.x; nz = p.z; }
+      if (this.groundAt(nx, nz, p.y) - ground0 > 0.6 && this.onGround) { nx = p.x; nz = p.z; }
     }
     if (this.constrain) [nx, nz] = this.constrain(nx, nz);
     p.x = nx; p.z = nz; p.y += this.vel.y * dt;
-    const floor = inside ? inside.floor : Math.max(this.groundAt(p.x, p.z), swim ? -1.45 + Math.sin(now / 500) * 0.06 : -99);
+    const floor = inside ? inside.floor : Math.max(this.groundAt(p.x, p.z, p.y + 0.05), swim ? -1.45 + Math.sin(now / 500) * 0.06 : -99);
     if (p.y <= floor) { p.y = floor; this.vel.y = Math.max(0, this.vel.y); this.onGround = true; }
     else if (p.y > floor + 0.35) this.onGround = false; else if (this.vel.y <= 0) { p.y = floor; this.onGround = true; }
     const hs = Math.hypot(this.vel.x, this.vel.z);
     if (hs > 0.4) { const target = Math.atan2(this.vel.x, this.vel.z); let d = target - me.group.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); me.group.rotation.y += d * Math.min(1, dt * 10); }
-    me.animate(hs, dt, !this.onGround && !swim);
+    me.animate(hs, dt, !this.onGround && !swim); me.updatePet(this.scene, dt);
     const sc = E.giant ? 2.2 : 1; me.group.scale.setScalar(me.group.scale.x + (sc - me.group.scale.x) * Math.min(1, dt * 4));
     this.speedNow = hs; this.inside = inside;
   }
@@ -797,9 +858,9 @@ export class World {
   // ---------- remote players ----------
   upsertRemote(id, d, makeAvatar) {
     let r = this.remotes[id];
-    if (!d) { if (r) { this.scene.remove(r.av.group); delete this.remotes[id]; } return; }
+    if (!d) { if (r) { this.scene.remove(r.av.group); r.av.removePet(); delete this.remotes[id]; } return; }
     const sig = JSON.stringify([d.name, d.role, d.avatar]);
-    if (r && r.sig !== sig) { this.scene.remove(r.av.group); delete this.remotes[id]; r = null; }
+    if (r && r.sig !== sig) { this.scene.remove(r.av.group); r.av.removePet(); delete this.remotes[id]; r = null; }
     if (!r) {
       r = this.remotes[id] = { av: makeAvatar(d), sig, pos: new THREE.Vector3(d.x || 0, d.y ?? -500, d.z || 0) };
       r.av.group.position.copy(r.pos); this.scene.add(r.av.group);
@@ -812,7 +873,8 @@ export class World {
       const before = g.position.clone();
       if (g.position.distanceTo(r.pos) > 25) g.position.copy(r.pos); else g.position.lerp(r.pos, Math.min(1, dt * 6));
       let dr = (d.ry || 0) - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); g.rotation.y += dr * Math.min(1, dt * 8);
-      r.av.animate(before.distanceTo(g.position) / Math.max(dt, 0.001), dt, false);
+      if (d.em && d.em !== r.em) { r.em = d.em; r.av.play(d.em.split(':')[0]); }
+      r.av.animate(before.distanceTo(g.position) / Math.max(dt, 0.001), dt, false); r.av.updatePet(this.scene, dt);
       const sc = d.giant ? 2.2 : 1; g.scale.setScalar(g.scale.x + (sc - g.scale.x) * Math.min(1, dt * 4));
       g.visible = !r.hidden;
     }
@@ -894,6 +956,13 @@ export class World {
       this.raf = requestAnimationFrame(loop);
     };
     loop();
+  }
+  // lighter settings for slow computers (no reload needed)
+  lighten() {
+    if (this.light) return; this.light = true;
+    this.composer = null; this.renderer.setPixelRatio(1); this.resize();
+    this.grassMesh.count = Math.floor(this.grassMesh.count / 3);
+    const sh = this.sun.shadow; sh.mapSize.set(1024, 1024); if (sh.map) { sh.map.dispose(); sh.map = null; }
   }
   pause(p) { if (p) { cancelAnimationFrame(this.raf); this.raf = null; } else if (!this.raf) { this.clock.getDelta(); this.start(this._onFrame); } }
 }

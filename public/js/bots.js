@@ -1,6 +1,6 @@
 // Bots: computer players. They walk around when the server is quiet and fill minigames
 // so even one player can play. One client (the host) simulates them and shares their positions.
-import { Avatar, SKINS, HAIR_COLORS, CLOTH, PANTS, SHOES, HAIRSTYLES, TOPS } from './avatar.js';
+import { Avatar, SKINS, HAIR_COLORS, CLOTH, PANTS, SHOES, HAIRSTYLES, TOPS, FACES } from './avatar.js';
 import { heightAt, isl, PITCH, COURT } from './world.js';
 
 const NAMES = ['Aru', 'Timur', 'Dana', 'Max', 'Lina', 'Emir', 'Sofia', 'Nurlan', 'Ali', 'Mira', 'Adel', 'Zara', 'Bek', 'Aya'];
@@ -12,11 +12,11 @@ export const WANT = { football: 6, dodgeball: 4, hide: 5, starhunt: 4, impostor:
 export function botAvatar(seed) {
   let s = seed * 9301 + 49297; const r = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
   const p = a => a[Math.floor(r() * a.length)];
-  return { skin: p(SKINS), hair: p(HAIRSTYLES), hairColor: p(HAIR_COLORS), top: p(TOPS), shirt: p(CLOTH), pants: p(PANTS), shoes: p(SHOES), hat: 'none', glasses: r() < 0.2, height: 0.92 + r() * 0.14 };
+  return { skin: p(SKINS), face: p(FACES), hair: p(HAIRSTYLES), hairColor: p(HAIR_COLORS), top: p(TOPS), shirt: p(CLOTH), pants: p(PANTS), shoes: p(SHOES), hat: 'none', pet: 'none', height: 0.92 + r() * 0.14 };
 }
 export function makeBots(n, prefix) {
   const out = {}, used = new Set();
-  for (let i = 0; i < n; i++) { let nm; do nm = pick(NAMES); while (used.has(nm) && used.size < NAMES.length); used.add(nm); out[`bot-${prefix}${i}`] = { name: nm, avatar: botAvatar(Math.floor(Math.random() * 1e6)) }; }
+  for (let i = 0; i < n; i++) { let nm; do nm = pick(NAMES); while (used.has(nm) && used.size < NAMES.length); used.add(nm); out[`bot-${prefix}${i}`] = { name: `Bot ${i + 1}`, avatar: botAvatar(Math.floor(Math.random() * 1e6)) }; }
   return out;
 }
 

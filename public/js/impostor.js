@@ -107,7 +107,7 @@ export class Impostor {
     }
     // bodies
     for (const id in mg.dead) if (!this.bodies[id] && !mg.reported[id]) {
-      const av = new Avatar(this.app.players[id]?.avatar || mg.bots?.[id]?.avatar || (id === me ? this.app.me.avatar : null), '', 'student'); av.label.visible = false;
+      const av = new Avatar(this.app.players[id]?.avatar || mg.bots?.[id]?.avatar || (id === me ? this.app.me.avatar : null), '', 'bot'); av.label.visible = false;
       av.group.rotation.set(-Math.PI / 2, 0, Math.random() * 6); av.group.position.set(mg.dead[id].x, STATION.y + 0.15, mg.dead[id].z);
       w.scene.add(av.group); this.bodies[id] = av;
     }

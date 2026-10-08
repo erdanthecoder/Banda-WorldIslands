@@ -201,3 +201,8 @@ body:not(.teacher) .teacher-only { display: none; }
   #topBtns { max-width: 46%; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+#emotes { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; z-index: 5; }
+.chip.dark { background: var(--glass); color: var(--ink); border: 1px solid var(--line); backdrop-filter: blur(8px); font-size: 13px; padding: 6px 12px; }
+.chip.dark:hover { border-color: var(--accent); }
+@media (max-width: 700px) { #emotes { bottom: auto; top: calc(118px + env(safe-area-inset-top, 0px)); } }

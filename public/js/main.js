@@ -4,7 +4,7 @@ import { sfx, say, playSong, stopSong, SONGS, setMuted, isMuted, unlockAudio, am
 import { createNet } from './net.js';
 import { currentAccount, signInWithHub, signOut } from './auth.js';
 import { World, ISLANDS, isl, heightAt } from './world.js';
-import { Avatar, avatarCreator, randomAvatar } from './avatar.js';
+import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
 import { Metro, METRO } from './metro.js';
 import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
@@ -117,6 +117,7 @@ async function start(serverId) {
   world.setPlayer(new Avatar(me.avatar, me.name, me.role));
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
   buildIslands(world);
+  buildFun(world);
   app.metro = new Metro(world, { title: 'Banda Metro', stations: ISLANDS.map(I => t('island_' + I.id)), onBoard: metroDestinations, onExit: metroExit });
   if (me.role === 'teacher') world.teleport(isl('teacher').x + 4, isl('teacher').z + 12, Math.PI);
 
@@ -140,7 +141,7 @@ async function start(serverId) {
   let last = '', lastSent = 0;
   setInterval(() => {
     const g = world.me.group, p = g.position;
-    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0 };
+    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0, em: world.me.emote ? app.emoteSig : '' };
     const sig = JSON.stringify(pos);
     if (sig !== last || Date.now() - lastSent > 3000) { last = sig; lastSent = Date.now(); net.sendPos(pos); }
   }, 200);
@@ -198,6 +199,28 @@ function openBuilding(name, games) {
 function closeBuilding() { show('#bldBox', false); app.world.inputLocked = false; stepBack(); }
 // after closing a menu, step back out of the doorway so it doesn't reopen at once
 function stepBack() { const w = app.world, g = w.me.group; g.position.x -= Math.sin(g.rotation.y) * 1.6; g.position.z -= Math.cos(g.rotation.y) * 1.6; }
+
+// ---------------- fun: trampolines, jump pads, obby, hidden stars ----------------
+const today = () => new Date().toISOString().slice(0, 10);
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+function buildFun(world) {
+  const boing = () => sfx('boing');
+  [[-27, -14], [27, 18], [-20, 28]].forEach(([x, z]) => world.trampoline(x, z, boing));
+  [[18, -240], [-18, -240]].forEach(([x, z]) => world.trampoline(x, z, boing));
+  world.jumpPad(28, -14, boing); world.jumpPad(34, 218, boing, 24);
+  world.obby(16, 199, () => {
+    const k = 'banda_obby_' + today();
+    if (store.get(k, false)) return ui.banner(t('obbyAgain'), 2500);
+    store.set(k, true); app.award(10); sfx('champions'); world.fireworks(8); ui.banner(t('obbyWin'), 3500);
+  });
+  // 30 hidden stars on the islands, each can be found once a day
+  const pts = []; let seed = 7;
+  const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  while (pts.length < 30) { const I = ISLANDS[pts.length % ISLANDS.length], a = r() * 6.28, d = (0.35 + r() * 0.6) * I.r, x = I.x + Math.cos(a) * d, z = I.z + Math.sin(a) * d, h = heightAt(x, z); if (h > 0.8 && h < 16) pts.push([x, z]); }
+  const key = 'banda_hs_' + today(), got = new Set(store.get(key, []));
+  world.hiddenStars(pts, i => got.has(i), i => { got.add(i); store.set(key, [...got]); app.award(1); sfx('star'); ui.toast(`${t('hiddenStar')} ${got.size} / 30`); if (got.size === 30) { app.award(10); ui.banner(t('allHidden'), 3000); } });
+}
+function emote(name) { const w = app.world; if (w.speedNow > 0.5) return; w.me.play(name); app.emoteSig = name + ':' + Date.now(); }
 
 // ---------------- metro ----------------
 const stationName = id => t('island_' + id);
@@ -412,6 +435,7 @@ function hudSetup() {
     if (e.code === 'KeyQ' && app.mg.active) app.mg.impostor.kill(app.mg.mg);
     if (e.code === 'KeyT' && app.me.role === 'teacher') show('#panel');
     if (e.code === 'KeyM') $('#minimap').classList.toggle('big');
+    const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (n >= 0) emote(EMOTES[n]);
   });
   $('#bAction').onpointerdown = e => { e.preventDefault(); app.mg.action(); };
   $('#bJump').onpointerdown = e => { e.preventDefault(); w.joyJump = true; };
@@ -426,6 +450,8 @@ function hudSetup() {
   const jend = () => { jid = null; w.joy.x = w.joy.y = 0; w.joyRun = false; knob.style.transform = ''; };
   joy.addEventListener('pointerup', jend); joy.addEventListener('pointercancel', jend);
   $('#minimap').onclick = () => $('#minimap').classList.toggle('big');
+  $('#emotes').innerHTML = EMOTES.map((e, i) => `<button class="chip dark" data-e="${e}" title="${i + 1}">${t('em_' + e)}</button>`).join('');
+  $$('#emotes button').forEach(b => b.onclick = () => emote(b.dataset.e));
   setTimeout(() => $('#help').classList.add('fade'), 20000);
   renderMe();
 }
@@ -448,8 +474,10 @@ function drawMinimap() {
   if (p.y > -20) { g.save(); g.translate(X(p.x), Z(p.z)); g.rotate(-w.me.group.rotation.y + Math.PI); g.fillStyle = '#ffc94d'; g.beginPath(); g.moveTo(0, -8); g.lineTo(5.5, 6); g.lineTo(0, 3); g.lineTo(-5.5, 6); g.fill(); g.restore(); }
 }
 
-let whereLast = '', mapT = 0;
+let whereLast = '', mapT = 0, perf = { t: 0, n: 0, done: false };
 function frame(dt) {
+  // if the first seconds run slowly, switch to lighter graphics automatically
+  if (!perf.done) { perf.t += dt; perf.n++; if (perf.t > 8) { perf.done = true; if (perf.n / perf.t < 28 && app.world.hq) { app.world.lighten(); ui.toast(t('autoLight')); } } }
   const w = app.world, p = w.me.group.position;
   const under = p.y < -20, where = w.inside ? (w.inside === app.metro.interior ? `Ⓜ ${stationName(app.metroAt || 'hub')}` : t('mg_impostor')) : (() => { const I = w.islandAt(p.x, p.z); return I ? t('island_' + I.id) : t('ocean'); })();
   if (where !== whereLast) { $('#where').textContent = where; whereLast = where; }

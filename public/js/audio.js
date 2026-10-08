@@ -83,6 +83,7 @@ const SFX = {
     o.connect(g); g.connect(sfxGain); o.start(t); l.start(t); o.stop(t + 0.7); l.stop(t + 0.7);
   },
   goal: t => { crowd(t, 3, 0.5); [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.1, 0.5, { type: 'square', vol: 0.12, cutoff: 3000 })); },
+  boing: t => { tone(180, t, 0.35, { type: 'sine', vol: 0.35, slide: 2.6 }); tone(360, t + 0.02, 0.25, { type: 'triangle', vol: 0.1, slide: 2 }); },
   countdown: t => tone(660, t, 0.15, { type: 'square', vol: 0.12 }),
   go: t => tone(1320, t, 0.4, { type: 'square', vol: 0.15 }),
   cheer: t => crowd(t, 3, 0.45),
