@@ -14,7 +14,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const show = (el, on = true) => (typeof el === 'string' ? $(el) : el).classList.toggle('hidden', !on);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const wantsTeacher = /^\/teachers?(\/|$)/i.test(location.pathname) || (DEV && new URLSearchParams(location.search).has('teacher'));
+const wantsTeacher = /^\/teachers?(\/|$)/i.test(location.pathname) || (DEV && (new URLSearchParams(location.search).has('teacher') || location.hash === '#teacher'));
 
 const GAMES = {
   math: { run: mathQuiz }, speed: { run: speedMath }, times: { run: timesTable },

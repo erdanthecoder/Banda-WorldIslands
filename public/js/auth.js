@@ -63,5 +63,5 @@ function devAccount() {
   const q = new URLSearchParams(location.search);
   let d = null; try { d = JSON.parse(sessionStorage.getItem('banda_dev')); } catch (e) {}
   if (!d) { d = { id: 'dev-' + Math.random().toString(36).slice(2, 8) }; sessionStorage.setItem('banda_dev', JSON.stringify(d)); }
-  return { user: { id: d.id, email: '' }, profile: { role: q.has('teacher') ? 'teacher' : 'student', full_name: q.get('name') || '' } };
+  return { user: { id: d.id, email: '' }, profile: { role: q.has('teacher') || location.hash === '#teacher' ? 'teacher' : 'student', full_name: q.get('name') || '' } };
 }
