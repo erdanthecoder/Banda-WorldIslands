@@ -1,58 +1,67 @@
-# 🏝️ Banda World Islands
+# Banda World Islands
 
-A 3D multiplayer world in the browser for kids, with islands, portals, learning games, minigames and teacher powers. It is available in English and Russian.
+A 3D multiplayer world for a school, in English and Russian. Students and teachers sign in with their The4Workspace account. They pick a server and an avatar, then travel between islands by metro to play learning games and class minigames.
 
-| URL | Who |
+| Address | Who |
 |---|---|
-| `banda-worldislands.web.app` | Students (default) |
-| `banda-worldislands.web.app/student` | Students |
-| `banda-worldislands.web.app/teachers` (or `/teacher`) | Teachers (needs a teacher account or the teacher code) |
+| `banda-worldislands.web.app` (also `/student`) | Students |
+| `banda-worldislands.web.app/teachers` | Teachers. Teacher tools come from a teacher account on The4Workspace. |
 
-A student can also type **`/teacher <code>`** in chat (for example `/teacher banda-teacher`) to switch to teacher mode.
+## How it works
 
-## What's inside
+- **Sign-in: The4Workspace.** The game sends players to `the4workspace.web.app`, which sends them back signed in. The hand-off works the same way as in LearnKyrgyz, Quoldek and the other apps. A player's teacher or student role comes from their The4Workspace profile, so there is no teacher code.
+  - The hub must trust `banda-worldislands.web.app`. That is a one-line change, in [erdanthecoder/copilot#1](https://github.com/erdanthecoder/copilot/pull/1).
+- **Servers: Supabase.** This is the same Supabase project as The4Workspace and LearnKyrgyz.
+  - **Live multiplayer** uses Supabase Realtime. Each server (Server 1–4) is its own channel. Player positions, chat and minigame events go over broadcast, and the player list comes from presence.
+  - **Saved data** lives in Postgres, in tables `banda_*` (`supabase/migrations/banda_0001_init.sql`, already applied):
+    - `banda_players`: name, avatar, stars, points.
+    - `banda_commands`: teacher commands. Only teachers can insert them, which the database checks with row-level security. Players receive them live.
+    - `banda_award`, `banda_give`, `banda_claim`: the only way stars and points change. Players earn at most 10 stars at a time and 300 a day. Only teachers can give points. Each giveaway can be claimed once.
+- **Hosting:** Firebase Hosting (`firebase.json`).
 
-- **Language menu** at the start. When a player picks English or Русский, the whole game switches to that language. The 🌐 button switches it later.
-- **3D islands** with procedural terrain, an animated ocean, a sky with a sun, trees, rocks and clouds. Walk between them with portals or 🗺️ fast travel:
-  - 🏝️ **Star Hub**: the spawn island, with portals to every other island.
-  - 🧮 **Math Island**: Math Quiz (+ − × ÷ squares mixed), Speed Math, Times Tables.
-  - 🔤 **Language Island**: English Quiz, Russian Quiz, Word Match. Words are read aloud.
-  - 🕹️ **Arcade Island**: Mini-Craft (a 3D block builder), Flappy Bird, Snake.
-  - 🏟️ **Sports Island**: one football pitch and a dodgeball court.
-  - 🏰 **Teacher Island**: a castle and a stage where teachers play with kids.
-- **Stars ⭐ and house points 🏆.** Players earn stars in the learning games, admin-abuse events and minigames. **30 stars = 1 house point.** Teachers can also give or take house points directly. There are no groups, only each student's own score. The 🏆 button shows the leaderboard.
-- **Multiplayer minigames**: ⚽ Football, 🔴 Dodgeball 3D (2+ players), 🙈 Hide & Seek (2+), ⭐ Star Hunt. Everyone is teleported to the arena and a 5/7/10-minute timer starts. When it ends, everyone goes back to where they were and sees the scores. Winners get stars. In football the ball moves when a player runs into it, and **F** does a power kick. In dodgeball, **F** throws.
-- **Teacher powers** (🛠️ button or **T**):
-  - 📢 Announcements: a big banner for everyone, read aloud.
-  - ⚡ Admin abuse: Star rain (kids collect stars), Fireworks, Night, Disco party, Moon gravity, Super speed, Giant mode, Summon everyone, Freeze, Lock chat.
-  - 🎁 Stars giveaway: +1 / +5 / +10 / +30 stars to every student.
-  - 🎮 Minigames: start football, dodgeball, hide & seek or star hunt with a timer, or end one early.
-  - 🎵 Music: 5 original songs (Champions Anthem, Dai Dai Dance, Island Party, Victory March, Chill Waves) plus sounds ("Champions!", "Дай-дай!", cheer, air horn, drum roll, whistle, goal).
-  - 👧 Kids: give stars or house points to each online student.
-- **Audio**: all music and sound effects are made in the browser with WebAudio, so there are no files to download. Voices use the browser's speech engine.
-- **Phones and tablets**: joystick, jump and action buttons.
+## The game
 
-## Setup
+- **Avatar creator:** skin, hair style and colour, top, colours, trousers, shoes, hat, glasses and height. It is saved to the player's account.
+- **Islands:**
+  - Central Square: school, fountain, Quiz Battle, Hide & Seek, Star Hunt.
+  - Math Island: Math Academy.
+  - Language Island: Language Library.
+  - Arcade Island: Arcade Hall, Mini-Craft, Impostor.
+  - Sports Island: stadium and dodgeball court.
+  - Teacher Island: Teachers' Hall.
+- **Banda Metro:** every island has a station. Walk down to the underground platform, wait for the train, choose a stop and ride through the tunnel.
+- **Learning games, with 4 levels each:**
+  - Math: addition, subtraction, multiplication, division, order of operations, fractions, percentages, equations.
+  - English and Russian: words, translation, spelling, grammar.
+  - Speed Math, Times Tables and Word Match.
+  - Harder levels give more stars. 30 stars = 1 house point.
+- **Multiplayer minigames:** every player on the server takes part. They are moved to the arena, a 5, 7 or 10 minute timer runs, and then they go back and see the results.
+  - Football, Dodgeball, Hide & Seek, Star Hunt.
+  - **Impostor**, an Among Us-style game in an underground research station. Crewmates finish tasks by answering questions. Impostors eliminate crewmates. Anyone can report a body or call a meeting, and players vote someone out.
+  - **Quiz Battle:** a live quiz for everyone. Faster correct answers score more.
+- **Teacher tools** (T key):
+  - Announcements, read aloud.
+  - Admin abuse: star rain, fireworks, night, disco, moon gravity, super speed, giants, summon everyone, freeze, lock chat.
+  - Star giveaways.
+  - Start and end minigames, and choose the Quiz Battle subject and level.
+  - 5 songs and sound effects.
+  - Give stars or points to each student.
+- **Graphics:** a physically based sky with environment lighting, a reflective ocean, wind-blown grass, trees, real buildings, and day and night. The monitor button switches to low quality for weaker computers.
 
-Everything is in `public/js/config.js`.
+## Deploy
 
-1. **Multiplayer (Firebase Realtime Database).** Firebase Authentication is **not** used. Create a Realtime Database in the `banda-worldislands` Firebase project and paste the web app config into `CONFIG.firebase`. Without it, the game runs in *local mode*, where multiplayer only works between tabs of the same browser.
-2. **Google sign-in with the4workspace.** Create an OAuth *Web* client ID in Google Cloud and add `https://banda-worldislands.web.app` as an authorized JavaScript origin. Then set:
-   - `googleClientId`
-   - `workspaceDomain`: your Workspace domain, so only school accounts can sign in.
-   - `allowGuests: false`, to turn off name-only login.
-3. **Teachers.** Put teacher emails in `teacherEmails`, or change the teacher code: `echo -n "new-code" | sha256sum` and paste the result into `teacherCodeSha256`. The default code is `banda-teacher`, so **change it**.
-4. **Deploy.**
-   ```bash
-   npm i -g firebase-tools
-   firebase login
-   firebase deploy        # hosting + database rules
-   ```
+```bash
+npm i -g firebase-tools
+firebase login
+firebase deploy --only hosting
+```
 
-### Security note
+Then merge [erdanthecoder/copilot#1](https://github.com/erdanthecoder/copilot/pull/1) so The4Workspace sends players back to the game.
 
-The client decides who is a teacher and how many stars a player gets, and the database rules are open because Firebase Auth isn't used. This is fine for a classroom game. A determined student could still cheat by editing data in the browser. For real security you would need server-side checks, for example Firebase Auth with stricter rules, or Cloud Functions.
+## Local testing
 
-## Running locally
+Serve `public/` so that every path falls back to `index.html`, for example with `npx serve -s public`. Then open `http://localhost:3000/?dev=1` and `http://localhost:3000/?dev=1&teacher=1` in two tabs. Dev mode skips sign-in, and multiplayer runs between tabs of the same browser.
 
-Serve the `public` folder so that every path falls back to `index.html`, for example with `firebase serve` or `npx serve -s public`. Then open `http://localhost:5000` and `http://localhost:5000/teachers` in two tabs.
+## Limits
+
+The Supabase free plan allows about 100 realtime messages per second for the whole project, which is enough for a class or two at once. Positions are sent 5 times a second, and only while a player moves. For several full classes at the same time, the Pro plan raises the limit.

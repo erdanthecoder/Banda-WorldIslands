@@ -2,74 +2,88 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Banda World Islands</title>
-<meta name="theme-color" content="#1b2a6b">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏝️</text></svg>">
+<meta name="theme-color" content="#0e1622">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230e1622'/><path d='M10 44c8-6 14-6 22 0s14 6 22 0' stroke='%2350b3ff' stroke-width='5' fill='none'/><circle cx='32' cy='24' r='9' fill='%23ffc94d'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
 <link rel="stylesheet" href="/style.css">
-<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }</script>
 </head>
 <body>
 <canvas id="scene"></canvas>
+<div id="fade"></div>
 
-<!-- Language menu -->
-<div id="langMenu" class="screen">
-  <div class="card hero">
-    <div class="logo">🏝️</div>
-    <h1>Banda World Islands</h1>
-    <p>Choose your language · Выберите язык</p>
+<!-- Language -->
+<div id="langMenu" class="screen hidden">
+  <div class="card">
+    <div class="brand"><span class="mark"></span>Banda World Islands</div>
+    <p class="muted">Choose your language · Выберите язык</p>
     <div class="row">
-      <button class="btn big-btn" data-lang="en">🇬🇧 English</button>
-      <button class="btn big-btn" data-lang="ru">🇷🇺 Русский</button>
+      <button class="btn primary big" data-lang="en">English</button>
+      <button class="btn primary big" data-lang="ru">Русский</button>
     </div>
   </div>
 </div>
 
-<!-- Login -->
-<div id="login" class="screen hidden">
-  <div class="card hero">
-    <div class="logo">🏝️</div>
-    <h1 data-i18n="title"></h1>
-    <p id="loginRole" class="pill"></p>
-    <div id="gsiBtn"></div>
-    <p id="loginErr" class="err"></p>
-    <div id="guestBox">
-      <input id="guestName" maxlength="16" autocomplete="off" data-i18n-ph="yourName">
-      <button id="guestGo" class="btn big-btn" data-i18n="play"></button>
-    </div>
-    <div id="teacherBox" class="hidden">
-      <input id="teacherCode" type="password" autocomplete="off" data-i18n-ph="teacherCode">
-    </div>
-    <button class="link" id="changeLang">🌐 English / Русский</button>
+<!-- Sign in -->
+<div id="signin" class="screen hidden">
+  <div class="card">
+    <div class="brand"><span class="mark"></span>Banda World Islands</div>
+    <p class="pill" id="signRole"></p>
+    <p data-i18n="signInText"></p>
+    <button class="btn primary big" id="signBtn"><span class="ws"></span><span data-i18n="signInWs"></span></button>
+    <p class="muted small" data-i18n="signInNote"></p>
+    <button class="link" id="signLang">English / Русский</button>
   </div>
 </div>
 
-<div id="loading" class="screen hidden"><div class="card hero"><div class="logo spin">🌍</div><h2 data-i18n="loading"></h2></div></div>
+<!-- Servers -->
+<div id="servers" class="screen hidden">
+  <div class="card wide">
+    <div class="brand"><span class="mark"></span>Banda World Islands</div>
+    <h2 id="serverHello"></h2>
+    <p class="muted" data-i18n="pickServer"></p>
+    <div id="serverList"></div>
+  </div>
+</div>
+
+<div id="loading" class="screen hidden"><div class="card"><div class="spinner"></div><p data-i18n="loading"></p></div></div>
+
+<!-- Avatar creator -->
+<div id="creator" class="modal hidden"><div class="sheet"><div class="sheet-head"><h2 data-i18n="yourAvatar"></h2></div><div id="creatorBody"></div></div></div>
 
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div id="me" class="glass">
     <div id="meName"></div>
-    <div class="stats"><span>⭐ <b id="meStars">0</b></span><span>🏆 <b id="mePoints">0</b> <small data-i18n="points"></small></span></div>
+    <div class="stats"><span><b id="meStars">0</b> ★</span><span><b id="mePoints">0</b> <small data-i18n="points"></small></span></div>
     <div class="prog"><i id="meProg"></i></div>
     <small id="meNext"></small>
   </div>
-  <div id="where" class="glass"></div>
+  <div id="whereBox" class="glass"><b id="where"></b><small id="online"></small></div>
   <div id="mgHud" class="glass hidden"></div>
   <div id="topBtns">
-    <button class="ibtn" id="bBoard" title="Leaderboard">🏆</button>
-    <button class="ibtn" id="bMap" title="Map">🗺️</button>
-    <button class="ibtn" id="bMute" title="Sound">🔊</button>
-    <button class="ibtn" id="bLang" title="Language">🌐</button>
-    <button class="ibtn teacher-only" id="bPanel" title="Teacher">🛠️</button>
-    <button class="ibtn" id="bOut" title="Exit">🚪</button>
+    <button class="ibtn" id="bBoard" data-i18n-title="leaderboard"><svg viewBox="0 0 24 24"><path d="M7 4h10v3a5 5 0 0 1-10 0zM5 5H3v2a4 4 0 0 0 4 4M19 5h2v2a4 4 0 0 1-4 4M12 12v4M8 20h8M10 16h4v4h-4z"/></svg></button>
+    <button class="ibtn" id="bAvatar" data-i18n-title="yourAvatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg></button>
+    <button class="ibtn" id="bMute" data-i18n-title="sound"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg></button>
+    <button class="ibtn" id="bLang" data-i18n-title="language"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></button>
+    <button class="ibtn" id="bQuality" data-i18n-title="graphics"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+    <button class="ibtn teacher-only" id="bPanel" data-i18n-title="teacherPanel"><svg viewBox="0 0 24 24"><path d="M12 3l9 4-9 4-9-4zM6 9v5c3 3 9 3 12 0V9M21 7v6"/></svg></button>
+    <button class="ibtn" id="bOut" data-i18n-title="signOut"><svg viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></button>
   </div>
   <div id="prompt" class="glass hidden"></div>
   <div id="chat">
     <div id="chatLog"></div>
     <input id="chatIn" maxlength="120" autocomplete="off" data-i18n-ph="chatPh">
   </div>
-  <div id="mgBtns" class="hidden"><button class="abtn" id="bAction">⚽</button></div>
+  <div id="mgBtns" class="hidden"><button class="abtn wide" id="bAction"></button></div>
+  <div id="impBtns" class="hidden"><button class="abtn wide" id="bReport" data-i18n="report"></button><button class="abtn wide danger" id="bKill" data-i18n="kill"></button></div>
   <div id="touch">
     <div id="joy"><i></i></div>
     <button class="abtn" id="bJump">⤒</button>
@@ -78,70 +92,69 @@
   <div id="help" class="glass" data-i18n-html="help"></div>
 </div>
 
-<div id="announce" class="hidden"><div class="mega">📢</div><div id="announceText"></div></div>
+<div id="announce" class="hidden"><small data-i18n="announcement"></small><div id="announceText"></div><small id="announceBy"></small></div>
 <div id="banner" class="hidden"></div>
 <div id="toasts"></div>
-<div id="blind" class="hidden"><div><div class="big">🙈</div><h2 data-i18n="seekerWait"></h2><h1 id="blindN"></h1></div></div>
+<div id="blind" class="hidden"><div><h2 data-i18n="seekerWait"></h2><h1 id="blindN"></h1></div></div>
 <div id="flash" class="hidden"></div>
 
-<!-- Game overlay -->
 <div id="game" class="modal hidden">
   <div class="sheet">
-    <div class="sheet-head"><h2 id="gameTitle"></h2><button class="ibtn" id="gameClose">✖</button></div>
+    <div class="sheet-head"><h2 id="gameTitle"></h2><button class="ibtn light" id="gameClose" aria-label="Close">✕</button></div>
     <div id="gameBody"></div>
   </div>
 </div>
 
-<!-- Leaderboard -->
+<div id="qModal" class="modal hidden"><div class="sheet small"><div class="sheet-head"><h2 id="qTitle"></h2></div><div id="qBody"></div></div></div>
+
+<div id="metroBox" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2><span class="mline">M</span> <span data-i18n="chooseStation"></span></h2><button class="ibtn light" data-close>✕</button></div>
+    <div id="metroList" class="menu-grid"></div>
+  </div>
+</div>
+
 <div id="board" class="modal hidden">
   <div class="sheet small">
-    <div class="sheet-head"><h2>🏆 <span data-i18n="leaderboard"></span></h2><button class="ibtn" data-close>✖</button></div>
+    <div class="sheet-head"><h2 data-i18n="leaderboard"></h2><button class="ibtn light" data-close>✕</button></div>
     <p class="muted" data-i18n="pointRule"></p>
     <ol id="boardList"></ol>
   </div>
 </div>
 
-<!-- Map -->
-<div id="map" class="modal hidden">
-  <div class="sheet small">
-    <div class="sheet-head"><h2>🗺️ <span data-i18n="map"></span></h2><button class="ibtn" data-close>✖</button></div>
-    <div id="mapList" class="menu-grid"></div>
-  </div>
-</div>
-
-<!-- Results -->
 <div id="results" class="modal hidden">
   <div class="sheet small center">
-    <div class="big">🏆</div><h2 id="resTitle"></h2><div id="resLines"></div>
-    <button class="btn big-btn" data-close>OK</button>
+    <h2 id="resTitle"></h2><div id="resLines"></div>
+    <button class="btn primary" data-close>OK</button>
   </div>
 </div>
 
-<!-- Teacher panel -->
 <div id="panel" class="modal hidden">
   <div class="sheet">
-    <div class="sheet-head"><h2>🛠️ <span data-i18n="teacherPanel"></span></h2><button class="ibtn" data-close>✖</button></div>
+    <div class="sheet-head"><h2 data-i18n="teacherPanel"></h2><button class="ibtn light" data-close>✕</button></div>
     <div class="tabs" id="ptabs">
-      <button data-tab="announce" class="on">📢 <span data-i18n="tAnnounce"></span></button>
-      <button data-tab="abuse">⚡ <span data-i18n="tAbuse"></span></button>
-      <button data-tab="games">🎮 <span data-i18n="tGames"></span></button>
-      <button data-tab="music">🎵 <span data-i18n="tMusic"></span></button>
-      <button data-tab="kids">👧 <span data-i18n="tKids"></span></button>
+      <button data-tab="announce" class="on" data-i18n="tAnnounce"></button>
+      <button data-tab="abuse" data-i18n="tAbuse"></button>
+      <button data-tab="games" data-i18n="tGames"></button>
+      <button data-tab="music" data-i18n="tMusic"></button>
+      <button data-tab="kids" data-i18n="tKids"></button>
     </div>
     <div class="tab" data-tab="announce">
       <textarea id="annText" rows="3" maxlength="200" data-i18n-ph="annPh"></textarea>
-      <div class="row"><button class="btn" id="annSend">📢 <span data-i18n="send"></span></button></div>
+      <div class="row"><button class="btn primary" id="annSend" data-i18n="send"></button></div>
     </div>
     <div class="tab hidden" data-tab="abuse">
       <div class="menu-grid" id="abuseGrid"></div>
       <h3 data-i18n="giveaway"></h3>
-      <div class="row" id="giveRow"></div>
+      <div class="row left" id="giveRow"></div>
     </div>
     <div class="tab hidden" data-tab="games">
       <h3 data-i18n="duration"></h3>
-      <div class="row" id="durRow"></div>
+      <div class="row left" id="durRow"></div>
+      <h3 data-i18n="quizSettings"></h3>
+      <div class="row left" id="quizOpts"></div>
       <div class="menu-grid" id="mgGrid"></div>
-      <button class="btn danger" id="mgEnd">⏹ <span data-i18n="endGame"></span></button>
+      <button class="btn danger" id="mgEnd" data-i18n="endGame"></button>
     </div>
     <div class="tab hidden" data-tab="music">
       <div class="menu-grid" id="songGrid"></div>

@@ -1,121 +1,151 @@
-// Multiplayer layer. Firebase Realtime Database when configured, otherwise
-// BroadcastChannel between tabs of the same browser (handy for testing).
-import { CONFIG } from './config.js';
+// Multiplayer + save data.
+// Online: Supabase Realtime (presence + broadcast per server) and Postgres (stars, teacher commands).
+// Dev (?dev=1 on localhost): BroadcastChannel between tabs of one browser.
+import { CONFIG, DEV } from './config.js';
+import { sb } from './auth.js';
 
-const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
-
-function loadScript(src) {
-  return new Promise((ok, fail) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = ok; s.onerror = fail;
-    document.head.appendChild(s);
-  });
+const CLOCK_KEYS = ['start', 'phaseEnds', 'qEnds'];
+function stamp(val) { return val && typeof val === 'object' && !Array.isArray(val) ? { ...val, _sent: Date.now() } : val; }
+function unstamp(val) {
+  if (!val || typeof val !== 'object' || !val._sent) return val;
+  const d = Date.now() - val._sent, v = { ...val }; delete v._sent;
+  for (const k of CLOCK_KEYS) if (typeof v[k] === 'number') v[k] += d;
+  return v;
 }
 
-const rid = () => Math.random().toString(36).slice(2, 10);
-
-class FirebaseNet {
-  constructor() {
-    this.kind = 'online';
-    firebase.initializeApp(CONFIG.firebase);
-    this.db = firebase.database();
-    this.root = this.db.ref('banda');
-    this.offset = 0;
-    this.db.ref('.info/serverTimeOffset').on('value', s => (this.offset = s.val() || 0));
-    this.presReady = {};
-  }
-  now() { return Date.now() + this.offset; }
-  setPresence(id, data) {
-    const r = this.root.child('players/' + id);
-    if (!this.presReady[id]) { r.onDisconnect().remove(); this.presReady[id] = 1; }
-    r.set(data);
-  }
-  removePresence(id) { this.root.child('players/' + id).remove(); }
-  onPlayers(cb) {
-    const r = this.root.child('players');
-    r.on('child_added', s => cb(s.key, s.val()));
-    r.on('child_changed', s => cb(s.key, s.val()));
-    r.on('child_removed', s => cb(s.key, null));
-  }
-  emit(type, data, from) {
-    this.root.child('events').push({ type, data: data ?? null, from: from || '', ts: firebase.database.ServerValue.TIMESTAMP });
-  }
-  onEvent(cb) {
-    const seen = new Set();
-    this.root.child('events').orderByChild('ts').startAt(this.now() - 4000).on('child_added', s => {
-      if (seen.has(s.key)) return; seen.add(s.key);
-      cb(s.val());
-    });
-  }
-  cleanupEvents() {
-    this.root.child('events').orderByChild('ts').endAt(this.now() - 60000).once('value', s => {
-      const upd = {}; s.forEach(c => { upd[c.key] = null; }); this.root.child('events').update(upd);
-    });
-  }
-  setState(key, val) { this.root.child('state/' + key).set(val ?? null); }
-  onState(key, cb) { this.root.child('state/' + key).on('value', s => cb(s.val())); }
-  _tx(uid, fn) { this.root.child('users/' + uid).transaction(u => fn(u || { stars: 0, points: 0 })); }
-  ensureUser(uid, name, role) { this._tx(uid, u => ({ ...u, name, role, seen: Date.now() })); }
-  addStars(uid, n, name) { this._tx(uid, u => { u.stars = Math.max(0, (u.stars || 0) + n); if (name) u.name = name; return u; }); }
-  addPoints(uid, n, name) { this._tx(uid, u => { u.points = Math.max(0, (u.points || 0) + n); if (name) u.name = name; return u; }); }
-  onUsers(cb) { this.root.child('users').on('value', s => cb(s.val() || {})); }
-}
-
-class LocalNet {
-  constructor() {
-    this.kind = 'local';
-    this.bc = new BroadcastChannel('banda-worldislands');
-    this.players = {}; this.pcbs = []; this.ecbs = []; this.scbs = {}; this.ucbs = [];
-    this.bc.onmessage = e => this._recv(e.data);
-    setInterval(() => {
-      const t = Date.now();
-      for (const id in this.players) if (t - this.players[id]._t > 5000) this._recv({ k: 'p', id, d: null });
-    }, 1000);
-  }
-  _send(m) { this._recv(m); this.bc.postMessage(m); }
-  _recv(m) {
-    if (m.k === 'p') {
-      if (m.d) this.players[m.id] = m.d; else delete this.players[m.id];
-      this.pcbs.forEach(cb => cb(m.id, m.d));
-    } else if (m.k === 'e') this.ecbs.forEach(cb => cb(m.ev));
-    else if (m.k === 's') (this.scbs[m.key] || []).forEach(cb => cb(m.val));
-    else if (m.k === 'u') { const u = this._users(); this.ucbs.forEach(cb => cb(u)); }
-  }
+class Base {
+  constructor() { this.players = {}; this.pcbs = []; this.ecbs = []; this.scbs = {}; this.ucbs = []; this.state = {}; this.users = {}; }
   now() { return Date.now(); }
-  setPresence(id, d) { this._send({ k: 'p', id, d: { ...d, _t: Date.now() } }); }
-  removePresence(id) { this._send({ k: 'p', id, d: null }); }
   onPlayers(cb) { this.pcbs.push(cb); for (const id in this.players) cb(id, this.players[id]); }
-  emit(type, data, from) { this._send({ k: 'e', ev: { type, data: data ?? null, from: from || '', ts: Date.now(), id: rid() } }); }
   onEvent(cb) { this.ecbs.push(cb); }
-  cleanupEvents() {}
-  setState(key, val) {
-    try { localStorage.setItem('banda_s_' + key, JSON.stringify(val ?? null)); } catch (e) {}
-    this._send({ k: 's', key, val: val ?? null });
+  onState(key, cb) { (this.scbs[key] ||= []).push(cb); if (key in this.state) cb(this.state[key]); }
+  onUsers(cb) { this.ucbs.push(cb); cb(this.users); }
+  _player(id, d) {
+    if (d) this.players[id] = { ...(this.players[id] || {}), ...d }; else delete this.players[id];
+    this.pcbs.forEach(cb => cb(id, d ? this.players[id] : null));
   }
-  onState(key, cb) {
-    (this.scbs[key] ||= []).push(cb);
-    let v = null; try { v = JSON.parse(localStorage.getItem('banda_s_' + key)); } catch (e) {}
-    cb(v);
+  _event(ev) {
+    if (ev.type === '_state') { const v = unstamp(ev.data.val); this.state[ev.data.key] = v; (this.scbs[ev.data.key] || []).forEach(cb => cb(v)); return; }
+    this.ecbs.forEach(cb => cb(ev));
   }
-  _users() { try { return JSON.parse(localStorage.getItem('banda_users')) || {}; } catch (e) { return {}; } }
-  _tx(uid, fn) {
-    const all = this._users(); all[uid] = fn(all[uid] || { stars: 0, points: 0 });
-    try { localStorage.setItem('banda_users', JSON.stringify(all)); } catch (e) {}
-    this._send({ k: 'u' });
-  }
-  ensureUser(uid, name, role) { this._tx(uid, u => ({ ...u, name, role, seen: Date.now() })); }
-  addStars(uid, n, name) { this._tx(uid, u => { u.stars = Math.max(0, (u.stars || 0) + n); if (name) u.name = name; return u; }); }
-  addPoints(uid, n, name) { this._tx(uid, u => { u.points = Math.max(0, (u.points || 0) + n); if (name) u.name = name; return u; }); }
-  onUsers(cb) { this.ucbs.push(cb); cb(this._users()); }
+  _users(u) { this.users = u; this.ucbs.forEach(cb => cb(u)); }
+  setState(key, val) { this.emit('_state', { key, val: stamp(val) }); }
 }
 
-export async function createNet() {
-  if (CONFIG.firebase && CONFIG.firebase.databaseURL) {
-    try {
-      await loadScript(FB + 'firebase-app-compat.js');
-      await loadScript(FB + 'firebase-database-compat.js');
-      return new FirebaseNet();
-    } catch (e) { console.warn('Firebase unavailable, using local mode', e); }
+// ---------------- Supabase ----------------
+class SupaNet extends Base {
+  constructor(account) { super(); this.kind = 'online'; this.c = sb(); this.uid = account.user.id; this.server = null; }
+
+  // Live player counts for the server list. cb({s1: 3, ...})
+  watchLobby(cb) {
+    this.lobby = this.c.channel('banda-lobby', { config: { presence: { key: this.uid } } });
+    const count = () => {
+      const st = this.lobby.presenceState(), n = {};
+      for (const k in st) { const s = st[k][0]?.server; if (s) n[s] = (n[s] || 0) + 1; }
+      cb(n);
+    };
+    this.lobby.on('presence', { event: 'sync' }, count).subscribe(s => { if (s === 'SUBSCRIBED') this.lobby.track({ server: this.server }); });
   }
-  return new LocalNet();
+
+  async joinServer(server, meta) {
+    this.server = server; this.meta = meta;
+    if (this.lobby) this.lobby.track({ server });
+    const ch = this.ch = this.c.channel('banda-' + server, { config: { broadcast: { self: true }, presence: { key: meta.pid } } });
+    let known = new Set();
+    ch.on('presence', { event: 'sync' }, () => {
+      const st = ch.presenceState(), now = new Set();
+      for (const pid in st) { if (pid === meta.pid) continue; now.add(pid); this._player(pid, st[pid][0]); }
+      for (const pid of known) if (!now.has(pid)) this._player(pid, null);
+      known = now;
+    });
+    ch.on('broadcast', { event: 'pos' }, ({ payload: p }) => { if (p.id !== meta.pid && this.players[p.id]) this._player(p.id, p); });
+    ch.on('broadcast', { event: 'ev' }, ({ payload }) => this._event({ ...payload, trusted: false }));
+    ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banda_commands', filter: `server=eq.${server}` }, ({ new: r }) => this._command(r));
+    await new Promise(ok => ch.subscribe(s => { if (s === 'SUBSCRIBED') { ch.track(meta); ok(); } }));
+    // current teacher effects for late joiners
+    const { data } = await this.c.from('banda_commands').select('*').eq('server', server).eq('kind', 'effects').order('id', { ascending: false }).limit(1);
+    if (data && data[0]) this._command(data[0], true);
+    this.loadUsers(); setInterval(() => this.loadUsers(), 20000);
+  }
+  _command(r, quiet) {
+    if (r.kind === 'effects') { this.state.effects = r.data; (this.scbs.effects || []).forEach(cb => cb(r.data)); return; }
+    if (!quiet) this._event({ type: r.kind, data: r.data, from: r.created_by, ts: Date.parse(r.created_at), id: r.id, trusted: true });
+  }
+  updateMeta(meta) { this.meta = { ...this.meta, ...meta }; this.ch && this.ch.track(this.meta); }
+  sendPos(p) { this.ch && this.ch.send({ type: 'broadcast', event: 'pos', payload: { id: this.meta.pid, ...p } }); }
+  emit(type, data) { this.ch && this.ch.send({ type: 'broadcast', event: 'ev', payload: { type, data: data ?? null, from: this.meta.pid, ts: Date.now() } }); }
+  async command(kind, data) {
+    const { error } = await this.c.from('banda_commands').insert({ server: this.server, kind, data: data || {} });
+    if (error) throw error;
+  }
+  async loadUsers() {
+    const { data } = await this.c.from('banda_players').select('id, name, stars, points, avatar').order('stars', { ascending: false }).limit(300);
+    if (data) { const u = {}; data.forEach(r => u[r.id] = r); this._users(u); }
+  }
+  async myRow() { const { data } = await this.c.from('banda_players').select('*').eq('id', this.uid).maybeSingle(); return data; }
+  async saveProfile(name, avatar) {
+    const { data } = await this.c.from('banda_players').update({ name, avatar, updated_at: new Date().toISOString() }).eq('id', this.uid).select('id');
+    if (!data || !data.length) await this.c.from('banda_players').insert({ id: this.uid, name, avatar });
+  }
+  async award(n) { const { data, error } = await this.c.rpc('banda_award', { n }); if (!error) { this._bump(this.uid, { stars: data }); } return data; }
+  async give(uid, stars, points) { const { error } = await this.c.rpc('banda_give', { target: uid, d_stars: stars, d_points: points }); if (error) throw error; this.loadUsers(); }
+  async claim(id) { const { data } = await this.c.rpc('banda_claim', { cmd: id }); this.loadUsers(); return data || 0; }
+  _bump(uid, patch) { this.users = { ...this.users, [uid]: { ...(this.users[uid] || { stars: 0, points: 0 }), ...patch } }; this._users(this.users); }
+  leave() { if (this.ch) this.c.removeChannel(this.ch); }
 }
+
+// ---------------- Dev (one browser) ----------------
+class LocalNet extends Base {
+  constructor(account) {
+    super(); this.kind = 'local'; this.uid = account.user.id;
+    this.bc = new BroadcastChannel('banda-dev');
+    this.bc.onmessage = e => this._recv(e.data);
+    this.seen = {};
+    setInterval(() => { const t = Date.now(); for (const id in this.seen) if (t - this.seen[id] > 5000) { delete this.seen[id]; this._player(id, null); } }, 1000);
+    this._users(this._load());
+  }
+  _load() { try { return JSON.parse(localStorage.getItem('banda_dev_users')) || {}; } catch (e) { return {}; } }
+  _save(u) { localStorage.setItem('banda_dev_users', JSON.stringify(u)); this._users(u); this.bc.postMessage({ k: 'u' }); }
+  _recv(m) {
+    if (m.server && m.server !== this.server) return;
+    if (m.k === 'p') { this.seen[m.id] = Date.now(); this._player(m.id, m.d); }
+    else if (m.k === 'e') this._event(m.ev);
+    else if (m.k === 'u') this._users(this._load());
+    else if (m.k === 'hello' && this.meta) this.bc.postMessage({ k: 'p', server: this.server, id: this.meta.pid, d: { ...this.meta, ...this.lastPos } });
+  }
+  watchLobby(cb) {
+    const counts = {}; const tick = () => { const n = {}; for (const k in counts) if (Date.now() - counts[k].t < 4000) n[counts[k].s] = (n[counts[k].s] || 0) + 1; cb(n); };
+    const lb = new BroadcastChannel('banda-dev-lobby');
+    lb.onmessage = e => { counts[e.data.id] = { s: e.data.s, t: Date.now() }; tick(); };
+    setInterval(() => { if (this.server) { counts[this.uid] = { s: this.server, t: Date.now() }; lb.postMessage({ id: this.uid, s: this.server }); } tick(); }, 1500);
+  }
+  async joinServer(server, meta) {
+    this.server = server; this.meta = meta; this.lastPos = {};
+    this.bc.postMessage({ k: 'hello', server });
+    setInterval(() => this.bc.postMessage({ k: 'p', server, id: meta.pid, d: { ...this.meta, ...this.lastPos } }), 2000);
+    try { const e = JSON.parse(localStorage.getItem('banda_dev_effects_' + server)); if (e) { this.state.effects = e; } } catch (e) {}
+  }
+  updateMeta(meta) { this.meta = { ...this.meta, ...meta }; }
+  sendPos(p) { this.lastPos = p; this.bc.postMessage({ k: 'p', server: this.server, id: this.meta.pid, d: { ...this.meta, ...p } }); }
+  emit(type, data, trusted = false) {
+    const ev = { type, data: data ?? null, from: trusted ? this.uid : this.meta.pid, ts: Date.now(), trusted, id: Math.floor(Math.random() * 1e9) };
+    this._event(ev); this.bc.postMessage({ k: 'e', server: this.server, ev });
+  }
+  async command(kind, data) {
+    if (this.meta.role !== 'teacher') throw new Error('teachers only');
+    if (kind === 'effects') {
+      localStorage.setItem('banda_dev_effects_' + this.server, JSON.stringify(data));
+      const ev = { type: '_state', data: { key: 'effects', val: data } }; this._event(ev); this.bc.postMessage({ k: 'e', server: this.server, ev }); return;
+    }
+    this.emit(kind, data, true);
+  }
+  loadUsers() { this._users(this._load()); }
+  async myRow() { return this._load()[this.uid] || null; }
+  async saveProfile(name, avatar) { const u = this._load(); u[this.uid] = { stars: 0, points: 0, ...(u[this.uid] || {}), id: this.uid, name, avatar }; this._save(u); }
+  async award(n) { const u = this._load(), r = u[this.uid] ||= { id: this.uid, stars: 0, points: 0 }; r.stars += Math.min(10, n); this._save(u); return r.stars; }
+  async give(uid, stars, points) { const u = this._load(), r = u[uid] ||= { id: uid, stars: 0, points: 0 }; r.stars = Math.max(0, r.stars + stars); r.points = Math.max(0, r.points + points); this._save(u); }
+  async claim(id) { const k = 'banda_dev_claim_' + id; if (sessionStorage.getItem(k)) return 0; sessionStorage.setItem(k, 1); return null; }
+  leave() {}
+}
+
+export function createNet(account) { return DEV ? new LocalNet(account) : new SupaNet(account); }

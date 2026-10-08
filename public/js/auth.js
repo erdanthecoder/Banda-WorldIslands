@@ -1,53 +1,67 @@
-// Sign-in with the school's Google Workspace (Google Identity Services) — no Firebase Auth.
-import { CONFIG } from './config.js';
+// Sign-in through The4Workspace (the4workspace.web.app). The hub hands the Supabase session over
+// in the URL fragment (#oit=…); we store it and remove it from the address bar.
+import { CONFIG, DEV } from './config.js';
 
-const KEY = 'banda_session';
-
-function decodeJwt(tok) {
-  const b = tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-  return JSON.parse(decodeURIComponent(atob(b).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')));
+let client = null;
+export function sb() {
+  if (!client) client = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'banda-auth' },
+    realtime: { params: { eventsPerSecond: 20 } },
+  });
+  return client;
 }
 
-export async function sha256(text) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const unb64 = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
+const CHECKED = 'banda_sso_checked';
+
+function returnUrl() { return location.origin + location.pathname; }
+
+async function acceptHandoff() {
+  const m = location.hash.match(/(?:^#|&)oit=([A-Za-z0-9_-]+)/);
+  if (!m) return false;
+  history.replaceState(null, '', location.pathname + location.search);
+  if (m[1] === 'none') return false;
+  try {
+    const { at, rt } = JSON.parse(unb64(m[1]));
+    const { error } = await sb().auth.setSession({ access_token: at, refresh_token: rt });
+    return !error;
+  } catch (e) { return false; }
 }
 
-export function savedSession() {
-  try { return JSON.parse(sessionStorage.getItem(KEY) || localStorage.getItem(KEY)); } catch (e) { return null; }
-}
-export function saveSession(s) {
-  try { sessionStorage.setItem(KEY, JSON.stringify(s)); localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
-}
-export function logout() { try { sessionStorage.removeItem(KEY); localStorage.removeItem(KEY); } catch (e) {} if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect(); }
-
-// Renders Google button into `el`; resolves with a user object or rejects with an error code.
-export function googleSignIn(el, onUser, onError) {
-  if (!CONFIG.googleClientId) { el.style.display = 'none'; return false; }
-  const s = document.createElement('script');
-  s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
-  s.onload = () => {
-    google.accounts.id.initialize({
-      client_id: CONFIG.googleClientId,
-      hd: CONFIG.workspaceDomain || undefined,
-      callback: r => {
-        const p = decodeJwt(r.credential);
-        if (CONFIG.workspaceDomain && p.hd !== CONFIG.workspaceDomain) return onError('wrongDomain');
-        onUser({ uid: 'g_' + p.sub, name: p.given_name || p.name || p.email.split('@')[0], email: (p.email || '').toLowerCase(), picture: p.picture, provider: 'google' });
-      },
-    });
-    google.accounts.id.renderButton(el, { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'continue_with' });
-  };
-  s.onerror = () => onError('googleUnavailable');
-  document.head.appendChild(s);
-  return true;
+// Returns { user, profile } when signed in, or null. May redirect once to the hub for a silent check.
+export async function currentAccount() {
+  if (DEV) return devAccount();
+  const handed = await acceptHandoff();
+  if (/(?:^#|&)oit=none/.test(location.hash) || handed) sessionStorage.setItem(CHECKED, '1');
+  const { data } = await sb().auth.getSession();
+  const session = data.session;
+  if (!session) {
+    if (!sessionStorage.getItem(CHECKED)) {
+      sessionStorage.setItem(CHECKED, '1');
+      location.replace(`${CONFIG.hub}/?return=${encodeURIComponent(returnUrl())}&silent=1`);
+      return new Promise(() => {}); // navigating away
+    }
+    return null;
+  }
+  const user = session.user;
+  const { data: profile } = await sb().from('profiles').select('role, full_name, avatar_color, learn_from').eq('id', user.id).maybeSingle();
+  return { user, profile: profile || { role: 'student', full_name: user.email?.split('@')[0] || 'Player' } };
 }
 
-export function guestUser(name) {
-  const clean = name.replace(/[<>]/g, '').trim().slice(0, 16);
-  const slug = clean.toLowerCase().replace(/\s+/g, '_').replace(/[^\p{L}\p{N}_]/gu, '') || Math.random().toString(36).slice(2, 8);
-  return { uid: 'n_' + slug, name: clean, email: '', provider: 'guest' };
+export function signInWithHub(asTeacher) {
+  sessionStorage.removeItem(CHECKED);
+  location.href = `${CONFIG.hub}/?return=${encodeURIComponent(returnUrl())}${asTeacher ? '&as=teacher' : ''}`;
 }
 
-export async function isTeacherCode(code) { return (await sha256(code.trim())) === CONFIG.teacherCodeSha256; }
-export function isTeacherEmail(email) { return !!email && CONFIG.teacherEmails.map(e => e.toLowerCase()).includes(email.toLowerCase()); }
+export async function signOut() {
+  sessionStorage.removeItem(CHECKED);
+  if (DEV) { sessionStorage.removeItem('banda_dev'); return; }
+  try { await sb().auth.signOut(); } catch (e) {}
+}
+
+function devAccount() {
+  const q = new URLSearchParams(location.search);
+  let d = null; try { d = JSON.parse(sessionStorage.getItem('banda_dev')); } catch (e) {}
+  if (!d) { d = { id: 'dev-' + Math.random().toString(36).slice(2, 8) }; sessionStorage.setItem('banda_dev', JSON.stringify(d)); }
+  return { user: { id: d.id, email: '' }, profile: { role: q.has('teacher') ? 'teacher' : 'student', full_name: q.get('name') || '' } };
+}
