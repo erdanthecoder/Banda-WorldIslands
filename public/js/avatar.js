@@ -199,7 +199,7 @@ export function avatarCreator(el, { t, cfg, name, onSave, onCancel }) {
   const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.toneMapping = THREE.ACESFilmicToneMapping;
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  cam.position.set(0, 1.3, 4.6); cam.lookAt(0, 1.05, 0);
+  cam.position.set(0, 1.25, 6.2); cam.lookAt(0, 1.0, 0);
   scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x4a4036, 1.3));
   const key = new THREE.DirectionalLight(0xffffff, 2.4); key.position.set(2, 3, 3); scene.add(key);
   const rim = new THREE.DirectionalLight(0x9fc4ff, 1.3); rim.position.set(-3, 2, -2); scene.add(rim);
