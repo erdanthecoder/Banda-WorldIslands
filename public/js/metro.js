@@ -94,7 +94,7 @@ export class Metro {
   enter(stationName, atExit) {
     const { x, z, y } = METRO;
     this.setLit(true); this.setStation(stationName);
-    if (atExit) this.w.teleport(x + L / 2 - 6, z - 1.6, -Math.PI / 2, y); // arriving from street level
+    if (atExit) this.w.teleport(x + L / 2 - 9, z - 1.6, Math.PI / 2, y); // arriving from street level, facing the trains
     if (this.state === 'away' || this.state === 'leaving') { this.train.position.x = this.awayX; this.go('away'); }
   }
   leave() { this.setLit(false); }
