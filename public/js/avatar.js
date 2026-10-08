@@ -20,7 +20,7 @@ const std = (color, rough = 0.75, extra = {}) => new THREE.MeshStandardMaterial(
 function nameSprite(text, role) {
   const c = document.createElement('canvas'), g = c.getContext('2d'), fs = 40;
   g.font = `600 ${fs}px system-ui, sans-serif`;
-  const label = (role === 'teacher' ? '★ ' : '') + text;
+  const label = (role === 'teacher' ? '★ ' : '') + text + (role === 'bot' ? ' · bot' : '');
   const w = Math.ceil(g.measureText(label).width) + 28; c.width = w; c.height = fs + 20;
   g.font = `600 ${fs}px system-ui, sans-serif`;
   g.fillStyle = 'rgba(12,16,24,0.55)'; g.beginPath(); g.roundRect(0, 0, w, c.height, 12); g.fill();

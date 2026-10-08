@@ -63,7 +63,10 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.01em; }
 .ibtn.off { opacity: .5; }
 .ibtn.light { background: var(--chip); color: var(--sheet-ink); border: 0; }
 body:not(.teacher) .teacher-only { display: none; }
-#prompt { position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%); padding: 10px 18px; font-weight: 700; z-index: 5; cursor: pointer; border-color: rgba(74,168,255,.6); }
+#minimap { position: fixed; right: 12px; top: calc(62px + env(safe-area-inset-top, 0px)); width: 170px; height: 170px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.35); cursor: pointer; transition: all .25s; }
+#minimap.big { width: min(560px, 90vw); height: min(560px, 90vw); border-radius: 18px; top: 50%; right: 50%; transform: translate(50%, -50%); z-index: 35; }
+#vignette { position: fixed; inset: 0; pointer-events: none; z-index: 1; background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.35) 100%); }
+#help.fade { opacity: 0; transition: opacity 1.5s; pointer-events: none; }
 #chat { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(360px, 60vw); z-index: 5; }
 #chatLog { max-height: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; mask-image: linear-gradient(to bottom, transparent, #000 25%); }
 #chatLog div { background: rgba(0,0,0,.4); padding: 3px 9px; border-radius: 8px; font-size: 14px; width: fit-content; max-width: 100%; overflow-wrap: anywhere; }
@@ -83,7 +86,7 @@ body:not(.teacher) .teacher-only { display: none; }
   #joy { position: fixed; left: 24px; bottom: 120px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.3); z-index: 6; touch-action: none; }
   #joy i { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.6); }
   #bJump { position: fixed; right: 24px; bottom: 110px; z-index: 6; }
-  #bUse { position: fixed; right: 100px; bottom: 70px; z-index: 6; }
+  #minimap { width: 120px; height: 120px; }
   #chat { width: 50vw; } #chatLog { max-height: 80px; }
   #mgBtns:not(.hidden), #impBtns:not(.hidden) { bottom: 190px; }
 }

@@ -4,10 +4,11 @@ import * as THREE from 'three';
 import { PITCH, COURT, isl } from './world.js';
 import { Impostor } from './impostor.js';
 import { QuizBattle } from './quizbattle.js';
+import { WANT, makeBots } from './bots.js';
 
 const TEAM_COL = { red: 0xc0392b, blue: 0x2e6fd1 };
 const HUB = isl('hub');
-export const MIN_PLAYERS = { football: 2, dodgeball: 2, hide: 2, starhunt: 1, impostor: 3, quiz: 1 };
+export const MIN_PLAYERS = { football: 1, dodgeball: 1, hide: 1, starhunt: 1, impostor: 1, quiz: 1 };
 
 export class Minigames {
   constructor(app) {
@@ -31,12 +32,13 @@ export class Minigames {
   start(type, minutes) {
     const { app } = this;
     if (this.running()) return app.toast(app.t('mgRunning'));
-    const ids = this.ids().filter((v, i, a) => a.indexOf(v) === i);
-    if (ids.length < MIN_PLAYERS[type]) return app.toast(app.t('needN').replace('{n}', MIN_PLAYERS[type]));
+    const humans = this.ids().filter((v, i, a) => a.indexOf(v) === i);
+    const bots = humans.length < WANT[type] ? makeBots(WANT[type] - humans.length, 'g') : {};
+    const ids = [...humans, ...Object.keys(bots)];
     const shuffled = ids.slice().sort(() => Math.random() - 0.5), teams = {};
     shuffled.forEach((id, i) => teams[id] = i % 2 ? 'blue' : 'red');
     const mg = { type, id: Math.random().toString(36).slice(2, 8), start: Date.now() + 5000, dur: minutes * 60000, host: this.me.pid,
-      teams, scores: { red: 0, blue: 0 }, found: {}, seeker: type === 'hide' ? shuffled[0] : null, ended: false };
+      teams, bots, scores: { red: 0, blue: 0 }, found: {}, seeker: type === 'hide' ? shuffled[0] : null, ended: false };
     if (type === 'impostor') Object.assign(mg, this.impostor.setup(shuffled));
     if (type === 'quiz') Object.assign(mg, this.quiz.setup());
     this.sync(mg);
@@ -44,6 +46,8 @@ export class Minigames {
   }
   end(winner) { if (this.mg && !this.mg.ended) this.sync({ ...this.mg, ended: true, winner: winner || this.mg.winner || null }); }
 
+  nameOf(id) { return id === this.me.pid ? this.me.name : (this.app.players[id]?.name || this.mg?.bots?.[id]?.name || '?'); }
+  isBot(id) { return !!this.mg?.bots?.[id]; }
   myTeam() { const mg = this.mg; if (!mg) return null; return mg.teams[this.me.pid] || (this.me.pid.charCodeAt(this.me.pid.length - 1) % 2 ? 'blue' : 'red'); }
 
   apply(mg) {
@@ -58,6 +62,7 @@ export class Minigames {
   enter() {
     const { app } = this, w = app.world, mg = this.mg, team = this.myTeam();
     this.active = mg.id; this.sentFound = {}; this.shCount = 0;
+    app.bots && app.bots.startGame(mg);
     app.closeGame && app.closeGame();
     if (mg.type !== 'quiz') { const p = w.me.group.position; this.back = { x: p.x, z: p.z, y: p.y }; app.sfx('teleport'); app.sfx('whistle'); }
     app.ui.banner(app.t('mg_' + mg.type) + ' — ' + app.t('getReady'), 3500);
@@ -97,6 +102,7 @@ export class Minigames {
     app.ui.blind(false); app.ui.mgHud(null); app.ui.mgButtons(null);
     this.setTeamRing(w.me, null); for (const id in w.remotes) { this.setTeamRing(w.remotes[id].av, null); w.remotes[id].hidden = false; }
     this.dballs.forEach(b => w.scene.remove(b.m)); this.dballs = []; this.ballSim = null;
+    app.bots && app.bots.endGame();
     let reward = 1; const lines = [];
     if (mg.type === 'football' || mg.type === 'dodgeball') {
       const s = mg.scores || { red: 0, blue: 0 };
@@ -111,7 +117,7 @@ export class Minigames {
       else { reward += 5; lines.push(app.t('neverFound')); }
     } else if (mg.type === 'starhunt') {
       lines.push(`${app.t('youCollected')} ${this.shCount || 0} ★`);
-      const best = Math.max(this.shCount || 0, ...Object.values(app.players).map(p => p.sh || 0));
+      const best = Math.max(this.shCount || 0, ...Object.values(app.players).map(p => p.sh || 0), ...Object.values(w.remotes).map(r => r.d?.sh || 0));
       if (this.shCount && this.shCount >= best) { reward += 5; lines.push(app.t('topCollector')); }
     } else if (mg.type === 'impostor') reward += this.impostor.exit(mg, lines);
     else if (mg.type === 'quiz') reward += this.quiz.exit(mg, lines);
@@ -149,16 +155,18 @@ export class Minigames {
     } else if (ev.type === 'throw' && mg.type === 'dodgeball') {
       const m = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), new THREE.MeshStandardMaterial({ color: TEAM_COL[d.team], roughness: 0.5 }));
       m.castShadow = true; m.position.set(...d.o); app.world.scene.add(m);
-      this.dballs.push({ m, v: new THREE.Vector3(...d.v), team: d.team, from: ev.from, live: true, life: 3 });
+      this.dballs.push({ m, v: new THREE.Vector3(...d.v), team: d.team, from: d.bot || ev.from, live: true, life: 3 });
       app.sfx('kick');
     } else if (ev.type === 'dbhit') {
       app.sfx('hit');
       if (d.by === this.me.pid) app.toast(app.t('hit') + '!');
+      if (this.isBot(d.victim) && app.bots.b[d.victim]) { const bb = app.bots.b[d.victim], sz = bb.team === 'red' ? -1 : 1; bb.z = COURT.z + sz * (COURT.hd - 1.5); bb.frozen = 1.2; }
       if (this.isHost()) { const sc = { ...mg.scores }; sc[d.team] = (sc[d.team] || 0) + 1; this.sync({ ...mg, scores: sc }); }
     } else if (ev.type === 'found' && mg.type === 'hide') {
       app.sfx('whistle'); app.toast(`${d.name} ${app.t('wasFound')}`);
+      if (d.id === this.me.pid) app.ui.banner(app.t('youWereFound'), 2000);
       if (this.isHost() && !mg.found[d.id]) {
-        const found = { ...(mg.found || {}), [d.id]: 1 }, hiders = Object.keys(mg.teams).filter(id => id !== mg.seeker && (app.players[id] || id === this.me.pid));
+        const found = { ...(mg.found || {}), [d.id]: 1 }, hiders = Object.keys(mg.teams).filter(id => id !== mg.seeker && (app.players[id] || id === this.me.pid || this.isBot(id)));
         this.sync({ ...mg, found, ended: hiders.every(id => found[id]) });
       }
     }
@@ -245,6 +253,11 @@ export class Minigames {
           this.app.ui.flash();
           const sz = my === 'red' ? -1 : 1; w.teleport(C.x + (Math.random() - 0.5) * 20, C.z + sz * (C.hd - 1.5)); w.frozenUntil = performance.now() + 1200;
         }
+      }
+      if (b.live && this.isHost()) for (const id in this.app.bots.b) {
+        const bb = this.app.bots.b[id]; if (!bb.team || bb.team === b.team || bb.frozen > 0) continue;
+        const dx = b.m.position.x - bb.x, dz = b.m.position.z - bb.z, dy = b.m.position.y - (C.h + 1);
+        if (dx * dx + dz * dz + dy * dy < 0.8) { b.live = false; this.app.net.emit('dbhit', { victim: id, by: b.from, team: b.team }); }
       }
       if (b.life <= 0) { w.scene.remove(b.m); return false; }
       return true;

@@ -10,7 +10,7 @@ export class QuizBattle {
   setup() {
     return { subject: this.pending.subject, level: this.pending.level, total: TOTAL, qIndex: -1, phase: 'wait', scores: {}, answers: {}, dur: 8 * 60000 };
   }
-  name(id) { return id === this.app.me.pid ? this.app.me.name : (this.app.players[id]?.name || '?'); }
+  name(id) { return this.mgs.nameOf(id); }
 
   enter() { this.box(); this.answered = -1; }
   box() {
@@ -51,7 +51,13 @@ export class QuizBattle {
     const now = Date.now();
     if (mg.phase === 'wait' && now > mg.start) return this.next(mg);
     if (mg.phase === 'question') {
-      const players = this.mgs.ids().filter(id => mg.teams[id] !== undefined || true);
+      // bots answer after a few seconds, right about 60% of the time
+      for (const id in mg.bots || {}) {
+        if (mg.answers[id]) continue;
+        const at = mg.qStart + 2500 + (id.charCodeAt(id.length - 1) * 977 + mg.qIndex * 1301) % 9000;
+        if (now > at) { const right = Math.random() < 0.6, n = mg.question.options.length; this.event({ type: 'qb_answer', from: id, data: { q: mg.qIndex, i: right ? mg.question.answer : (mg.question.answer + 1 + Math.floor(Math.random() * (n - 1))) % n } }, mg); return; }
+      }
+      const players = [...this.mgs.ids(), ...Object.keys(mg.bots || {})];
       const all = players.every(id => mg.answers[id]);
       if (now > mg.qEnds || all) {
         const scores = { ...mg.scores };

@@ -14,7 +14,7 @@ const KILL_CD = 25000, MEETING_MS = 50000, TASKS_EACH = 4;
 
 export class Impostor {
   constructor(app, mgs) {
-    this.app = app; this.mgs = mgs; this.bodies = {}; this.lastKill = 0; this.taskCd = 0;
+    this.app = app; this.mgs = mgs; this.bodies = {}; this.lastKill = 0; this.taskCd = 0; this.station = STATION;
     this.build();
   }
 
@@ -75,8 +75,8 @@ export class Impostor {
 
   role(mg, id = this.app.me.pid) { return mg.impostors.includes(id) ? 'impostor' : 'crew'; }
   alive(mg, id) { return !mg.dead[id] && !mg.ejected[id]; }
-  present(id) { return id === this.app.me.pid || !!this.app.players[id]; }
-  name(id) { return id === this.app.me.pid ? this.app.me.name : (this.app.players[id]?.name || '?'); }
+  present(id) { return id === this.app.me.pid || !!this.app.players[id] || !!this.mgs.mg?.bots?.[id]; }
+  name(id) { return this.mgs.nameOf(id); }
 
   enter(mg) {
     const w = this.app.world, { x, z, y } = STATION, t = this.app.t;
@@ -107,7 +107,7 @@ export class Impostor {
     }
     // bodies
     for (const id in mg.dead) if (!this.bodies[id] && !mg.reported[id]) {
-      const av = new Avatar(this.app.players[id]?.avatar || (id === me ? this.app.me.avatar : null), '', 'student'); av.label.visible = false;
+      const av = new Avatar(this.app.players[id]?.avatar || mg.bots?.[id]?.avatar || (id === me ? this.app.me.avatar : null), '', 'student'); av.label.visible = false;
       av.group.rotation.set(-Math.PI / 2, 0, Math.random() * 6); av.group.position.set(mg.dead[id].x, STATION.y + 0.15, mg.dead[id].z);
       w.scene.add(av.group); this.bodies[id] = av;
     }
@@ -142,7 +142,14 @@ export class Impostor {
     // report prompt
     this.nearBody = null;
     if (this.alive(mg, pid) && mg.phase === 'play') for (const id in this.bodies) { const b = this.bodies[id].group.position; if (Math.hypot(b.x - me.x, b.z - me.z) < 2.5) this.nearBody = id; }
-    this.app.ui.impostorButtons(mg.phase === 'play' && this.alive(mg, pid) ? { report: !!this.nearBody, kill: this.role(mg) === 'impostor' && !!this.target(mg) && Date.now() - this.lastKill > KILL_CD } : null);
+    const e = this.emergency, nearBtn = Math.hypot(me.x - e.x, me.z - e.z) < 3.2;
+    this.app.ui.impostorButtons(mg.phase === 'play' && this.alive(mg, pid) ? { report: !!this.nearBody, emergency: nearBtn, kill: this.role(mg) === 'impostor' && !!this.target(mg) && Date.now() - this.lastKill > KILL_CD } : null);
+    // walking up to one of your task screens opens it
+    if (mg.phase === 'play' && !w.inputLocked) {
+      const c = this.consoles.find((c, i) => (mg.tasks[pid] || []).includes(i) && !this.myDone?.has(i) && Math.hypot(me.x - c.x, me.z - c.z) < 1.3);
+      if (c && c !== this.lastConsole && Date.now() > this.taskCd) { this.lastConsole = c; this.doTask(this.consoles.indexOf(c), mg); }
+      if (!c) this.lastConsole = null;
+    }
     if (!this.mgs.isHost()) return;
     if (mg.phase === 'meeting' && Date.now() > mg.phaseEnds) this.resolve(mg);
     const win = this.winner(mg); if (win) this.mgs.end(win);
@@ -219,6 +226,53 @@ export class Impostor {
     if (need && done >= need) return 'crew';
     if (Date.now() > mg.start + mg.dur) return 'impostor';
     return null;
+  }
+
+  hostKill(killer, victim, x, z) {
+    const mg = this.mgs.mg; if (!mg || mg.phase !== 'play' || !mg.impostors.includes(killer) || !this.alive(mg, killer) || !this.alive(mg, victim) || mg.impostors.includes(victim)) return;
+    this.mgs.sync({ ...mg, dead: { ...mg.dead, [victim]: { x, z } } });
+  }
+  hostVote(voter, target) { this.event({ type: 'imp_vote', from: voter, data: { target } }, this.mgs.mg); }
+  hostTask(id, i) { this.event({ type: 'imp_task', from: id, data: { i } }, this.mgs.mg); }
+
+  // bot brain (runs on the host)
+  route(b, tx, tz) {
+    const { x, z } = STATION, lx = b.x - x, lz = b.z - z, gx = tx - x, gz = tz - z;
+    const col = v => v < -10 ? 0 : v < 10 ? 1 : 2, row = v => v < 0 ? 0 : 1;
+    const c0 = col(lx), r0 = row(lz), c1 = col(gx), r1 = row(gz);
+    if (c0 === c1 && r0 === r1) { if (c0 === 1 && r0 === 0 && Math.abs(lz + 10) < 4.5 && Math.abs(gx - lx) > 3 && Math.abs(lx) < 4) return [x + lx, z - 4.5]; return [tx, tz]; }
+    if (c0 !== c1) { const nc = c0 + Math.sign(c1 - c0), bx = (Math.min(c0, nc) === 0 ? -10 : 10), rz = r0 ? 10 : -10;
+      if (c0 === 1 && r0 === 0 && Math.abs(lx - bx) > 4 && Math.abs(lz + 10) < 4) return [x + lx, z - 4.5];
+      return [x + bx + Math.sign(bx - lx) * 0.8, z + rz]; }
+    const cx = [-20, 0, 20][c0]; return [x + cx, z + (r1 > r0 ? 0.8 : -0.8)];
+  }
+  botTick(b, mg, dt) {
+    const bots = this.app.bots, now = Date.now(), y = STATION.y;
+    if (!this.alive(mg, b.id)) { b.speed = 0; return; }
+    if (mg.phase === 'meeting') {
+      if (!b.atTable) { const a = Math.random() * 6.28; b.x = STATION.x + Math.cos(a) * 4; b.z = STATION.z - 10 + Math.sin(a) * 4; b.atTable = true; b.voteAt = now + 5000 + Math.random() * 12000; }
+      if (!mg.votes[b.id] && now > b.voteAt) {
+        const alive = Object.keys(mg.teams).filter(id => id !== b.id && this.alive(mg, id) && this.present(id));
+        const choice = mg.impostors.includes(b.id) ? alive.filter(id => !mg.impostors.includes(id)) : alive;
+        this.hostVote(b.id, Math.random() < 0.45 || !choice.length ? 'skip' : choice[Math.floor(Math.random() * choice.length)]);
+      }
+      return;
+    }
+    b.atTable = false;
+    const go = (tx, tz, sp) => { const [wx, wz] = this.route(b, tx, tz); bots.moveTo(b, wx, wz, sp, dt, y); return Math.hypot(tx - b.x, tz - b.z) < 0.9; };
+    if (mg.impostors.includes(b.id)) {
+      b.cd = (b.cd ?? 20) - dt;
+      const others = bots.targets(mg, id => id !== b.id && this.alive(mg, id) && mg.teams[id]);
+      const victims = others.filter(o => !mg.impostors.includes(o.id) && Math.hypot(o.x - b.x, o.z - b.z) < 1.8);
+      const witnesses = others.filter(o => Math.hypot(o.x - b.x, o.z - b.z) < 7);
+      if (b.cd <= 0 && victims.length && witnesses.length === 1) { b.cd = 28; this.hostKill(b.id, victims[0].id, victims[0].x, victims[0].z); return; }
+      if (!b.goal || go(b.goal[0], b.goal[1], 2.8)) { const t = others.length && Math.random() < 0.5 ? others[Math.floor(Math.random() * others.length)] : this.consoles[Math.floor(Math.random() * this.consoles.length)]; b.goal = [t.x, t.z]; }
+      return;
+    }
+    const mine = mg.tasks[b.id] || [], done = mg.done[b.id] || 0;
+    if (done >= mine.length) { if (!b.goal || go(b.goal[0], b.goal[1], 2.4)) { const c = this.consoles[Math.floor(Math.random() * this.consoles.length)]; b.goal = [c.x, c.z]; } return; }
+    const c = this.consoles[mine[done]];
+    if (go(c.x, c.z, 2.6)) { b.work = (b.work || 0) + dt; if (b.work > 4) { b.work = 0; this.hostTask(b.id, mine[done]); } }
   }
 
   voteUI(mg) {

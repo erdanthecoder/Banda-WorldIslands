@@ -18,6 +18,7 @@
 <body>
 <canvas id="scene"></canvas>
 <div id="fade"></div>
+<div id="vignette"></div>
 
 <!-- Language -->
 <div id="langMenu" class="screen hidden">
@@ -40,16 +41,6 @@
     <button class="btn primary big" id="signBtn"><span class="ws"></span><span data-i18n="signInWs"></span></button>
     <p class="muted small" data-i18n="signInNote"></p>
     <button class="link" id="signLang">English / Русский</button>
-  </div>
-</div>
-
-<!-- Servers -->
-<div id="servers" class="screen hidden">
-  <div class="card wide">
-    <div class="brand"><span class="mark"></span>Banda World Islands</div>
-    <h2 id="serverHello"></h2>
-    <p class="muted" data-i18n="pickServer"></p>
-    <div id="serverList"></div>
   </div>
 </div>
 
@@ -77,17 +68,16 @@
     <button class="ibtn teacher-only" id="bPanel" data-i18n-title="teacherPanel"><svg viewBox="0 0 24 24"><path d="M12 3l9 4-9 4-9-4zM6 9v5c3 3 9 3 12 0V9M21 7v6"/></svg></button>
     <button class="ibtn" id="bOut" data-i18n-title="signOut"><svg viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></button>
   </div>
-  <div id="prompt" class="glass hidden"></div>
+  <canvas id="minimap" width="340" height="340" title="Map (M)"></canvas>
   <div id="chat">
     <div id="chatLog"></div>
     <input id="chatIn" maxlength="120" autocomplete="off" data-i18n-ph="chatPh">
   </div>
   <div id="mgBtns" class="hidden"><button class="abtn wide" id="bAction"></button></div>
-  <div id="impBtns" class="hidden"><button class="abtn wide" id="bReport" data-i18n="report"></button><button class="abtn wide danger" id="bKill" data-i18n="kill"></button></div>
+  <div id="impBtns" class="hidden"><button class="abtn wide danger hidden" id="bEmergency" data-i18n="emergency"></button><button class="abtn wide" id="bReport" data-i18n="report"></button><button class="abtn wide danger" id="bKill" data-i18n="kill"></button></div>
   <div id="touch">
     <div id="joy"><i></i></div>
     <button class="abtn" id="bJump">⤒</button>
-    <button class="abtn" id="bUse">E</button>
   </div>
   <div id="help" class="glass" data-i18n-html="help"></div>
 </div>
@@ -109,8 +99,15 @@
 
 <div id="metroBox" class="modal hidden">
   <div class="sheet small">
-    <div class="sheet-head"><h2><span class="mline">M</span> <span data-i18n="chooseStation"></span></h2><button class="ibtn light" data-close>✕</button></div>
+    <div class="sheet-head"><h2><span class="mline">M</span> <span data-i18n="chooseStation"></span></h2><button class="ibtn light" id="metroClose">✕</button></div>
     <div id="metroList" class="menu-grid"></div>
+  </div>
+</div>
+
+<div id="bldBox" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2 id="bldTitle"></h2><button class="ibtn light" id="bldClose">✕</button></div>
+    <div id="bldList" class="menu-grid"></div>
   </div>
 </div>
 

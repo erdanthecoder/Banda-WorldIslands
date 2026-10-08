@@ -175,3 +175,26 @@ export function currentSong() { return current; }
 export function setMuted(m) { muted = m; if (master) master.gain.value = m ? 0 : 0.8; if (m && window.speechSynthesis) speechSynthesis.cancel(); }
 export function isMuted() { return muted; }
 export function unlockAudio() { try { ac(); } catch (e) {} }
+
+// ---------- Ambience: ocean waves, wind and birds ----------
+let amb = null;
+export function ambience(on, { underground = false } = {}) {
+  try { ac(); } catch (e) { return; }
+  if (!amb) {
+    const g = ctx.createGain(); g.gain.value = 0; g.connect(master);
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+    const wave = ctx.createGain(); wave.gain.value = 0.25;
+    const lfo = ctx.createOscillator(), lfoG = ctx.createGain(); lfo.frequency.value = 0.12; lfoG.gain.value = 0.18; lfo.connect(lfoG); lfoG.connect(wave.gain);
+    src.connect(lp); lp.connect(wave); wave.connect(g); src.start(); lfo.start();
+    amb = { g, lp, birdT: null };
+  }
+  amb.g.gain.setTargetAtTime(on ? (underground ? 0.08 : 0.32) : 0, ctx.currentTime, 0.8);
+  amb.lp.frequency.setTargetAtTime(underground ? 180 : 520, ctx.currentTime, 0.5);
+  clearInterval(amb.birdT);
+  if (on && !underground) amb.birdT = setInterval(() => {
+    if (muted || Math.random() < 0.5) return;
+    const t = ctx.currentTime, f = 2200 + Math.random() * 1800, n = 2 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < n; i++) tone(f * (1 + Math.random() * 0.2), t + i * 0.12, 0.09, { type: 'sine', vol: 0.025, slide: 1.3 });
+  }, 2500);
+}
