@@ -101,7 +101,7 @@ class LocalNet extends Base {
     this.bc = new BroadcastChannel('banda-dev');
     this.bc.onmessage = e => this._recv(e.data);
     this.seen = {};
-    setInterval(() => { const t = Date.now(); for (const id in this.seen) if (t - this.seen[id] > 5000) { delete this.seen[id]; this._player(id, null); } }, 1000);
+    setInterval(() => { const t = Date.now(); for (const id in this.seen) if (t - this.seen[id] > 60000) { delete this.seen[id]; this._player(id, null); } }, 1000);
     this._users(this._load());
   }
   _load() { try { return JSON.parse(localStorage.getItem('banda_dev_users')) || {}; } catch (e) { return {}; } }
