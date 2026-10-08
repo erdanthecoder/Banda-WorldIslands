@@ -329,7 +329,7 @@ function hudSetup() {
     if (e.key !== 'Enter') return;
     const text = chatIn.value.trim(); chatIn.value = ''; chatIn.blur();
     if (!text) return;
-    if (/^\/teachers?$/i.test(text)) return becomeTeacher();
+    if (/^\/teachers?(\s|$)/i.test(text)) return becomeTeacher(text.split(/\s+/).slice(1).join(' '));
     if (/^\/student$/i.test(text)) { setRole('student'); return; }
     if (app.effects.chatLock && app.me.role !== 'teacher') return ui.toast('🔇 ' + t('chatLocked'));
     net.emit('chat', { name: app.me.name, role: app.me.role, text: text.slice(0, 120) }, app.me.pid);
@@ -361,10 +361,10 @@ function hudSetup() {
   renderMe();
 }
 
-async function becomeTeacher() {
+async function becomeTeacher(code) {
   if (app.me.role === 'teacher') return ui.toast('👑 ✓');
-  const code = prompt(t('teacherCode'));
-  if (code && await isTeacherCode(code)) setRole('teacher'); else { ui.toast('❌ ' + t('wrongCode')); sfx('wrong'); }
+  if (!code) return ui.toast('👑 ' + t('teacherCmd'));
+  if (await isTeacherCode(code)) setRole('teacher'); else { ui.toast('❌ ' + t('wrongCode')); sfx('wrong'); }
 }
 function setRole(role) {
   const me = app.me, w = app.world; me.role = role;

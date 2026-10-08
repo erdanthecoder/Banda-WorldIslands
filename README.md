@@ -8,7 +8,7 @@ A 3D multiplayer world in the browser for kids, with islands, portals, learning 
 | `banda-worldislands.web.app/student` | Students |
 | `banda-worldislands.web.app/teachers` (or `/teacher`) | Teachers (needs a teacher account or the teacher code) |
 
-A student can also type **`/teacher`** in chat and enter the teacher code to switch to teacher mode.
+A student can also type **`/teacher <code>`** in chat (for example `/teacher banda-teacher`) to switch to teacher mode.
 
 ## What's inside
 
