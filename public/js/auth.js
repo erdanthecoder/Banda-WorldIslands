@@ -1,4 +1,4 @@
-// Sign-in through Recoon (recoon.web.app). The hub hands the Supabase session over
+// Sign-in through TeamOlive (teamolive.web.app). The hub hands the Supabase session over
 // in the URL fragment (#oit=…); we store it and remove it from the address bar.
 import { CONFIG, DEV } from './config.js';
 

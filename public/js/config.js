@@ -1,11 +1,11 @@
 // ===== World Islands — settings =====
 export const CONFIG = {
-  // Recoon account server (the LearnKyrgyz Supabase project). The publishable key is safe
+  // TeamOlive account server (the LearnKyrgyz Supabase project). The publishable key is safe
   // to ship: every Banda table is protected by row-level security (supabase/migrations).
   supabaseUrl: 'https://lzamxwqxnzcrazyuipjx.supabase.co',
   supabaseKey: 'sb_publishable_zSvDRXqxLlW1tuaoJ06PUw_Tges-7OG',
   // Sign-in hub. It sends people back here already signed in (#oit=…).
-  hub: 'https://recoon.web.app',
+  hub: 'https://teamolive.web.app',
 
   // Game servers (each one is its own world with its own players).
   servers: [

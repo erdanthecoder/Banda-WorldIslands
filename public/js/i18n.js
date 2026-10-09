@@ -1,7 +1,7 @@
 const D = {
   en: {
     title: 'World Islands', loading: 'Loading the islands…', teacher: 'Teacher', student: 'Student',
-    signInText: 'Sign in with your school account to play with your class.', signInWs: 'Sign in with Recoon',
+    signInText: 'Sign in with your school account to play with your class.', signInWs: 'Sign in with TeamOlive',
     signInNote: 'You will come straight back here after signing in.', notTeacherAccount: 'This is not a teacher account, so you play as a student.',
     pickServer: 'Pick a server. Your class should all join the same one.', hello: 'Hi', players: 'players', online: 'online',
     yourAvatar: 'Your avatar', randomize: 'Random', displayName: 'Name in the game', saveAvatar: 'Save and play', cancel: 'Cancel',
@@ -48,7 +48,7 @@ const D = {
   },
   ru: {
     title: 'Мир островов', loading: 'Загружаем острова…', teacher: 'Учитель', student: 'Ученик',
-    signInText: 'Войди через школьный аккаунт, чтобы играть с классом.', signInWs: 'Войти через Recoon',
+    signInText: 'Войди через школьный аккаунт, чтобы играть с классом.', signInWs: 'Войти через TeamOlive',
     signInNote: 'После входа ты сразу вернёшься сюда.', notTeacherAccount: 'Это не аккаунт учителя, поэтому ты играешь как ученик.',
     pickServer: 'Выбери сервер. Весь класс должен зайти на один и тот же.', hello: 'Привет', players: 'игроков', online: 'онлайн',
     yourAvatar: 'Твой аватар', randomize: 'Случайно', displayName: 'Имя в игре', saveAvatar: 'Сохранить и играть', cancel: 'Отмена',
