@@ -99,19 +99,34 @@ export class Metro {
   }
   leave() { this.setLit(false); }
 
-  // Ride: camera inside the train through the tunnel, then done().
-  ride(done) {
+  // Ride: pull out of the station (camera inside the train), middle() shows the trip above ground,
+  // then the train pulls into the destination platform.
+  ride(middle, done, fade) {
     const w = this.w, tr = this.train.position;
     this.riding = true; w.inputLocked = true; w.me.group.visible = false;
-    const start = tr.x, t0 = performance.now();
-    w.cameraOverride = cam => { cam.position.set(tr.x + 3, tr.y + 0.4, tr.z + 0.6); cam.lookAt(tr.x - 30, tr.y + 0.2, tr.z - 1.2); };
+    const inside = cam => { cam.position.set(tr.x + 3, tr.y + 0.4, tr.z + 0.6); cam.lookAt(tr.x - 30, tr.y + 0.2, tr.z - 1.2); };
+    const start = tr.x; let t0 = performance.now();
+    w.cameraOverride = inside;
     w.updaters.push(() => {
       const t = (performance.now() - t0) / 1000;
-      tr.x = start - (t < 2.5 ? 3.6 * t * t : 22.5 + (t - 2.5) * 40);
-      if (t > 6.5) {
-        w.cameraOverride = null; w.me.group.visible = true; w.inputLocked = false; this.riding = false;
-        tr.x = this.dockX; this.go('docked'); done(); return true;
-      }
+      tr.x = start - 3.6 * t * t;
+      if (t < 2.6) return;
+      fade(true);
+      setTimeout(() => { fade(false); middle(() => {
+        // arrival: come in from the far end and stop at the platform
+        fade(true);
+        setTimeout(() => {
+          fade(false); w.cameraOverride = inside; t0 = performance.now();
+          w.updaters.push(() => {
+            const k = Math.min(1, (performance.now() - t0) / 3500), e = 1 - Math.pow(1 - k, 3);
+            tr.x = this.awayX - 60 - e * (this.awayX - 60 - this.dockX);
+            if (k < 1) return;
+            w.cameraOverride = null; w.me.group.visible = true; w.inputLocked = false; this.riding = false;
+            this.go('docked'); done(); return true;
+          });
+        }, 400);
+      }); }, 400);
+      return true;
     });
   }
 }

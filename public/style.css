@@ -47,14 +47,9 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.01em; }
 
 /* HUD */
 .glass { background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(10px); border-radius: 14px; }
-#me { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; padding: 10px 14px; min-width: 200px; z-index: 5; }
-#meName { font-weight: 800; }
-#me .stats { display: flex; gap: 16px; margin: 4px 0 6px; font-size: 18px; font-variant-numeric: tabular-nums; }
-#me .stats span:first-child b { color: var(--gold); }
-#me small { color: var(--muted); }
 .prog { height: 6px; background: rgba(255,255,255,.12); border-radius: 9px; overflow: hidden; margin-bottom: 4px; }
 .prog i { display: block; height: 100%; width: 0; background: var(--gold); transition: width .4s; }
-#whereBox { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); padding: 7px 16px; z-index: 5; text-align: center; display: grid; }
+#whereBox_old { top: calc(12px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); padding: 7px 16px; z-index: 5; text-align: center; display: grid; }
 #whereBox small { color: var(--muted); font-size: 12px; }
 #mgHud { position: fixed; top: calc(66px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); padding: 8px 16px; font-weight: 700; z-index: 5; text-align: center; max-width: calc(100% - 24px); font-variant-numeric: tabular-nums; border-color: rgba(255, 201, 77, .4); }
 #topBtns { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; display: flex; gap: 6px; z-index: 6; flex-wrap: wrap; justify-content: flex-end; max-width: 50%; }
@@ -206,3 +201,23 @@ body:not(.teacher) .teacher-only { display: none; }
 .chip.dark { background: var(--glass); color: var(--ink); border: 1px solid var(--line); backdrop-filter: blur(8px); font-size: 13px; padding: 6px 12px; }
 .chip.dark:hover { border-color: var(--accent); }
 @media (max-width: 700px) { #emotes { bottom: auto; top: calc(118px + env(safe-area-inset-top, 0px)); } }
+
+/* compact student HUD */
+#me { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; z-index: 5; display: flex; align-items: center; gap: 6px; padding: 7px 12px 9px; font-variant-numeric: tabular-nums; font-size: 17px; position: fixed; }
+#me .star { color: var(--gold); } #me .sep { width: 1px; height: 16px; background: var(--line); margin: 0 4px; }
+#me small { color: var(--muted); font-size: 12px; }
+#me .prog { position: absolute; left: 12px; right: 12px; bottom: 4px; height: 3px; margin: 0; }
+#whereBox { position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 5; text-align: center; display: grid; pointer-events: none; text-shadow: 0 1px 6px rgba(0,0,0,.7); transition: opacity .8s; }
+#whereBox b { font-size: 18px; } #whereBox small { color: #dfe7ef; font-size: 12px; }
+#whereBox.quiet { opacity: 0; }
+#minimap { top: calc(12px + env(safe-area-inset-top, 0px)); right: 66px; width: 110px; height: 110px; }
+#topBtns { gap: 6px; }
+#chat { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+#chatLog div { transition: opacity 1s; }
+#chatLog div.old { opacity: 0; }
+#bottomBtns { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; z-index: 6; align-items: center; }
+.rbtn { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--line); background: var(--glass); backdrop-filter: blur(8px); display: grid; place-items: center; padding: 0; }
+.rbtn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#emotes { position: static; transform: none; display: flex; gap: 6px; }
+#emotes.hidden { display: none !important; }
+@media (pointer: coarse) { #bottomBtns { left: auto; right: 16px; bottom: 200px; flex-direction: column; } #chat { bottom: 12px; } #minimap { width: 90px; height: 90px; } }

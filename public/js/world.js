@@ -34,12 +34,18 @@ export const isl = id => ISLANDS.find(i => i.id === id);
 export const PITCH = { x: 0, z: -238, hw: 30, hd: 18, h: 3 };
 export const COURT = { x: 0, z: -292, hw: 16, hd: 10, h: 3 };
 // houses around the central square: [x, z, rot]
-export const HOUSES = [[-42, -30, 0.9], [-48, 8, 1.6], [-40, 38, 2.3], [40, 36, -2.3], [50, 4, -1.6], [44, -34, -0.8], [-14, 52, 3.0], [16, 54, 3.2]];
+export const HOUSES = [[-46, -30, 0.9], [-50, 24, 1.9], [-44, 42, 2.3], [52, 26, -2.0], [54, 14, -1.8], [48, -34, -0.8], [-14, 56, 3.0], [22, 58, 3.4]].map(h => [...h, 6]);
+// small villages on the other islands
+for (const I of ISLANDS.filter(I => ['math', 'lang', 'arcade', 'teacher'].includes(I.id))) {
+  const ang = Math.atan2(I.z, I.x);
+  for (const a of [ang + 1.35, ang - 1.35, ang + Math.PI + 1.05]) HOUSES.push([I.x + Math.cos(a) * 45, I.z + Math.sin(a) * 45, Math.atan2(-Math.cos(a), -Math.sin(a)), I.h]);
+}
+export const ROAD = { x: 0, z: 0, r: 41, w: 6 };
 const FLATS = [
-  ...ISLANDS.filter(I => I.id !== 'sports').map(I => ({ x: I.x, z: I.z, r: 32, h: I.h })),
+  ...ISLANDS.filter(I => I.id !== 'sports').map(I => ({ x: I.x, z: I.z, r: I.id === 'hub' ? 42 : 32, h: I.h })),
   { ...PITCH, hw: PITCH.hw + 9, hd: PITCH.hd + 7 }, { ...COURT, hw: COURT.hw + 6, hd: COURT.hd + 5 }, { x: 0, z: -268, r: 16, h: 3 },
-  ...HOUSES.map(([x, z]) => ({ x, z, r: 7, h: 6 })),
-  { x: 16, z: 199, r: 12, h: 7 }, // obby tower
+  ...HOUSES.map(([x, z, , h]) => ({ x, z, r: 7, h })),
+  { x: 42, z: 207, r: 12, h: 7 }, // obby tower
 ];
 
 export function heightAt(x, z) {
@@ -192,6 +198,7 @@ export class World {
     this.camera = new THREE.PerspectiveCamera(56, 1, 0.1, 6000);
     this.clock = new THREE.Clock();
     this.updaters = []; this.portals = []; this.remotes = {}; this.effects = {}; this.keys = {}; this.joy = { x: 0, y: 0 };
+    this.timeU = { value: 0 };
     this.solids = []; this.interiors = []; this.zones = []; this.grounds = []; this.holes = []; this.holeMats = [];
     this.yaw = Math.PI; this.pitch = 0.28; this.dist = 6.5;
     this.vel = new THREE.Vector3(); this.onGround = false;
@@ -217,13 +224,13 @@ export class World {
     const holes = this.holes;
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, { tGrass: { value: TEX.grass }, tRock: { value: TEX.rock }, tSand: { value: TEX.sand }, tSnow: { value: TEX.snow }, tMacro: { value: TEX.macro },
-        uHoles: { value: holes.map(h => h.v) }, uHoleRot: { value: holes.map(h => h.rot) } });
+        uHoles: { value: holes.map(h => h.v) }, uHoleRot: { value: holes.map(h => h.rot) }, uTime: this.timeU });
       sh.uniforms.uHoles.value.length = 8; sh.uniforms.uHoleRot.value.length = 8;
       for (let i = 0; i < 8; i++) { sh.uniforms.uHoles.value[i] ||= new THREE.Vector4(1e9, 1e9, 0, 0); sh.uniforms.uHoleRot.value[i] ||= 0; }
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 splat; varying vec4 vSplat; varying vec3 vWP;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\n vSplat = splat; vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-        uniform sampler2D tGrass, tRock, tSand, tSnow, tMacro; uniform vec4 uHoles[8]; uniform float uHoleRot[8]; varying vec4 vSplat; varying vec3 vWP;`)
+        uniform sampler2D tGrass, tRock, tSand, tSnow, tMacro; uniform float uTime; uniform vec4 uHoles[8]; uniform float uHoleRot[8]; varying vec4 vSplat; varying vec3 vWP;`)
         .replace('#include <map_fragment>', `
         for (int i = 0; i < 8; i++) { vec4 hl = uHoles[i]; float c = cos(uHoleRot[i]), s = sin(uHoleRot[i]); vec2 d = vWP.xz - hl.xy;
           vec2 l = vec2(d.x * c - d.y * s, d.x * s + d.y * c); if (abs(l.x) < hl.z && abs(l.y) < hl.w) discard; }
@@ -235,6 +242,9 @@ export class World {
         vec3 col = g * w.x + r * w.y + sa * w.z + sn * w.w;
         float m = texture2D(tMacro, u * 0.0032).r; col *= 0.72 + 0.56 * m;
         col *= mix(0.62, 1.0, smoothstep(-0.6, 0.5, vWP.y));
+        float wave = 0.14 * sin(uTime * 0.9 + (vWP.x + vWP.z) * 0.04);
+        float foam = (1.0 - smoothstep(0.0, 0.28, abs(vWP.y + 0.08 - wave))) * smoothstep(0.35, 0.75, texture2D(tMacro, u * 0.06 + vec2(uTime * 0.01)).r + 0.25);
+        col = mix(col, vec3(0.93, 0.95, 0.96), foam * 0.75);
         diffuseColor.rgb *= col;`);
     };
     this.holeMats.push(mat);
@@ -245,15 +255,15 @@ export class World {
   _build() {
     const S = this.scene;
     const sky = this.sky = new Sky(); sky.scale.setScalar(5000); S.add(sky);
-    const su = sky.material.uniforms; su.turbidity.value = 5; su.rayleigh.value = 1.2; su.mieCoefficient.value = 0.004; su.mieDirectionalG.value = 0.85;
+    const su = sky.material.uniforms; su.turbidity.value = 7; su.rayleigh.value = 1.7; su.mieCoefficient.value = 0.005; su.mieDirectionalG.value = 0.86;
     this.sunDir = new THREE.Vector3();
     this.hemi = new THREE.HemisphereLight(0xbfd6ff, 0x4a4234, 0.45); S.add(this.hemi);
-    const sun = this.sun = new THREE.DirectionalLight(0xfff0dc, 3.4);
+    const sun = this.sun = new THREE.DirectionalLight(0xffe2bf, 3.6);
     sun.castShadow = true; sun.shadow.mapSize.set(this.hq ? 4096 : 1024, this.hq ? 4096 : 1024);
     const sc = sun.shadow.camera; sc.left = sc.bottom = -60; sc.right = sc.top = 60; sc.near = 1; sc.far = 450;
     sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.05;
     S.add(sun, sun.target);
-    S.fog = new THREE.FogExp2(0xb4c8da, 0.0014);
+    S.fog = new THREE.FogExp2(0xc4cdd6, 0.0013);
     this.pmrem = new THREE.PMREMGenerator(this.renderer);
     if (this.hq) {
       const water = this.water = new Water(new THREE.PlaneGeometry(6000, 6000), {
@@ -265,7 +275,7 @@ export class World {
       this.water = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x15485e, roughness: 0.1, metalness: 0.25 }));
       S.add(this.water);
     }
-    this._setSun(34, 205);
+    this._setSun(25, 228);
     const bed = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x6d6650 })); bed.position.y = -10; S.add(bed);
     this.islandMeshes = [];
     this.grassSpots = [];
@@ -293,7 +303,7 @@ export class World {
         plaza.position.set(I.x, I.h + 0.04, I.z); plaza.receiveShadow = true; S.add(plaza);
       }
     }
-    this._grass(); this._trees(); this._town(); this._coast(); this._sportsArena(); this._clouds(); this._nightStars(); this._wildlife();
+    this._grass(); this._flowers(); this._trees(); this._town(); this._roads(); this._coast(); this._sportsArena(); this._clouds(); this._nightStars(); this._wildlife(); this._horizon();
   }
 
   _setSun(elev, azim) {
@@ -330,13 +340,102 @@ export class World {
     for (let i = 0; i < N; i++) {
       const k = Math.floor(rnd() * n2) * 2;
       const x = spots[k] + (rnd() - 0.5) * 2.5, z = spots[k + 1] + (rnd() - 0.5) * 2.5, h = heightAt(x, z);
-      if (!n2 || inFlat(x, z, -2)) { m.makeScale(0, 0, 0); im.setMatrixAt(i, m); im.setColorAt(i, c.set(0)); continue; }
+      if (!n2 || inFlat(x, z, -2) || Math.abs(Math.hypot(x - ROAD.x, z - ROAD.z) - ROAD.r) < ROAD.w / 2 + 2) { m.makeScale(0, 0, 0); im.setMatrixAt(i, m); im.setColorAt(i, c.set(0)); continue; }
       q.setFromAxisAngle(up, rnd() * 6.28); const sc = 0.7 + rnd() * 0.7;
       m.compose(p.set(x, h - 0.04, z), q, s.set(sc, sc * (0.7 + rnd() * 0.8), sc)); im.setMatrixAt(i, m);
       const dry = vnoise(x * 0.05, z * 0.05);
       im.setColorAt(i, c.setHSL(0.19 + rnd() * 0.05 + (1 - dry) * 0.03, 0.38 + rnd() * 0.12, 0.15 + rnd() * 0.07 + dry * 0.04));
     }
     im.receiveShadow = true; im.frustumCulled = false; this.scene.add(im); this.grassMesh = im;
+  }
+
+  _flowers() {
+    const spots = this.grassSpots, N = this.hq ? 9000 : 3000, g = new THREE.PlaneGeometry(0.22, 0.22); g.translate(0, 0.16, 0);
+    const geo = mergeGeometries([g, g.clone().rotateY(Math.PI / 2)]);
+    const tex = canvasTex(64, 64, (c) => { for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28; c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(32 + Math.cos(a) * 12, 32 + Math.sin(a) * 12, 10, 6, a, 0, 6.28); c.fill(); } c.fillStyle = '#f2c230'; c.beginPath(); c.arc(32, 32, 7, 0, 6.28); c.fill(); });
+    const im = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.7 }), N);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color(), up = new THREE.Vector3(0, 1, 0);
+    const hues = [0.0, 0.13, 0.15, 0.62, 0.8, 0.95];
+    for (let i = 0; i < N; i++) {
+      const k = Math.floor(rnd() * spots.length / 2) * 2, x = spots[k] + (rnd() - 0.5) * 3, z = spots[k + 1] + (rnd() - 0.5) * 3;
+      if (vnoise(x * 0.04, z * 0.04) < 0.55 || inFlat(x, z, -2) || Math.abs(Math.hypot(x - ROAD.x, z - ROAD.z) - ROAD.r) < ROAD.w / 2 + 2) { m.makeScale(0, 0, 0); im.setMatrixAt(i, m); continue; } // meadows only
+      const sz = 0.7 + rnd() * 0.8; m.compose(p.set(x, heightAt(x, z) - 0.03, z), q.setFromAxisAngle(up, rnd() * 6.28), sc.set(sz, sz, sz)); im.setMatrixAt(i, m);
+      im.setColorAt(i, c.setHSL(hues[Math.floor(rnd() * hues.length)], 0.75, 0.65));
+    }
+    im.receiveShadow = true; this.scene.add(im);
+  }
+
+  // ring road with sidewalks around the town, and cars driving on it
+  _roads() {
+    const R = ROAD, seg = 160, S = this.scene;
+    const strip = (r0, r1, y0, mat) => {
+      const pos = [], uv = [], idx = [];
+      for (let i = 0; i <= seg; i++) { const a = i / seg * Math.PI * 2; for (const [r, v] of [[r0, 0], [r1, 1]]) { const x = R.x + Math.cos(a) * r, z = R.z + Math.sin(a) * r; pos.push(x, heightAt(x, z) + y0, z); uv.push(i / seg * (2 * Math.PI * R.r / 6), v); } }
+      for (let i = 0; i < seg; i++) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mat); m.receiveShadow = true; S.add(m); return m;
+    };
+    const asphalt = canvasTex(256, 256, (g, w, h) => { noiseImage(g, w, 16, '#2b2c2f', '#45464a', 3); speckle(g, w, h, 0.2, 8000, 1); g.fillStyle = '#e8e2c8'; g.fillRect(0, h / 2 - 3, w * 0.5, 6); g.fillStyle = '#d8d8d8'; g.fillRect(0, 6, w, 5); g.fillRect(0, h - 11, w, 5); });
+    asphalt.wrapS = THREE.RepeatWrapping;
+    strip(R.r - R.w / 2, R.r + R.w / 2, 0.06, new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85 }));
+    const walk = this.texMat(TEX.tile, 4, 4, { color: 0xb5b0a6 });
+    strip(R.r - R.w / 2 - 1.6, R.r - R.w / 2, 0.12, walk); strip(R.r + R.w / 2, R.r + R.w / 2 + 1.6, 0.12, walk);
+    // paths from the square to each house
+    const pathM = new THREE.MeshStandardMaterial({ color: 0x9b8f7c, roughness: 0.95 });
+    for (const [hx, hz, , hh] of HOUSES) {
+      if (Math.abs(hx) > 80 || Math.abs(hz) > 80) continue; // town houses only
+      const d = Math.hypot(hx, hz), ux = hx / d, uz = hz / d, from = R.r + R.w / 2 + 1.6, to = d - 4;
+      if (to <= from) continue;
+      const g = new THREE.PlaneGeometry(1.6, to - from, 1, 8).rotateX(-Math.PI / 2), p2 = g.attributes.position;
+      for (let i = 0; i < p2.count; i++) { const lx = p2.getX(i), lz = p2.getZ(i) + (from + to) / 2, x = ux * lz - uz * lx, z = uz * lz + ux * lx; p2.setXYZ(i, x, heightAt(x, z) + 0.1, z); }
+      g.computeVertexNormals(); const m = new THREE.Mesh(g, pathM); m.receiveShadow = true; S.add(m);
+    }
+    // cars
+    const carColors = [0xc0392b, 0x1f4b8f, 0xf2f2f2, 0x262626, 0xf1c40f, 0x2e8b57];
+    const glass = new THREE.MeshStandardMaterial({ color: 0x1b2632, metalness: 0.8, roughness: 0.1 });
+    const tyre = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 });
+    const wheelG = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 16).rotateZ(Math.PI / 2);
+    this.cars = [];
+    for (let i = 0; i < 5; i++) {
+      const car = new THREE.Group(), paint = new THREE.MeshStandardMaterial({ color: carColors[i % carColors.length], metalness: 0.6, roughness: 0.3 });
+      const body = new THREE.Mesh(new RoundedBox(1.8, 0.7, 4.1, 3, 0.15), paint); body.position.y = 0.65;
+      const cab = new THREE.Mesh(new RoundedBox(1.6, 0.6, 2.1, 3, 0.15), glass); cab.position.set(0, 1.25, -0.2);
+      const roof = new THREE.Mesh(new RoundedBox(1.55, 0.08, 1.9, 2, 0.04), paint); roof.position.set(0, 1.56, -0.2);
+      car.add(body, cab, roof);
+      for (const [x, z] of [[-0.85, 1.3], [0.85, 1.3], [-0.85, -1.3], [0.85, -1.3]]) { const w = new THREE.Mesh(wheelG, tyre); w.position.set(x, 0.36, z); car.add(w); }
+      for (const x of [-0.6, 0.6]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.15, 0.05), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4d0, emissiveIntensity: 1 })); l.position.set(x, 0.75, 2.06); car.add(l); }
+      car.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      S.add(car);
+      const dir = i % 2 ? 1 : -1, lane = R.r + dir * 1.5;
+      this.cars.push({ car, a: i / 5 * Math.PI * 2, dir, lane, sp: 7 + rnd() * 3 });
+    }
+    this.updaters.push(dt => {
+      const p = this.me?.group.position;
+      for (const c of this.cars) {
+        const x = Math.cos(c.a) * c.lane, z = Math.sin(c.a) * c.lane;
+        const blocked = p && Math.hypot(p.x - (x + -Math.sin(c.a) * c.dir * 3), p.z - (z + Math.cos(c.a) * c.dir * 3)) < 2.6;
+        c.v = (c.v ?? c.sp) + ((blocked ? 0 : c.sp) - (c.v ?? c.sp)) * Math.min(1, dt * (blocked ? 6 : 1.2));
+        c.a += c.dir * c.v * dt / c.lane;
+        c.car.position.set(x, heightAt(x, z), z); c.car.rotation.y = -c.a + (c.dir > 0 ? 0 : Math.PI);
+      }
+    });
+  }
+
+  // far-away mountain ranges on the horizon: two rings with a natural, noisy skyline
+  _horizon() {
+    this.horizonMats = [];
+    [[2600, 0x9aa8b6, 260, 0.004], [2350, 0x7f8f9f, 170, 0.007]].forEach(([R, col, H, f], k) => {
+      const seg = 720, pos = [], idx = [];
+      for (let i = 0; i <= seg; i++) {
+        const a = i / seg * Math.PI * 2, x = Math.cos(a) * R, z = Math.sin(a) * R;
+        const n = fbm(Math.cos(a) * R * f + k * 50, Math.sin(a) * R * f, 6), h = Math.max(8, Math.pow(n, 2.2) * H * 2.2 * (0.6 + 0.4 * Math.sin(a * 3 + k)));
+        pos.push(x, -15, z, x, h, z);
+      }
+      for (let i = 0; i < seg; i++) { const v = i * 2; idx.push(v, v + 1, v + 2, v + 1, v + 3, v + 2); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+      const m = new THREE.MeshBasicMaterial({ color: col, fog: false, side: THREE.DoubleSide }); this.horizonMats.push(m);
+      this.scene.add(new THREE.Mesh(g, m));
+    });
   }
 
   _foliageMat(tex) {
@@ -843,7 +942,7 @@ export class World {
   }
 
   _camera(dt) {
-    const p = this.me.group.position;
+    const p = this.cameraOverride ? this.camera.position : this.me.group.position;
     this.sun.position.set(p.x + this.sunDir.x * 180, p.y + this.sunDir.y * 180, p.z + this.sunDir.z * 180); this.sun.target.position.copy(p);
     if (this.cameraOverride) { this.cameraOverride(this.camera, dt); return; }
     const s = this.me.group.scale.x, I = this.inside, under = !I && p.y < heightAt(p.x, p.z) - 0.8;
@@ -886,15 +985,16 @@ export class World {
     const night = !!(this.effects.night || this.effects.disco);
     if (night !== this._night) {
       this._night = night;
-      this._setSun(night ? -10 : 34, 205);
+      this._setSun(night ? -10 : 25, 228);
       this.renderer.toneMappingExposure = night ? 0.42 : 0.5;
-      this.sun.intensity = night ? 0.3 : 3.4; this.sun.color.set(night ? 0x8fa6ff : 0xfff0dc);
+      this.sun.intensity = night ? 0.3 : 3.6; this.sun.color.set(night ? 0x8fa6ff : 0xffe2bf);
       this.hemi.intensity = night ? 0.25 : 0.45;
-      this.scene.fog.color.set(night ? 0x0b1222 : 0xb4c8da);
+      this.scene.fog.color.set(night ? 0x0b1222 : 0xc4cdd6);
       this.starsPts.material.opacity = night ? 1 : 0;
       this.cloudMat.opacity = night ? 0.12 : 0.85;
       this.bulbM.emissiveIntensity = night ? 5 : 0;
       this.beam.material.opacity = night ? 0.18 : 0;
+      (this.horizonMats || []).forEach((m, i) => m.color.set(night ? 0x141a26 : [0x9aa8b6, 0x7f8f9f][i]));
       (this.windowMats || []).forEach((m, i) => m.emissive.setHex(night && i % 3 ? 0xffc983 : 0x000000));
     }
   }
@@ -948,7 +1048,7 @@ export class World {
       if (this.me) { this._physics(dt); this._camera(dt); this._stars(dt); this._zones(); }
       this._remotes(dt);
       if (this.water.material.uniforms?.time) this.water.material.uniforms.time.value += dt * 0.5;
-      this.grassU.uTime.value = t;
+      this.grassU.uTime.value = t; this.timeU.value = t;
       this.updaters = this.updaters.filter(u => !u(dt, t));
       if (this.effects.disco) { this.hemi.color.setHSL((t * 0.25) % 1, 0.9, 0.55); this.hemi.intensity = 1.2; } else this.hemi.color.set(0xbfd6ff);
       onFrame && onFrame(dt, t);

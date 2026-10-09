@@ -6,6 +6,7 @@ import { currentAccount, signInWithHub, signOut } from './auth.js';
 import { World, ISLANDS, isl, heightAt } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
 import { Metro, METRO } from './metro.js';
+import { Rail } from './rail.js';
 import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
@@ -49,7 +50,7 @@ const ui = app.ui = {
   flash() { const f = $('#flash'); show(f); f.style.animation = 'none'; f.offsetHeight; f.style.animation = ''; setTimeout(() => show(f, false), 600); },
   fade(on) { $('#fade').classList.toggle('on', on); },
   results(title, lines) { $('#resTitle').textContent = title; $('#resLines').innerHTML = lines.map(l => `<p>${esc(l)}</p>`).join(''); show('#results'); },
-  chat(html, cls) { const d = document.createElement('div'); if (cls) d.className = cls; d.innerHTML = html; const log = $('#chatLog'); log.appendChild(d); while (log.children.length > 50) log.firstChild.remove(); log.scrollTop = 1e9; },
+  chat(html, cls) { const d = document.createElement('div'); if (cls) d.className = cls; d.innerHTML = html; const log = $('#chatLog'); log.appendChild(d); while (log.children.length > 50) log.firstChild.remove(); log.scrollTop = 1e9; setTimeout(() => d.classList.add('old'), 12000); },
   question(title, q, cb) {
     const box = $('#qModal'); $('#qTitle').textContent = title;
     $('#qBody').innerHTML = `<div class="q-text">${q.html}</div><div class="q-grid">${q.options.map((o, i) => `<button class="q-opt" data-i="${i}">${esc(o)}</button>`).join('')}</div>`;
@@ -118,6 +119,7 @@ async function start(serverId) {
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
   buildIslands(world);
   buildFun(world);
+  app.rail = new Rail(world);
   app.metro = new Metro(world, { title: 'Banda Metro', stations: ISLANDS.map(I => t('island_' + I.id)), onBoard: metroDestinations, onExit: metroExit });
   if (me.role === 'teacher') world.teleport(isl('teacher').x + 4, isl('teacher').z + 12, Math.PI);
 
@@ -150,8 +152,7 @@ async function start(serverId) {
   hudSetup();
   show('#loading', false); show('#hud');
   $('#online').textContent = `${app.server.name} · 1 ${t('online')}`;
-  ui.chat(`${t('welcome')}, <b>${esc(me.name)}</b> · ${esc(app.server.name)}${net.kind === 'local' ? ' <i>(preview)</i>' : ''}`, 'sys');
-  ui.chat(t('howToPlay'), 'sys');
+  if (!localStorage.getItem('banda_tip')) { ui.chat(t('howToPlay'), 'sys'); try { localStorage.setItem('banda_tip', '1'); } catch (e) {} }
   sfx('chime'); ambience(true);
   world.start(frame);
 }
@@ -207,8 +208,8 @@ function buildFun(world) {
   const boing = () => sfx('boing');
   [[-27, -14], [27, 18], [-20, 28]].forEach(([x, z]) => world.trampoline(x, z, boing));
   [[18, -240], [-18, -240]].forEach(([x, z]) => world.trampoline(x, z, boing));
-  world.jumpPad(28, -14, boing); world.jumpPad(34, 218, boing, 24);
-  world.obby(16, 199, () => {
+  world.jumpPad(28, -14, boing); world.jumpPad(22, 214, boing, 24);
+  world.obby(42, 207, () => {
     const k = 'banda_obby_' + today();
     if (store.get(k, false)) return ui.banner(t('obbyAgain'), 2500);
     store.set(k, true); app.award(10); sfx('champions'); world.fireworks(8); ui.banner(t('obbyWin'), 3500);
@@ -246,11 +247,12 @@ function metroDestinations() {
     show('#metroBox', false); sfx('teleport');
     const dest = b.dataset.id;
     ui.banner(`${t('nextStation')}: ${stationName(dest)}`, 3000);
-    app.metro.ride(() => {
+    const from = app.metroAt;
+    app.metro.ride(resume => app.rail.ride(from, dest, on => ui.fade(on), resume), () => {
       app.metroAt = dest; app.metro.setStation(stationName(dest));
       w.teleport(METRO.x - 6, METRO.z + 1.2, -Math.PI / 2, METRO.y);
       ui.banner(`${stationName(dest)} · ${t('followExit')}`, 3000);
-    });
+    }, on => ui.fade(on));
   });
 }
 
@@ -389,7 +391,12 @@ function renderKids() {
 // ---------------- HUD / input ----------------
 function hudSetup() {
   const w = app.world, net = app.net;
-  $('#bMute').onclick = () => { setMuted(!isMuted()); $('#bMute').classList.toggle('off', isMuted()); };
+  const menuState = () => { $('#muteState').textContent = isMuted() ? t('off') : t('on'); $('#qualState').textContent = w.hq ? t('qHigh') : t('qLow'); $('#menuName').textContent = app.me.name; $('#menuNext').textContent = $('#meNext').textContent; };
+  $('#bMenu').onclick = () => { menuState(); show('#menu'); };
+  $$('#menu .tile').forEach(b => b.addEventListener('click', () => { if (!['bMute'].includes(b.id)) show('#menu', false); }));
+  $('#bMute').onclick = () => { setMuted(!isMuted()); menuState(); };
+  $('#bChat').onclick = () => { const i = $('#chatIn'); show(i); i.focus(); $$('#chatLog div').forEach(d => d.classList.remove('old')); };
+  $('#bEmote').onclick = () => $('#emotes').classList.toggle('hidden');
   $('#bLang').onclick = () => { setLang(getLang() === 'en' ? 'ru' : 'en'); applyI18n(); app.pads.forEach(p => w.setLabel(p, t('mg_' + p.type))); renderMe(); if (app.me.role === 'teacher') teacherPanel(); };
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
   $('#bAvatar').onclick = () => {
@@ -412,9 +419,9 @@ function hudSetup() {
   const chatIn = $('#chatIn');
   chatIn.onkeydown = e => {
     e.stopPropagation();
-    if (e.key === 'Escape') return chatIn.blur();
+    if (e.key === 'Escape') { chatIn.blur(); show(chatIn, false); return; }
     if (e.key !== 'Enter') return;
-    const text = chatIn.value.trim(); chatIn.value = ''; chatIn.blur();
+    const text = chatIn.value.trim(); chatIn.value = ''; chatIn.blur(); show(chatIn, false);
     if (!text) return;
     if (/^\/teachers?\b/i.test(text)) return ui.toast(app.me.role === 'teacher' ? t('teacherMode') : t('notTeacherAccount'));
     if (app.effects.chatLock && app.me.role !== 'teacher') return ui.toast(t('chatLocked'));
@@ -422,7 +429,7 @@ function hudSetup() {
   };
   addEventListener('keydown', e => {
     if (/INPUT|TEXTAREA/.test(e.target.tagName)) return;
-    if (e.key === 'Enter' && $('#game').classList.contains('hidden')) { chatIn.focus(); e.preventDefault(); }
+    if (e.key === 'Enter' && $('#game').classList.contains('hidden')) { show(chatIn); chatIn.focus(); e.preventDefault(); }
     if (e.key === 'Escape') {
       if (!$('#game').classList.contains('hidden')) return closeGame();
       if (!$('#bldBox').classList.contains('hidden')) return closeBuilding();
@@ -451,8 +458,7 @@ function hudSetup() {
   joy.addEventListener('pointerup', jend); joy.addEventListener('pointercancel', jend);
   $('#minimap').onclick = () => $('#minimap').classList.toggle('big');
   $('#emotes').innerHTML = EMOTES.map((e, i) => `<button class="chip dark" data-e="${e}" title="${i + 1}">${t('em_' + e)}</button>`).join('');
-  $$('#emotes button').forEach(b => b.onclick = () => emote(b.dataset.e));
-  setTimeout(() => $('#help').classList.add('fade'), 20000);
+  $$('#emotes button').forEach(b => b.onclick = () => { emote(b.dataset.e); $('#emotes').classList.add('hidden'); });
   renderMe();
 }
 
@@ -480,7 +486,7 @@ function frame(dt) {
   if (!perf.done) { perf.t += dt; perf.n++; if (perf.t > 8) { perf.done = true; if (perf.n / perf.t < 28 && app.world.hq) { app.world.lighten(); ui.toast(t('autoLight')); } } }
   const w = app.world, p = w.me.group.position;
   const under = p.y < -20, where = w.inside ? (w.inside === app.metro.interior ? `Ⓜ ${stationName(app.metroAt || 'hub')}` : t('mg_impostor')) : (() => { const I = w.islandAt(p.x, p.z); return I ? t('island_' + I.id) : t('ocean'); })();
-  if (where !== whereLast) { $('#where').textContent = where; whereLast = where; }
+  if (where !== whereLast) { $('#where').textContent = where; whereLast = where; const wb = $('#whereBox'); wb.classList.remove('quiet'); clearTimeout(app._wq); app._wq = setTimeout(() => wb.classList.add('quiet'), 4000); }
   app.mg.tick(dt); app.bots.tick(dt);
   if ((mapT += dt) > 0.2) { mapT = 0; show('#minimap', !under); if (!under) drawMinimap(); }
 }
