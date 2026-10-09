@@ -73,7 +73,7 @@ export class Building {
 class Elevator {
   constructor(b, cx, cz, onPanel) {
     Object.assign(this, { b, cx, cz, onPanel });
-    this.level = 0; this.y = b.floorY(0); this.target = 0; this.state = 'idle'; this.open = 1; this.speed = 7; this.btns = [];
+    this.level = 0; this.y = b.floorY(0); this.target = 0; this.state = 'idle'; this.open = 1; this.speed = 7; this.btns = []; this.q = []; this.dwell = 0; this.i = b.elevCount = (b.elevCount ?? -1) + 1;
     const S = b.world.scene, g = this.cab = new THREE.Group();
     const steel = std(0xb8bec6, { metalness: 0.9, roughness: 0.25 });
     const floor = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 3), std(0x2a2e34, { metalness: 0.5 })); floor.position.y = 0.06;
@@ -106,37 +106,64 @@ class Elevator {
     }
     // stepping into the open cab shows the floor buttons
     b.world.zone({ test: (px, py, pz) => Math.abs(px - cx) < 1.3 && pz < cz + 1.2 && pz > cz - 1.4 && Math.abs(py - this.y) < 1.4, onEnter: () => { if (this.state === 'idle' && !b.world.carrier) this.onPanel(this); } });
-    b.world.updaters.push(dt => this.update(dt));
+    // runs every frame; a slow timer keeps it going when the tab is in the background
+    b.world.updaters.push(dt => { this.lastTick = performance.now(); this.update(dt); });
+    setInterval(() => { const now = performance.now(); if (now - (this.lastTick || 0) > 300) { this.update(Math.min(1, (now - (this.lastTick || now)) / 1000)); this.lastTick = now; } }, 250);
   }
   contains(p) { return Math.abs(p.x - this.cx) < 1.45 && Math.abs(p.z - this.cz) < 1.45 && Math.abs(p.y - this.y) < 1.2; }
+  // Everyone shares the same elevators: one player (the host) runs them and the others send requests.
   go(lv) {
-    if (lv === this.level && this.state === 'idle') return;
-    this.target = lv; this.state = 'closing';
+    const w = this.b.world;
+    if (w.elevAuthority && !w.elevAuthority()) { w.elevRequest && w.elevRequest(this.i, lv); return; }
+    this.enqueue(lv);
   }
+  enqueue(lv) {
+    if (lv === this.level && (this.state === 'idle' || this.state === 'opening')) { this.dwell = Math.max(this.dwell, 2.5); return; }
+    if (this.target === lv && (this.state === 'closing' || this.state === 'moving')) return;
+    if (!this.q.includes(lv)) this.q.push(lv);
+  }
+  // state from the host
+  applyNet(s) {
+    const was = this.state;
+    if (Math.abs(s.y - this.y) > 0.3) this.y = s.y; else this.y += (s.y - this.y) * 0.5;
+    this.level = s.l; this.target = s.t; this.state = s.s; this.q = s.q || []; this.dwell = s.d;
+    if (Math.abs(s.o - this.open) > 0.15) this.open = s.o;
+    if (was === 'moving' && s.s !== 'moving') this.ding();
+  }
+  snap() { return { y: +this.y.toFixed(3), l: this.level, t: this.target, s: this.state, o: +this.open.toFixed(2), q: this.q, d: +this.dwell.toFixed(2) }; }
+  ding() { const now = performance.now(); if (now - (this.dingAt || 0) < 1500) return; this.dingAt = now; const p = this.b.world.me?.group.position; if (p && this.b.contains(p.x, p.z)) this.b.world.onElevatorDing && this.b.world.onElevatorDing(); }
   // ride with the player inside
   ride(lv, onArrive) {
     const w = this.b.world;
     this.go(lv);
-    let out = 0;
+    let out = 0, ask = 0;
     w.carrier = { elev: this, update: (dt, p, me) => {
-      if (this.state === 'idle' && this.open > 0.9) {
-        // doors open: walk out onto the landing by yourself
+      const here = this.state === 'idle' && this.open > 0.9;
+      // doors open on your floor (or you jump to get off early): walk out onto the landing
+      if (here && (this.level === lv || out > 0 || (w.keys.Space || w.joyJump))) {
         out += dt; p.y = this.y; me.group.rotation.y = 0;
         const tz = this.cz + 3; p.x += (this.cx - p.x) * Math.min(1, dt * 4); p.z = Math.min(tz, p.z + dt * 4); me.animate(4, dt, false);
         return p.z >= tz - 0.01 || out > 1.5;
       }
+      // ask again now and then in case a request got lost
+      if ((ask += dt) > 3) { ask = 0; if (this.level !== lv && this.target !== lv && !this.q.includes(lv)) this.go(lv); }
       p.y = this.y; p.x = Math.max(this.cx - 1.1, Math.min(this.cx + 1.1, p.x)); p.z = Math.max(this.cz - 1.1, Math.min(this.cz + 1.0, p.z)); me.animate(0, dt, false); return false;
     }, onEnd: onArrive };
   }
   update(dt) {
-    if (this.state === 'closing') { this.open = Math.max(0, this.open - dt * 2.2); if (this.open === 0) this.state = 'moving'; }
+    const host = !this.b.world.elevAuthority || this.b.world.elevAuthority();
+    if (this.state === 'idle') {
+      this.dwell = Math.max(0, this.dwell - dt);
+      // only the host decides where to go next; others follow its updates
+      if (host && this.dwell <= 0 && this.q.length) { const n = this.q.shift(); if (n === this.level) this.dwell = 2.5; else { this.target = n; this.state = 'closing'; } }
+    } else if (this.state === 'closing') { this.open = Math.max(0, this.open - dt * 2.2); if (this.open === 0) this.state = 'moving'; }
     else if (this.state === 'moving') {
       const ty = this.b.floorY(this.target), d = ty - this.y, step = Math.sign(d) * Math.min(Math.abs(d), this.speed * dt * Math.min(1, 0.4 + Math.abs(d) / 3));
       this.y += step; this.level = this.b.levelAt(this.y + 0.01);
-      if (Math.abs(ty - this.y) < 0.005) { this.y = ty; this.level = this.target; this.state = 'opening'; this.b.world.onElevatorDing && this.b.world.onElevatorDing(); }
-    } else if (this.state === 'opening') { this.open = Math.min(1, this.open + dt * 2.2); if (this.open === 1) this.state = 'idle'; }
+      if (Math.abs(ty - this.y) < 0.005) { this.y = ty; this.level = this.target; this.state = 'opening'; this.ding(); }
+    } else if (this.state === 'opening') { this.open = Math.min(1, this.open + dt * 2.2); if (this.open === 1) { this.state = 'idle'; this.dwell = 2.5; } }
     this.cab.position.y = this.y;
-    this.btns.forEach((bt, lv) => { bt.material.emissiveIntensity = this.target === lv && this.state !== 'idle' ? 2.5 : 0.2; });
+    this.btns.forEach((bt, lv) => { bt.material.emissiveIntensity = (this.target === lv && this.state !== 'idle') || this.q.includes(lv) ? 2.5 : 0.2; });
     for (const d of this.doors) { const o = d.lv === this.level && this.state !== 'moving' ? this.open : 0; d.L.position.x = this.cx - 0.75 - o * 1.4; d.R.position.x = this.cx + 0.75 + o * 1.4; }
   }
 }
@@ -348,7 +375,7 @@ export class Tower extends Building {
 
   // the best elevator to call to floor lv (idle and close beats busy and far)
   nearest(lv, px = this.x) { return this.elevators.slice().sort((a, b) => (Math.abs(a.level - lv) + (a.state === 'idle' ? 0 : 4) + Math.abs(a.cx - px) * 0.1) - (Math.abs(b.level - lv) + (b.state === 'idle' ? 0 : 4) + Math.abs(b.cx - px) * 0.1))[0]; }
-  call(p) { const lv = this.levelAt(p.y), e = this.nearest(lv, p.x); if (e.level !== lv || e.state !== 'idle') e.go(lv); return e; }
+  call(p) { const lv = this.levelAt(p.y), e = this.nearest(lv, p.x); e.go(lv); return e; }
   update(p) {
     // move the interior lights to the floor you're on
     const inside = this.contains(p.x, p.z) && p.y > this.base - 2 && p.y < this.base + this.floors * this.fh;

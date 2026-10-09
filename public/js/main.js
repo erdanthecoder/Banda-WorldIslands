@@ -137,6 +137,7 @@ async function start(serverId) {
   await net.joinServer(serverId, { pid: me.pid, uid: me.uid, name: me.name, role: me.role, avatar: me.avatar });
   app.mg = new Minigames(app); app.closeGame = closeGame; app.openGame = openGame;
   app.bots = new Bots(app);
+  shareElevators(world, net);
 
   let last = '', lastSent = 0;
   setInterval(() => {
@@ -211,6 +212,25 @@ function closeBuilding() { show('#bldBox', false); app.world.inputLocked = false
 // after closing a menu, step back so it doesn't reopen at once
 function stepBack() { const w = app.world, g = w.me.group; g.position.x -= Math.sin(g.rotation.y) * 1.6; g.position.z -= Math.cos(g.rotation.y) * 1.6; }
 function emote(name) { const w = app.world; if (w.speedNow > 0.5) return; w.me.play(name); app.emoteSig = name + ':' + Date.now(); }
+
+// Shared elevators: the host (the same player who runs the bots) moves them and tells everyone;
+// everybody else sends their button presses to the host.
+function shareElevators(world, net) {
+  const els = app.tower.elevators, host = () => app.bots.amHost();
+  world.elevAuthority = host;
+  world.elevRequest = (i, lv) => net.emit('elev_req', { i, lv });
+  app.onEvent(ev => {
+    const d = ev.data || {};
+    if (ev.type === 'elev_req' && host() && els[d.i] && Number.isInteger(d.lv) && d.lv >= 0 && d.lv < app.tower.floors) els[d.i].enqueue(d.lv);
+    if (ev.type === 'elev' && !host() && Array.isArray(d.e)) d.e.forEach((s, i) => s && els[i] && els[i].applyNet(s));
+  });
+  let last = '', sent = 0;
+  setInterval(() => {
+    if (!host()) return;
+    const snap = els.map(e => e.snap()), sig = JSON.stringify(snap.map(x => [x.y, x.s, x.q, x.t])), now = Date.now();
+    if (sig !== last || now - sent > 2000) { last = sig; sent = now; net.emit('elev', { e: snap }); }
+  }, 150);
+}
 
 // elevator button: call the nearest elevator to your floor, or choose a floor when you're in the cab
 function elevatorHud() {

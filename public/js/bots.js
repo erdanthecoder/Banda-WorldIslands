@@ -91,7 +91,6 @@ export class Bots {
     }
     const tr = b.trip, e = tr.e, st = tr.steps[tr.i];
     const next = () => { tr.i++; tr.t = 0; if (tr.i >= tr.steps.length) { b.trip = null; b.nextTrip = rand(20, 60); b.y = heightAt(b.x, b.z); b.tx = b.x; b.tz = b.z; e.botBusy = null; } };
-    const playerIn = e.contains(w.me.group.position) || (w.carrier && w.carrier.elev === e);
     tr.t += dt;
     if (st.k === 'walk') {
       if (st.cab && (e.state !== 'idle' || e.open < 0.6)) { b.speed = 0; tr.t = Math.min(tr.t, 1); if (st.cab && T.contains(b.x, b.z) && Math.abs(b.z - e.cz) < 1.5) b.y = e.y; return; } // wait for the doors
@@ -100,13 +99,13 @@ export class Bots {
     } else if (st.k === 'call') {
       b.speed = 0; e.botBusy = b.id;
       const lv = st.lv ?? tr.floor ?? 0;
-      if (!playerIn && !(e.level === lv && e.state === 'idle')) { if (e.state === 'idle') e.go(lv); }
+      if (!st.sent || tr.t - st.sent > 6) { st.sent = tr.t || 0.01; e.go(lv); }
       if (e.level === lv && e.state === 'idle' && e.open > 0.9) next();
-      if (tr.t > 40) { tr.i = tr.steps.length - 1; tr.t = 0; }
+      if (tr.t > 45) { tr.i = tr.steps.length - 1; tr.t = 0; }
     } else if (st.k === 'ride') {
       b.speed = 0; b.y = e.y;
-      if (tr.t < 0.2 && !playerIn) e.go(st.lv);
-      if (e.state === 'idle' && e.open > 0.9 && tr.t > 1) { tr.floor = e.level; next(); }
+      if (!st.sent || tr.t - st.sent > 6) { st.sent = tr.t || 0.01; if (e.level !== st.lv && e.target !== st.lv && !e.q.includes(st.lv)) e.go(st.lv); }
+      if (e.state === 'idle' && e.open > 0.9 && tr.t > 1 && (e.level === st.lv || tr.t > 40)) { tr.floor = e.level; next(); }
     } else if (st.k === 'wander') {
       const y = T.floorY(tr.floor || 0);
       if (!st.init) { st.init = 1; b.wait = 0; b.tx = T.x + rand(-12, 12); b.tz = T.z + rand(0, 8); }
