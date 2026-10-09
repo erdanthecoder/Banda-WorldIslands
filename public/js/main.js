@@ -3,10 +3,11 @@ import { t, setLang, getLang, applyI18n, langChosen } from './i18n.js';
 import { sfx, say, playSong, stopSong, SONGS, setMuted, isMuted, unlockAudio, ambience } from './audio.js';
 import { createNet } from './net.js';
 import { currentAccount, signInWithHub, signOut } from './auth.js';
-import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT } from './world.js';
+import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, PATHS, PLAZA_R } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
-import { Tower, Market, FLOORS } from './buildings.js';
-import { Playground } from './playground.js';
+import { Tower, Market, Bank, FLOORS } from './buildings.js';
+import { Playground, coffeeKiosk } from './playground.js';
+import { BankUI } from './bank.js';
 import { Shop, money, PRICES, ICON, CAFE } from './shop.js';
 import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
@@ -80,6 +81,7 @@ async function boot() {
   const role = account.profile.role === 'teacher' ? 'teacher' : 'student';
   if (wantsTeacher && role !== 'teacher') ui.toast(t('notTeacherAccount'));
   app.money = row?.money_cents ?? 10000;
+  app.bank = { card: row?.bank_card || null, hand: !!row?.hand_pay };
   app.me = { uid: account.user.id, pid: account.user.id.slice(0, 8) + '-' + Math.random().toString(36).slice(2, 6), role, name: row?.name || account.profile.full_name || '', avatar: row?.avatar && Object.keys(row.avatar).length ? row.avatar : null };
   if (!app.me.avatar || !app.me.name) {
     show('#creator');
@@ -115,7 +117,7 @@ async function start(serverId) {
   const world = app.world = new World($('#scene'), { quality });
   world.setPlayer(new Avatar(me.avatar, me.name, me.role));
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
-  app.shop = new Shop(app); app.shop.loadInv();
+  app.shop = new Shop(app); app.shop.loadInv(); app.bankUI = new BankUI(app);
   buildWorld(world);
   world.teleport(0, 15, 0);
 
@@ -167,8 +169,10 @@ function buildWorld(world) {
     cafe: () => app.shop.openAisle('☕ ' + t('cafe'), CAFE, { cafe: true }),
   });
   app.market = new Market(world, { t, aisle: a => app.shop.openAisle(t('aisle_' + a.id), a.items), checkout: () => app.shop.checkout() });
+  app.mbank = new Bank(world, { t, desk: i => app.bankUI.desk(i) });
+  coffeeKiosk(world, { t, cafe: () => app.shop.openAisle('☕ Banda Coffee', CAFE, { cafe: true }) });
   const pg = new Playground(world, { boing, sfx, earn: () => app.earn(10) });
-  pg.post(5, -27, `▲ ${t('tower')}`); pg.post(-27, 5, `◀ ${t('market')}`); pg.post(27, 5, `${t('playground')} ▶`); pg.post(5, 27, `▼ ${t('stadium')}`);
+  pg.post(5, -21.5, `▲ ${t('tower')} · mBank`); pg.post(-21, 5.5, `◀ ${t('market')}`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
   [[-12, -14], [12, -14]].forEach(([x, z]) => world.trampoline(x, z, boing));
 }
 
@@ -208,7 +212,24 @@ function closeBuilding() { show('#bldBox', false); app.world.inputLocked = false
 function stepBack() { const w = app.world, g = w.me.group; g.position.x -= Math.sin(g.rotation.y) * 1.6; g.position.z -= Math.cos(g.rotation.y) * 1.6; }
 function emote(name) { const w = app.world; if (w.speedNow > 0.5) return; w.me.play(name); app.emoteSig = name + ':' + Date.now(); }
 
+// elevator button: call the nearest elevator to your floor, or choose a floor when you're in the cab
+function elevatorHud() {
+  const T = app.tower, w = app.world, p = w.me.group.position, b = $('#bElev');
+  const inT = T && T.contains(p.x, p.z) && p.y > T.base - 1 && !w.carrier, near = inT && p.z < T.minZ + 8 && Math.abs(p.x - T.x) < 10;
+  const cab = near && T.elevators.find(e => e.contains(p));
+  show(b, !!near && !app.mg.active);
+  if (!near) return;
+  const txt = cab ? `🛗 ${t('chooseFloor')}` : `🛗 ${t('callElevator')}`; if (b.textContent !== txt) b.textContent = txt;
+  b.onclick = () => {
+    if (cab) return cab.state === 'idle' ? floorPanel(cab) : null;
+    const e = T.call(p); sfx('beep'); ui.toast(e.level === T.levelAt(p.y) && e.state === 'idle' ? t('elevatorHere') : t('elevatorComing'));
+  };
+}
+
 // ---------------- money (mPAY) ----------------
+const logKey = () => 'banda_paylog_' + app.me.uid;
+app.payLog = () => { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch (e) { return []; } };
+app.logPay = (items, how) => { const l = app.payLog(); l.unshift({ items, how, total: items.reduce((a, i) => a + (PRICES[i.item] || 0) * i.qty, 0), at: Date.now() }); try { localStorage.setItem(logKey(), JSON.stringify(l.slice(0, 12))); } catch (e) {} };
 app.setMoney = c => { if (typeof c !== 'number') return; app.money = c; const el = $('#meMoney'); if (el) el.textContent = money(c); };
 let earnQ = 0, earnT = null;
 app.earn = (cents, now) => {
@@ -230,6 +251,7 @@ app.useItem = k => {
   if (k === 'balloon') boost('lowGravity', 20, `🎈 ${t('floaty')}`);
   else if (k === 'ball') { w.fireworks(3); emote('cheer'); }
   else if (k === 'teddy') emote('sit');
+  else if (['coffee', 'latte', 'cocoa', 'tea'].includes(k)) boost('speed', 40, `${ICON[k]} ${t('coffeeBoost')}`);
   else boost('speed', ['pizza', 'burger', 'cake'].includes(k) ? 45 : 20, `${t('yum')} ${t('energy')}`);
 };
 
@@ -376,6 +398,7 @@ function hudSetup() {
   $('#bEmote').onclick = () => $('#emotes').classList.toggle('hidden');
   $('#bLang').onclick = () => { setLang(getLang() === 'en' ? 'ru' : 'en'); applyI18n(); app.pads.forEach(p => w.setLabel(p, t('mg_' + p.type))); renderMe(); if (app.me.role === 'teacher') teacherPanel(); };
   $('#bBag').onclick = () => app.shop.openBag();
+  $('#bPhone').onclick = () => app.bankUI.phone();
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
   $('#bAvatar').onclick = () => {
     w.pause(true); show('#creator');
@@ -411,6 +434,7 @@ function hudSetup() {
       if (!$('#game').classList.contains('hidden')) return closeGame();
       if (!$('#bldBox').classList.contains('hidden')) return closeBuilding();
       if (!$('#shopBox').classList.contains('hidden') || !$('#payBox').classList.contains('hidden') || !$('#bagBox').classList.contains('hidden')) return app.shop.close();
+      if (!$('#bankBox').classList.contains('hidden') || !$('#phoneBox').classList.contains('hidden')) return app.bankUI.close();
       $$('.modal').forEach(m => !['game', 'creator', 'qModal', 'voteBox', 'quizBox'].includes(m.id) && show(m, false));
     }
     if (w.inputLocked) return;
@@ -450,13 +474,15 @@ function drawMinimap() {
     g.fillStyle = '#c8b48a'; g.beginPath(); g.arc(X(I.x), Z(I.z), I.r * 1.02 * scale, 0, 7); g.fill();
     g.fillStyle = '#4f6b34'; g.beginPath(); g.arc(X(I.x), Z(I.z), I.r * 0.92 * scale, 0, 7); g.fill();
   }
-  g.fillStyle = '#a89f8d'; g.beginPath(); g.arc(X(0), Z(0), 25 * scale, 0, 7); g.fill();
+  g.fillStyle = '#c9c0ae'; g.beginPath(); g.arc(X(0), Z(0), PLAZA_R * scale, 0, 7); g.fill();
+  for (const P of PATHS) g.fillRect(X(P.x0), Z(P.z0), (P.x1 - P.x0) * scale, (P.z1 - P.z0) * scale);
   const rect = (x, z, ww, dd, col, label) => {
     g.fillStyle = col; g.fillRect(X(x - ww / 2), Z(z - dd / 2), ww * scale, dd * scale);
     if (label && (big || scale > 1)) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, X(x), Z(z)); g.textBaseline = 'alphabetic'; }
   };
   rect(TOWER.x, TOWER.z, TOWER.w, TOWER.d, '#2c4f73', t('tower'));
   rect(MARKET.x, MARKET.z, MARKET.w, MARKET.d, '#2e8b57', t('market'));
+  rect(BANK.x, BANK.z, BANK.w, BANK.d, '#14629e', 'mBank');
   rect(PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w, PLAYGROUND.d, '#d9533f', t('playground'));
   rect(PITCH.x, PITCH.z, PITCH.hw * 2, PITCH.hd * 2, '#3e7c30', t('stadium'));
   rect(COURT.x, COURT.z, COURT.hw * 2, COURT.hd * 2, '#b07a46', '');
@@ -471,10 +497,10 @@ function frame(dt) {
   if (!perf.done) { perf.t += dt; perf.n++; if (perf.t > 8) { perf.done = true; if (perf.n / perf.t < 28 && app.world.hq) { app.world.lighten(); ui.toast(t('autoLight')); } } }
   const w = app.world, p = w.me.group.position;
   const I = w.inside, under = p.y < -20;
-  const where = I ? (I.building === app.tower ? `${I.level + 1} · ${t(FLOORS[I.level])}` : I.building === app.market ? t('market') : t('mg_impostor'))
+  const where = I ? (I.building === app.tower ? `${I.level + 1} · ${t(FLOORS[I.level])}` : I.building === app.market ? t('market') : I.building === app.mbank ? 'mBank' : t('mg_impostor'))
     : (() => { const isl = w.islandAt(p.x, p.z); return isl ? t('island_' + isl.id) : t('ocean'); })();
   if (where !== whereLast) { $('#where').textContent = where; whereLast = where; const wb = $('#whereBox'); wb.classList.remove('quiet'); clearTimeout(app._wq); app._wq = setTimeout(() => wb.classList.add('quiet'), 4000); }
-  app.mg.tick(dt); app.bots.tick(dt); app.tower.update(p);
+  app.mg.tick(dt); app.bots.tick(dt); app.tower.update(p); elevatorHud();
   if ((mapT += dt) > 0.2) { mapT = 0; show('#minimap', !under); if (!under) drawMinimap(); }
 }
 

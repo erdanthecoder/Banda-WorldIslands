@@ -95,6 +95,8 @@ class SupaNet extends Base {
   async earn(cents) { const { data, error } = await this.c.rpc('banda_earn', { cents: Math.round(cents) }); if (error) throw error; return data; }
   async buy(items) { const { data, error } = await this.c.rpc('banda_buy', { items }); if (error) throw error; return data; }
   async use(item) { const { data, error } = await this.c.rpc('banda_use', { what: item }); if (error) throw error; return data; }
+  async bankOpen() { const { data, error } = await this.c.rpc('banda_bank_open'); if (error) throw error; return data; }
+  async handSetup() { const { data, error } = await this.c.rpc('banda_hand_setup'); if (error) throw error; return data; }
   async inventory() { const { data } = await this.c.from('banda_inventory').select('item, qty').eq('user_id', this.uid); const o = {}; (data || []).forEach(r => { if (r.qty > 0) o[r.item] = r.qty; }); return o; }
   _bump(uid, patch) { this.users = { ...this.users, [uid]: { ...(this.users[uid] || { stars: 0, points: 0 }), ...patch } }; this._users(this.users); }
   leave() { if (this.ch) this.c.removeChannel(this.ch); }
@@ -161,6 +163,8 @@ class LocalNet extends Base {
   async use(item) { const [u, r] = this._me(); if (!r.inv[item] || ['crown', 'headphones', 'tophat', 'dog', 'cat', 'bunny', 'dragon'].includes(item)) return -1; r.inv[item]--; this._save(u); return r.inv[item]; }
   async inventory() { const [, r] = this._me(); const o = {}; for (const k in r.inv) if (r.inv[k] > 0) o[k] = r.inv[k]; return o; }
   async myRow() { const [u, r] = this._me(); this._save(u); return r; }
+  async bankOpen() { const [u, r] = this._me(); r.bank_card ||= '4400 ' + [0, 0, 0].map(() => String(Math.floor(Math.random() * 1e4)).padStart(4, '0')).join(' '); this._save(u); return r.bank_card; }
+  async handSetup() { const [u, r] = this._me(); if (!r.bank_card) return false; r.hand_pay = true; this._save(u); return true; }
   leave() {}
 }
 

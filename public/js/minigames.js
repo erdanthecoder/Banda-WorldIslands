@@ -78,7 +78,7 @@ export class Minigames {
       w.constrain = (x, z) => [Math.max(COURT.x - COURT.hw + 0.5, Math.min(COURT.x + COURT.hw - 0.5, x)),
         sz < 0 ? Math.max(COURT.z - COURT.hd + 0.5, Math.min(COURT.z - 0.6, z)) : Math.max(COURT.z + 0.6, Math.min(COURT.z + COURT.hd - 0.5, z))];
     } else if (mg.type === 'hide' || mg.type === 'starhunt') {
-      const seeker = mg.type === 'hide' && mg.seeker === this.me.pid;
+      const seeker = mg.type === 'hide' && mg.seeker === this.me.pid; w.noFence = true;
       if (seeker) w.teleport(HUB.x + 2, HUB.z + 8); else { const a = r() * 6.28, d = 12 + r() * 40; w.teleport(HUB.x + Math.cos(a) * d, HUB.z + Math.sin(a) * d); }
       w.constrain = (x, z) => { const d = Math.hypot(x - HUB.x, z - HUB.z), R = 95; return d > R ? [HUB.x + (x - HUB.x) / d * R, HUB.z + (z - HUB.z) / d * R] : [x, z]; };
       if (mg.type === 'starhunt') w.spawnStars(45, HUB.x, HUB.z, 80, () => { this.shCount++; app.sfx('star'); app.award(1, true); });
@@ -98,7 +98,7 @@ export class Minigames {
 
   exit() {
     const { app } = this, w = app.world, mg = this.mg || {}, team = this.myTeam();
-    this.active = null; w.constrain = null; w.frozenUntil = 0; w.clearStars();
+    this.active = null; w.constrain = null; w.noFence = false; w.frozenUntil = 0; w.clearStars();
     app.ui.blind(false); app.ui.mgHud(null); app.ui.mgButtons(null);
     this.setTeamRing(w.me, null); for (const id in w.remotes) { this.setTeamRing(w.remotes[id].av, null); w.remotes[id].hidden = false; }
     this.dballs.forEach(b => w.scene.remove(b.m)); this.dballs = []; this.ballSim = null;
@@ -126,6 +126,7 @@ export class Minigames {
     app.award(Math.min(10, reward), true); app.earn && app.earn(cash, true);
     app.ui.results(app.t('mg_' + mg.type), lines);
     app.sfx(reward > 4 ? 'champions' : 'cheer');
+    w.noFence = false;
     if (mg.type !== 'quiz') { w.fireworks(5); if (this.back) w.teleport(this.back.x, this.back.z, undefined, this.back.y); }
   }
 

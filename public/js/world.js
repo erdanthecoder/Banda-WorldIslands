@@ -32,11 +32,24 @@ export const COURT = { x: 78, z: 82, hw: 16, hd: 10, h: 4 };
 export const TOWER = { x: 0, z: -58, w: 44, d: 30, floors: 8, fh: 5.2, base: 4 };
 export const MARKET = { x: -70, z: 6, w: 32, d: 22, base: 4 };
 export const PLAYGROUND = { x: 64, z: 10, w: 36, d: 30 };
+export const BANK = { x: -62, z: -34, w: 26, d: 18, base: 4 };
+export const CAFE_SPOT = { x: -15, z: -27 };
+// paved walkways (axis-aligned rectangles); everything else is grass behind wooden fences
+export const PATHS = [
+  { id: 'tower', x0: -3.5, x1: 3.5, z0: -43, z1: -22 },
+  { id: 'bank', x0: -49, x1: -3, z0: -36.5, z1: -31.5 },
+  { id: 'cafe', x0: -22, x1: -8, z0: -31.5, z1: -23 },
+  { id: 'market', x0: -54, x1: -20, z0: 7.5, z1: 12.5 },
+  { id: 'play', x0: 20, x1: 46, z0: 7.5, z1: 12.5 },
+  { id: 'stadium', x0: -2.5, x1: 2.5, z0: 22, z1: 58.2 },
+];
+export const PLAZA_R = 25;
 export const HOUSES = [];
 // built-up areas where grass and flowers must not grow
 const rectIn = (x, z, cx, cz, hw, hd, m) => Math.abs(x - cx) < hw + m && Math.abs(z - cz) < hd + m;
+export const onPath = (x, z, m = 0) => PATHS.some(P => x > P.x0 - m && x < P.x1 + m && z > P.z0 - m && z < P.z1 + m);
 export const built = (x, z, m = 1) => rectIn(x, z, TOWER.x, TOWER.z, TOWER.w / 2, TOWER.d / 2, m + 3) || rectIn(x, z, MARKET.x, MARKET.z, MARKET.w / 2, MARKET.d / 2, m)
-  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m);
+  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
 export const ROAD = { x: 0, z: 0, r: -1000, w: 0 };
 const FLATS = [
   { x: 0, z: 0, r: 118, h: 4 },
@@ -712,6 +725,7 @@ export class World {
   _collide(nx, nz, py = 0) {
     for (const s of this.solids) {
       if (s.y0 !== undefined && (py < s.y0 || py > s.y1)) continue;
+      if (s.fence && this.noFence) continue;
       if (s.r) { const dx = nx - s.x, dz = nz - s.z; if (Math.abs(dx) > s.r + 1 || Math.abs(dz) > s.r + 1) continue; const d = Math.hypot(dx, dz), r = s.r + 0.3; if (d < r && d > 0.0001) { nx = s.x + dx / d * r; nz = s.z + dz / d * r; } continue; }
       if (Math.abs(nx - s.x) > s.hw + s.hd + 2 || Math.abs(nz - s.z) > s.hw + s.hd + 2) continue;
       const c = Math.cos(s.rot || 0), sn = Math.sin(s.rot || 0), dx = nx - s.x, dz = nz - s.z;

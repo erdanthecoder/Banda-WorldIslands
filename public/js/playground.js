@@ -2,7 +2,8 @@
 // a sandpit and trampolines. Rides move you with world.carrier; jump (Space) to hop off.
 import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { heightAt, labelSprite, canvasTex, PLAYGROUND, TOWER, MARKET, PITCH } from './world.js';
+import { Avatar } from './avatar.js';
+import { heightAt, labelSprite, canvasTex, TEX, PLAYGROUND, PATHS, PLAZA_R, onPath } from './world.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, ...extra });
 const metal = c => std(c, { metalness: 0.7, roughness: 0.3 });
@@ -164,19 +165,71 @@ export class Playground {
   }
 }
 
-// paved walkways from the plaza to each place, so it's obvious where to go
+// paved walkways from the plaza, lined with wooden fences so nobody walks on the grass
 export function paths(world) {
   const y0 = heightAt(0, 0), S = world.scene;
-  const mat = new THREE.MeshStandardMaterial({ color: 0xcfc6b4, roughness: 0.85 });
-  const strip = (ax, az, bx, bz, w = 4) => {
-    const L = Math.hypot(bx - ax, bz - az), m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, L), mat);
-    m.position.set((ax + bx) / 2, y0 + 0.03, (az + bz) / 2); m.rotation.y = Math.atan2(bx - ax, bz - az); m.receiveShadow = true; S.add(m);
+  const pave = canvasTex(256, 256, (g, W) => {
+    g.fillStyle = '#b9b2a4'; g.fillRect(0, 0, W, W);
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) { const x = c * 64 + (r % 2) * 32, y = r * 32; g.fillStyle = `hsl(35,${8 + Math.random() * 8}%,${66 + Math.random() * 10}%)`; g.fillRect(x + 2, y + 2, 60, 28); g.fillRect(x - 62, y + 2, 60, 28); }
+  });
+  for (const P of PATHS) {
+    const w = P.x1 - P.x0, d = P.z1 - P.z0, tex = pave.clone(); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(w / 4, d / 4); tex.needsUpdate = true;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+    m.position.set((P.x0 + P.x1) / 2, y0 + 0.04, (P.z0 + P.z1) / 2); m.receiveShadow = true; S.add(m);
+  }
+  // fences: posts + two rails, built from short segments; skip any segment that lies on another path or the plaza
+  const wood = new THREE.MeshStandardMaterial({ map: TEX.wood, color: 0xb0835a, roughness: 0.85 });
+  const PG = PLAYGROUND, posts = [], rails = [], inside = (x, z) => Math.hypot(x, z) < PLAZA_R - 0.3 || onPath(x, z, -0.05) || world.buildings.some(b => b.contains(x, z)) || (Math.abs(x - PG.x) < PG.w / 2 + 0.3 && Math.abs(z - PG.z) < PG.d / 2);
+  const seg = (ax, az, bx, bz) => {
+    const mx = (ax + bx) / 2, mz = (az + bz) / 2; if (inside(mx, mz)) return;
+    const L = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bx - ax, bz - az);
+    posts.push([ax, az]); rails.push([mx, mz, L, ang]);
+    world.solids.push({ x: mx, z: mz, hw: 0.08, hd: L / 2 + 0.05, rot: ang, fence: true });
   };
-  strip(0, -24, 0, TOWER.z + TOWER.d / 2 + 6, 7);
-  strip(-24, 0, MARKET.x + MARKET.w / 2 + 6, MARKET.z + 4, 5);
-  strip(24, 0, PLAYGROUND.x - PLAYGROUND.w / 2, PLAYGROUND.z, 5);
-  strip(0, 24, PITCH.x, PITCH.z - PITCH.hd - 3, 5);
+  const line = (ax, az, bx, bz) => { const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 2)); for (let i = 0; i < n; i++) seg(ax + (bx - ax) * i / n, az + (bz - az) * i / n, ax + (bx - ax) * (i + 1) / n, az + (bz - az) * (i + 1) / n); };
+  for (const P of PATHS) { const o = 0.15; line(P.x0 - o, P.z0 - o, P.x1 + o, P.z0 - o); line(P.x0 - o, P.z1 + o, P.x1 + o, P.z1 + o); line(P.x0 - o, P.z0 - o, P.x0 - o, P.z1 + o); line(P.x1 + o, P.z0 - o, P.x1 + o, P.z1 + o); }
+  const R = PLAZA_R + 0.3, N = 80; for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2, b = (i + 1) / N * Math.PI * 2; seg(Math.cos(a) * R, Math.sin(a) * R, Math.cos(b) * R, Math.sin(b) * R); }
+  // instanced meshes keep this cheap
+  const pg = new THREE.BoxGeometry(0.16, 1.1, 0.16), im = new THREE.InstancedMesh(pg, wood, posts.length), q = new THREE.Object3D();
+  posts.forEach(([x, z], i) => { q.position.set(x, y0 + 0.55, z); q.rotation.set(0, 0, 0); q.updateMatrix(); im.setMatrixAt(i, q.matrix); });
+  im.castShadow = true; S.add(im);
+  const rg = new THREE.BoxGeometry(0.07, 0.12, 1), rm = new THREE.InstancedMesh(rg, wood, rails.length * 2);
+  rails.forEach(([x, z, L, ang], i) => { for (let k = 0; k < 2; k++) { q.position.set(x, y0 + 0.45 + k * 0.42, z); q.rotation.set(0, ang, 0); q.scale.set(1, 1, L); q.updateMatrix(); rm.setMatrixAt(i * 2 + k, q.matrix); } q.scale.set(1, 1, 1); });
+  rm.castShadow = true; S.add(rm);
   // signposts at the plaza
   const post = (x, z, text) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.6, 8), metal(0x30343a)); p.position.set(x, y0 + 1.3, z); S.add(p); const l = labelSprite(text, 0.36, { bg: 'rgba(20,90,60,0.9)' }); l.position.set(x, y0 + 2.8, z); S.add(l); world.solids.push({ x, z, r: 0.15 }); };
   return post;
+}
+
+// Banda Coffee: an outdoor kiosk with a barista and umbrella tables on the café terrace
+export function coffeeKiosk(world, h) {
+  const S = world.scene, y = heightAt(-15, -27), cx = -20.2, cz = -27.2;
+  const add = (m, x, yy, z) => { m.position.set(x, y + yy, z); m.castShadow = true; m.receiveShadow = true; S.add(m); return m; };
+  const wood = new THREE.MeshStandardMaterial({ map: TEX.wood, color: 0xc09060, roughness: 0.8 });
+  add(new THREE.Mesh(new THREE.BoxGeometry(3, 3.2, 6.4), std(0x3b2a20, { roughness: 0.6 })), cx - 1, 1.6, cz);
+  add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.1, 6), wood), cx + 0.9, 0.55, cz);
+  add(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.06, 6.2), std(0xe8e2d8, { roughness: 0.3 })), cx + 0.9, 1.13, cz);
+  world.solids.push({ x: cx - 0.2, z: cz, hw: 1.6, hd: 3.2, rot: 0 });
+  // striped awning
+  const stripes = canvasTex(256, 64, (g, W, H) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#f4efe6' : '#2e6b4a'; g.fillRect(i * W / 8, 0, W / 8, H); } });
+  const aw = add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 6.8), new THREE.MeshStandardMaterial({ map: stripes })), cx + 1.2, 3.1, cz); aw.rotation.z = -0.25;
+  const machine = add(new THREE.Mesh(new RoundedBox(0.7, 0.6, 0.5, 2, 0.05), metal(0xb8bec6)), cx + 0.8, 1.45, cz - 1.8);
+  for (let i = 0; i < 4; i++) add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.16, 12), std(0xffffff)), cx + 0.9, 1.24, cz + i * 0.5);
+  const logo = canvasTex(512, 160, (g, W, H) => { g.fillStyle = '#2e6b4a'; g.beginPath(); g.roundRect(0, 0, W, H, 30); g.fill(); g.fillStyle = '#fff'; g.font = '800 70px Manrope, system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('☕ Banda Coffee', W / 2, H / 2 + 4); });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.56), new THREE.MeshBasicMaterial({ map: logo, transparent: true })); sign.position.set(cx + 0.55, y + 3.9, cz); sign.rotation.y = Math.PI / 2; S.add(sign);
+  const menu = canvasTex(256, 320, (g, W, H) => { g.fillStyle = '#1f1a16'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = '700 26px Manrope, system-ui'; g.fillText('MENU', 20, 40); [['☕ Coffee', '$2.00'], ['🧋 Latte', '$3.00'], ['🍫 Cocoa', '$2.50'], ['🍵 Tea', '$1.00'], ['🥐 Croissant', '$2.00']].forEach(([a, b], i) => { g.font = '500 24px system-ui'; g.fillText(a, 20, 90 + i * 46); g.fillText(b, 180, 90 + i * 46); }); });
+  const mb = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.6), new THREE.MeshBasicMaterial({ map: menu })); mb.position.set(cx + 0.52, y + 2.2, cz + 2.2); mb.rotation.y = Math.PI / 2; S.add(mb);
+  const barista = new Avatar({ skin: '#d9a066', face: 'happy', hair: 'short', hairColor: '#1c1410', top: 'plain', shirt: '#2e6b4a', pants: '#22293a', shoes: '#1b1b1b', hat: 'cap', pet: 'none', height: 1 }, '', 'bot');
+  barista.group.position.set(cx - 0.1, y, cz); barista.group.rotation.y = Math.PI / 2; S.add(barista.group);
+  world.updaters.push((dt, t) => { barista.animate(0, dt, false); if (!barista.emote && Math.sin(t * 0.4) > 0.997) barista.play('wave'); });
+  world.zone({ test: (px, py, pz) => px > cx + 1.4 && px < cx + 3.6 && Math.abs(pz - cz) < 2.8 && Math.abs(py - y) < 1.5, onEnter: () => { barista.play('wave'); h.cafe(); } });
+  // tables with umbrellas
+  for (const [tx, tz, col] of [[-13, -25.5, 0xd9533f], [-10.5, -29.5, 0x2f8fce], [-14.5, -30, 0xf0b92e]]) {
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.06, 24), std(0xf2f2f2)), tx, 0.78, tz);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 8), metal(0x777777)), tx, 1.3, tz);
+    add(new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.6, 12, 1, true), std(col, { side: THREE.DoubleSide })), tx, 2.6, tz);
+    for (const a of [0, 2.1, 4.2]) add(new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.45, 0.42), wood), tx + Math.cos(a) * 0.95, 0.22, tz + Math.sin(a) * 0.95);
+    world.solids.push({ x: tx, z: tz, r: 0.75 });
+  }
+  const lab = labelSprite('☕ ' + h.t('coffeeHere'), 0.45, { bg: 'rgba(46,107,74,0.92)' }); lab.position.set(cx + 2.6, y + 2.6, cz); S.add(lab);
 }

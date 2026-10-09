@@ -55,11 +55,11 @@ export class Bots {
     // ambient bots when the server is quiet and nothing is running
     const ambient = !running && this.humans().length < 4;
     const ambIds = Object.keys(this.b).filter(id => id.startsWith('bot-a'));
-    if (ambient && !ambIds.length) { const bs = makeBots(5, 'a'); for (const id in bs) { const a = rand(0, 6.28), r = rand(9, 30); const b = this.spawn(id, bs[id], HUB.x + Math.cos(a) * r, HUB.z + Math.sin(a) * r); b.tx = b.x; b.tz = b.z; } }
+    if (ambient && !ambIds.length) { const bs = makeBots(5, 'a'); for (const id in bs) { const a = rand(0, 6.28), r = rand(7, 20); const b = this.spawn(id, bs[id], HUB.x + Math.cos(a) * r, HUB.z + Math.sin(a) * r); b.tx = b.x; b.tz = b.z; if (+id.slice(5) < 3) { b.tripper = true; b.nextTrip = rand(2, 12); } } }
     if (!ambient && ambIds.length) this.clear('bot-a');
     for (const id in this.b) {
       const b = this.b[id];
-      if (id.startsWith('bot-a')) this.wander(b, dt, HUB.x, HUB.z, 8, 34);
+      if (id.startsWith('bot-a')) { if (b.trip || (b.tripper && (b.nextTrip -= dt) < 0)) this.trip(b, dt); else this.wander(b, dt, HUB.x, HUB.z, 6, 21); }
       else if (running && mg.bots && mg.bots[id]) this.play(b, mg, dt);
     }
     // render locally and share with others ~6 times a second
@@ -72,6 +72,47 @@ export class Bots {
     const w = this.app.world, ids = new Set();
     (list || []).forEach(d => { ids.add(d.id); this.seen[d.id] = d; w.upsertRemote(d.id, d, dd => new Avatar(dd.avatar, dd.name, 'bot')); });
     for (const id in w.remotes) if (id.startsWith('bot-') && !ids.has(id)) w.upsertRemote(id, null);
+  }
+
+  // ---- trips up Banda Tower: walk in, call an elevator, ride, look around, ride back down ----
+  trip(b, dt) {
+    const T = this.app.tower, w = this.app.world; if (!T) return;
+    if (!b.trip) {
+      const e = T.elevators.find(x => !x.botBusy) || T.elevators[b.id.length % 2];
+      const lv = 1 + Math.floor(Math.random() * 7), land = [e.cx + rand(-0.6, 0.6), e.cz + 3.2];
+      const out = [[rand(-2, 2), -22], [rand(-2, 2), -41], [rand(-2, 2), -49]];
+      b.trip = { e, i: 0, t: 0, steps: [
+        ...out.map(([x, z]) => ({ k: 'walk', x, z, lv: 0 })), { k: 'walk', x: land[0], z: land[1], lv: 0 },
+        { k: 'call', lv: 0 }, { k: 'walk', x: e.cx + rand(-0.6, 0.6), z: e.cz - 0.3, lv: 0, cab: true }, { k: 'ride', lv },
+        { k: 'walk', x: land[0], z: land[1], cab: true }, { k: 'wander', t: rand(15, 35) },
+        { k: 'walk', x: land[0], z: land[1] }, { k: 'call' }, { k: 'walk', x: e.cx, z: e.cz - 0.3, cab: true }, { k: 'ride', lv: 0 },
+        { k: 'walk', x: land[0], z: land[1], lv: 0, cab: true }, ...out.reverse().map(([x, z]) => ({ k: 'walk', x, z, lv: 0 })),
+      ] };
+    }
+    const tr = b.trip, e = tr.e, st = tr.steps[tr.i];
+    const next = () => { tr.i++; tr.t = 0; if (tr.i >= tr.steps.length) { b.trip = null; b.nextTrip = rand(20, 60); b.y = heightAt(b.x, b.z); b.tx = b.x; b.tz = b.z; e.botBusy = null; } };
+    const playerIn = e.contains(w.me.group.position) || (w.carrier && w.carrier.elev === e);
+    tr.t += dt;
+    if (st.k === 'walk') {
+      if (st.cab && (e.state !== 'idle' || e.open < 0.6)) { b.speed = 0; tr.t = Math.min(tr.t, 1); if (st.cab && T.contains(b.x, b.z) && Math.abs(b.z - e.cz) < 1.5) b.y = e.y; return; } // wait for the doors
+      const y = st.cab && Math.abs(b.z - e.cz) < 1.5 ? e.y : st.lv === 0 && !T.contains(b.x, b.z) ? null : T.floorY(st.lv ?? tr.floor ?? 0);
+      if (this.moveTo(b, st.x, st.z, 2.4, dt, y ?? undefined) || tr.t > 25) next();
+    } else if (st.k === 'call') {
+      b.speed = 0; e.botBusy = b.id;
+      const lv = st.lv ?? tr.floor ?? 0;
+      if (!playerIn && !(e.level === lv && e.state === 'idle')) { if (e.state === 'idle') e.go(lv); }
+      if (e.level === lv && e.state === 'idle' && e.open > 0.9) next();
+      if (tr.t > 40) { tr.i = tr.steps.length - 1; tr.t = 0; }
+    } else if (st.k === 'ride') {
+      b.speed = 0; b.y = e.y;
+      if (tr.t < 0.2 && !playerIn) e.go(st.lv);
+      if (e.state === 'idle' && e.open > 0.9 && tr.t > 1) { tr.floor = e.level; next(); }
+    } else if (st.k === 'wander') {
+      const y = T.floorY(tr.floor || 0);
+      if (!st.init) { st.init = 1; b.wait = 0; b.tx = T.x + rand(-12, 12); b.tz = T.z + rand(0, 8); }
+      if (b.wait > 0) { b.wait -= dt; b.speed = 0; } else if (this.moveTo(b, b.tx, b.tz, 2, dt, y)) { b.wait = rand(1, 4); b.tx = T.x + rand(-T.w / 2 + 3, T.w / 2 - 3); b.tz = T.z + rand(-T.d / 2 + 6, T.d / 2 - 3); }
+      if (tr.t > st.t) next();
+    }
   }
 
   // ---- minigames ----

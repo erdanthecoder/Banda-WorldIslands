@@ -141,6 +141,41 @@ Object.assign(D.ru, {
   playground: 'Детская площадка', market: 'Банда Маркет', stadium: 'Стадион', tower: 'Башня Банда',
 });
 
+Object.assign(D.en, {
+  payPhone: 'mBank phone', payHand: 'Hand pay', payBtn: 'Pay', phoneHint: 'Tap Pay on your phone', phone: 'Phone',
+  handNotSet: 'Hand Pay is not set up yet. Visit mBank, desk 2 — it takes 2 seconds!',
+  needCard: 'You need an mBank card to pay', needCardHow: 'It’s free! Walk to mBank (left of Banda Tower) and visit desk 1.',
+  bankWelcome: 'Welcome to mBank', bankWelcomeSub: 'Free card · Hand Pay · Phone Pay', bankDesk0: '1 · Get your card', bankDesk1: '2 · Hand Pay', bankDesk2: '3 · How to pay',
+  bankSteps0: 'Walk up to my desk|Tap “Get my card”|Your card is in your phone 📱', bankSteps1: 'Have your mBank card|Put your hand on the scanner|Hold until the circle is full ✓', bankSteps2: 'Choose things in a shop|Go to the checkout|Pay with 📱 phone or ✋ hand',
+  bankOffer: 'Hi! I’m your banker. 😊 Every student gets a <b>free mBank card</b> with their money on it. Want yours?', bankGetCard: 'Get my card',
+  bankCardReady: 'Here it is! 🎉 Your card is now in your <b>phone</b> — tap the 📱 button to see it. Next, visit <b>desk 2</b> to pay with your hand.',
+  bankNextHand: 'OK', bankHaveCard: 'You already have your card. Here it is:', bankNeedCardFirst: 'First get your card at <b>desk 1</b>, then come back for Hand Pay. 🙂',
+  bankHandHow: 'Hand Pay is easy! <b>Press and hold</b> your hand on the scanner below until the circle is full.', bankHandDone: 'Done! ✋ Now you can pay with your hand at any checkout.',
+  bankHandOn: 'Your Hand Pay is already on. ✋ Just hold your hand on the scanner at the checkout.',
+  bankHelp: 'Paying is easy:<br>1. Pick things in the shop or café.<br>2. Go to the checkout.<br>3. Choose <b>📱 mBank phone</b> and tap Pay — or <b>✋ Hand pay</b> and hold your hand on the scanner.<br>You started with $100. Play games to earn more!',
+  gotIt: 'Got it!', recent: 'Recent payments', noPayments: 'No payments yet.', earnTip: '💡 Learning games, arcade games and minigames earn you money.',
+  callElevator: 'Call elevator', elevatorComing: 'The elevator is on its way', elevatorHere: 'The elevator is here — walk in',
+  coffeeHere: 'Banda Coffee', coffeeBoost: 'Coffee power! You run faster.',
+  it_coffee: 'Coffee', it_latte: 'Latte', it_cocoa: 'Hot cocoa', it_tea: 'Tea', it_croissant: 'Croissant',
+});
+Object.assign(D.ru, {
+  payPhone: 'Телефон mBank', payHand: 'Оплата ладонью', payBtn: 'Оплатить', phoneHint: 'Нажми «Оплатить» на телефоне', phone: 'Телефон',
+  handNotSet: 'Оплата ладонью ещё не настроена. Зайди в mBank, окно 2 — это 2 секунды!',
+  needCard: 'Чтобы платить, нужна карта mBank', needCardHow: 'Это бесплатно! Иди в mBank (слева от Башни Банда), окно 1.',
+  bankWelcome: 'Добро пожаловать в mBank', bankWelcomeSub: 'Бесплатная карта · Ладонь · Телефон', bankDesk0: '1 · Получи карту', bankDesk1: '2 · Оплата ладонью', bankDesk2: '3 · Как платить',
+  bankSteps0: 'Подойди к моему столу|Нажми «Получить карту»|Карта появится в телефоне 📱', bankSteps1: 'Нужна карта mBank|Положи ладонь на сканер|Держи, пока круг не заполнится ✓', bankSteps2: 'Выбери товары в магазине|Иди на кассу|Плати 📱 телефоном или ✋ ладонью',
+  bankOffer: 'Привет! Я твой банкир. 😊 Каждый ученик получает <b>бесплатную карту mBank</b> со своими деньгами. Хочешь?', bankGetCard: 'Получить карту',
+  bankCardReady: 'Готово! 🎉 Твоя карта теперь в <b>телефоне</b> — нажми кнопку 📱. Потом подойди к <b>окну 2</b>, чтобы платить ладонью.',
+  bankNextHand: 'OK', bankHaveCard: 'У тебя уже есть карта. Вот она:', bankNeedCardFirst: 'Сначала получи карту в <b>окне 1</b>, потом приходи сюда. 🙂',
+  bankHandHow: 'Это просто! <b>Нажми и держи</b> ладонь на сканере, пока круг не заполнится.', bankHandDone: 'Готово! ✋ Теперь можно платить ладонью на любой кассе.',
+  bankHandOn: 'Оплата ладонью уже включена. ✋ Просто держи ладонь на сканере на кассе.',
+  bankHelp: 'Платить легко:<br>1. Выбери товары в магазине или кафе.<br>2. Иди на кассу.<br>3. Выбери <b>📱 телефон mBank</b> и нажми «Оплатить» — или <b>✋ ладонь</b> и подержи её на сканере.<br>У тебя было $100. Играй, чтобы заработать ещё!',
+  gotIt: 'Понятно!', recent: 'Последние покупки', noPayments: 'Покупок пока нет.', earnTip: '💡 Учебные игры, аркады и мини-игры приносят деньги.',
+  callElevator: 'Вызвать лифт', elevatorComing: 'Лифт уже едет', elevatorHere: 'Лифт здесь — заходи',
+  coffeeHere: 'Банда Кофе', coffeeBoost: 'Сила кофе! Ты бегаешь быстрее.',
+  it_coffee: 'Кофе', it_latte: 'Латте', it_cocoa: 'Какао', it_tea: 'Чай', it_croissant: 'Круассан',
+});
+
 let lang = (() => { try { return localStorage.getItem('banda_lang') || 'en'; } catch (e) { return 'en'; } })();
 export const getLang = () => lang;
 export function setLang(l) { lang = D[l] ? l : 'en'; try { localStorage.setItem('banda_lang', lang); sessionStorage.setItem('banda_lang_chosen', '1'); } catch (e) {} }

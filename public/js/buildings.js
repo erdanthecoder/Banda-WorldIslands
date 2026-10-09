@@ -1,7 +1,8 @@
 // Walk-in buildings: Banda Tower (8 floors, glass elevators) and the supermarket.
 import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { TEX, canvasTex, labelSprite, TOWER, MARKET } from './world.js';
+import { TEX, canvasTex, labelSprite, TOWER, MARKET, BANK } from './world.js';
+import { Avatar } from './avatar.js';
 
 const glassMat = () => new THREE.MeshStandardMaterial({ color: 0x9cc3d6, metalness: 0.9, roughness: 0.04, transparent: true, opacity: 0.26, envMapIntensity: 1.6, depthWrite: false, side: THREE.DoubleSide });
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
@@ -72,7 +73,7 @@ export class Building {
 class Elevator {
   constructor(b, cx, cz, onPanel) {
     Object.assign(this, { b, cx, cz, onPanel });
-    this.level = 0; this.y = b.floorY(0); this.target = 0; this.state = 'idle'; this.open = 1; this.speed = 5;
+    this.level = 0; this.y = b.floorY(0); this.target = 0; this.state = 'idle'; this.open = 1; this.speed = 7; this.btns = [];
     const S = b.world.scene, g = this.cab = new THREE.Group();
     const steel = std(0xb8bec6, { metalness: 0.9, roughness: 0.25 });
     const floor = new THREE.Mesh(new THREE.BoxGeometry(3, 0.12, 3), std(0x2a2e34, { metalness: 0.5 })); floor.position.y = 0.06;
@@ -94,6 +95,8 @@ class Elevator {
       const y = b.floorY(lv), L = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.9, 0.08), steel), R = L.clone();
       L.position.set(cx - 0.75, y + 1.45, cz + 1.62); R.position.set(cx + 0.75, y + 1.45, cz + 1.62);
       S.add(L, R); this.doors.push({ L, R, lv });
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.6, 0.06), std(0x1c1f24, { metalness: 0.7 })); plate.position.set(cx + 2.05, y + 1.25, cz + 1.72); S.add(plate);
+      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 20).rotateX(Math.PI / 2), std(0xdddddd, { emissive: 0x3ac3ff, emissiveIntensity: 0.2 })); btn.position.set(cx + 2.05, y + 1.25, cz + 1.77); S.add(btn); this.btns[lv] = btn;
       const frame = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.3, 0.2), std(0x1c1f24, { metalness: 0.6 })); frame.position.set(cx, y + 3.05, cz + 1.66); S.add(frame);
       const ind = labelSprite(String(lv + 1), 0.32, { bg: 'rgba(10,14,20,0.85)', color: '#5fd0ff' }); ind.position.set(cx, y + 3.45, cz + 1.7); S.add(ind);
       b.dynamicWalls.push({ lv, x: cx, z: cz + 1.62, hw: 1.6, hd: 0.12, on: () => !(this.level === lv && this.state === 'idle' && this.open > 0.6) });
@@ -114,7 +117,16 @@ class Elevator {
   ride(lv, onArrive) {
     const w = this.b.world;
     this.go(lv);
-    w.carrier = { update: (dt, p, me) => { p.y = this.y; p.x = Math.max(this.cx - 1.1, Math.min(this.cx + 1.1, p.x)); p.z = Math.max(this.cz - 1.1, Math.min(this.cz + 1.0, p.z)); me.animate(0, dt, false); return this.state === 'idle' && this.open > 0.9; }, onEnd: onArrive };
+    let out = 0;
+    w.carrier = { elev: this, update: (dt, p, me) => {
+      if (this.state === 'idle' && this.open > 0.9) {
+        // doors open: walk out onto the landing by yourself
+        out += dt; p.y = this.y; me.group.rotation.y = 0;
+        const tz = this.cz + 3; p.x += (this.cx - p.x) * Math.min(1, dt * 4); p.z = Math.min(tz, p.z + dt * 4); me.animate(4, dt, false);
+        return p.z >= tz - 0.01 || out > 1.5;
+      }
+      p.y = this.y; p.x = Math.max(this.cx - 1.1, Math.min(this.cx + 1.1, p.x)); p.z = Math.max(this.cz - 1.1, Math.min(this.cz + 1.0, p.z)); me.animate(0, dt, false); return false;
+    }, onEnd: onArrive };
   }
   update(dt) {
     if (this.state === 'closing') { this.open = Math.max(0, this.open - dt * 2.2); if (this.open === 0) this.state = 'moving'; }
@@ -124,6 +136,7 @@ class Elevator {
       if (Math.abs(ty - this.y) < 0.005) { this.y = ty; this.level = this.target; this.state = 'opening'; this.b.world.onElevatorDing && this.b.world.onElevatorDing(); }
     } else if (this.state === 'opening') { this.open = Math.min(1, this.open + dt * 2.2); if (this.open === 1) this.state = 'idle'; }
     this.cab.position.y = this.y;
+    this.btns.forEach((bt, lv) => { bt.material.emissiveIntensity = this.target === lv && this.state !== 'idle' ? 2.5 : 0.2; });
     for (const d of this.doors) { const o = d.lv === this.level && this.state !== 'moving' ? this.open : 0; d.L.position.x = this.cx - 0.75 - o * 1.4; d.R.position.x = this.cx + 0.75 + o * 1.4; }
   }
 }
@@ -289,7 +302,7 @@ export class Tower extends Building {
     this.world.zone({ test: (px, py, pz) => Math.hypot(px - (x - 10), pz - (z + 4)) < 3.6 && Math.abs(py - y) < 1, onEnter: () => this.h.rest && this.h.rest('spa') });
     this.box(lv, maxX - 7, 0.6, z + 2, 9, 1.2, 1.4, std(0x6b4a2f, { roughness: 0.5 }), true, 0.1);
     for (let i = 0; i < 3; i++) { const cup = this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.2, 12), std(0xffffff))); cup.position.set(maxX - 9 + i * 2, y + 1.3, z + 2); }
-    const menu = labelSprite('CAFÉ', 0.6, { bg: 'rgba(60,40,25,0.9)' }); menu.position.set(maxX - 7, y + 3, z + 0.5); this.world.scene.add(menu);
+    const menu = labelSprite('☕ COFFEE · CAFÉ', 0.6, { bg: 'rgba(60,40,25,0.9)' }); menu.position.set(maxX - 7, y + 3, z + 0.5); this.world.scene.add(menu);
     this.world.zone({ test: (px, py, pz) => Math.abs(px - (maxX - 7)) < 4.5 && pz > z + 2.8 && pz < z + 5 && Math.abs(py - y) < 1, onEnter: () => this.h.cafe && this.h.cafe() });
     for (let i = 0; i < 3; i++) this.sofa(lv, x + 2 + i * 4, maxZ - 3, Math.PI, 0xc9b59a);
     this.plant(lv, minX + 1.5, maxZ - 1.5); this.plant(lv, x - 4, maxZ - 2);
@@ -333,6 +346,9 @@ export class Tower extends Building {
     for (let i = 0; i < 4; i++) { const bb = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 12), std(cols[i + 1], { roughness: 0.9 }))); bb.scale.y = 0.6; bb.position.set(this.minX + 2.5, y + 0.45, z - 6 + i * 4); this.block(lv, this.minX + 2.5, z - 6 + i * 4, 0.7, 0.7); }
   }
 
+  // the best elevator to call to floor lv (idle and close beats busy and far)
+  nearest(lv, px = this.x) { return this.elevators.slice().sort((a, b) => (Math.abs(a.level - lv) + (a.state === 'idle' ? 0 : 4) + Math.abs(a.cx - px) * 0.1) - (Math.abs(b.level - lv) + (b.state === 'idle' ? 0 : 4) + Math.abs(b.cx - px) * 0.1))[0]; }
+  call(p) { const lv = this.levelAt(p.y), e = this.nearest(lv, p.x); if (e.level !== lv || e.state !== 'idle') e.go(lv); return e; }
   update(p) {
     // move the interior lights to the floor you're on
     const inside = this.contains(p.x, p.z) && p.y > this.base - 2 && p.y < this.base + this.floors * this.fh;
@@ -404,5 +420,96 @@ export class Market extends Building {
     this.world.updaters.push((dt, t) => { scanner.material.emissiveIntensity = 0.5 + Math.sin(t * 3) * 0.3; });
     this.world.zone({ test: (px, py, pz) => px > cx - 3 && px < cx - 0.8 && Math.abs(pz - (cz + 1)) < 2.5 && Math.abs(py - base) < 1.5, onEnter: () => this.h.checkout() });
     const cl = labelSprite(this.h.t('checkout'), 0.45); cl.position.set(cx, base + 3, cz); S.add(cl);
+  }
+}
+
+// ---------------- mBank ----------------
+// Three desks with staff. Each has a big screen behind it that explains, step by step, what to do.
+export class Bank extends Building {
+  constructor(world, h) {
+    const B = BANK;
+    super(world, { x: B.x, z: B.z, w: B.w, d: B.d, floors: 1, fh: 5.5, base: B.base, door: { side: 'e', at: B.z, width: 5 } });
+    this.h = h; this.staff = []; this.screens = []; this.build();
+  }
+  build() {
+    const { x, z, w, d, base, minX, maxX, minZ, maxZ } = this, S = this.world.scene, H = 6, t = this.h.t;
+    const box = (cx, cy, cz, ww, hh, dd, m, cast = true) => { const o = new THREE.Mesh(new THREE.BoxGeometry(ww, hh, dd), m); o.position.set(cx, cy, cz); o.castShadow = cast; o.receiveShadow = true; S.add(o); return o; };
+    const stone = this.world.texMat(TEX.plaster, w, H, { color: 0xf6f4ef, roughness: 0.85 }), navy = std(0x0f2a4a, { roughness: 0.4, metalness: 0.3 });
+    box(x, base + H / 2, minZ, w, H, 0.4, stone); box(x, base + H / 2, maxZ, w, H, 0.4, stone); box(minX, base + H / 2, z, 0.4, H, d, stone);
+    // glass front with navy frame
+    const g = glassMat(), da = this.door.at - 2.5, db = this.door.at + 2.5;
+    for (const [z0, z1] of [[minZ, da], [db, maxZ]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(z1 - z0, H - 1.2), g); m.position.set(maxX, base + (H - 1.2) / 2, (z0 + z1) / 2); m.rotation.y = Math.PI / 2; S.add(m); }
+    box(maxX, base + H - 0.6, z, 0.5, 1.2, d + 0.4, navy);
+    for (let k = 0; k <= 6; k++) box(maxX, base + (H - 1.2) / 2, minZ + k * d / 6, 0.16, H - 1.2, 0.16, navy);
+    box(x, base + H + 0.2, z, w + 0.8, 0.4, d + 0.8, std(0xe9e6df));
+    box(x, base - 0.01, z, w, 0.12, d, this.world.texMat(TEX.tile, w, d, { color: 0xf3f1ec, roughness: 0.25, metalness: 0.05 }), false);
+    // sign
+    const logo = canvasTex(1024, 256, (c, W, Hh) => {
+      c.clearRect(0, 0, W, Hh); const gr = c.createLinearGradient(0, 0, 220, 220); gr.addColorStop(0, '#34e0a1'); gr.addColorStop(1, '#1a8cff');
+      c.fillStyle = gr; c.beginPath(); c.roundRect(40, 28, 200, 200, 44); c.fill();
+      c.fillStyle = '#04203f'; c.font = '900 170px Manrope, system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('m', 140, 120);
+      c.fillStyle = '#ffffff'; c.textAlign = 'left'; c.font = '800 150px Manrope, system-ui'; c.fillText('mBank', 280, 132);
+    });
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), new THREE.MeshBasicMaterial({ map: logo, transparent: true })); sign.position.set(maxX + 0.3, base + H + 1.9, z); sign.rotation.y = Math.PI / 2; S.add(sign);
+    const signBack = box(maxX + 0.15, base + H + 1.9, z, 0.2, 3.4, 12.6, navy); signBack.castShadow = false;
+    for (const sz of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, H, 16), std(0xf2f2f2, { roughness: 0.3 })); p.position.set(maxX + 2, base + H / 2, z + sz * 3.4); S.add(p); this.world.solids.push({ x: maxX + 2, z: z + sz * 3.4, r: 0.3 }); }
+    const canopy = box(maxX + 1.6, base + H - 0.1, z, 3.4, 0.25, 8, navy);
+    // sliding doors + lights while inside
+    const dl = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3.2, 2.5), glassMat()), dr = dl.clone(); S.add(dl, dr);
+    const light = new THREE.PointLight(0xfff6ea, 0, 32, 1.4); light.position.set(x, base + 4.8, z); S.add(light);
+    this.world.updaters.push(() => {
+      const p = this.world.me?.group.position, near = p && Math.abs(p.x - maxX) < 4 && Math.abs(p.z - this.door.at) < 4 ? 1 : 0;
+      this.o = (this.o || 0) + (near - (this.o || 0)) * 0.12;
+      dl.position.set(maxX, base + 1.6, this.door.at - 1.25 - this.o * 2.4); dr.position.set(maxX, base + 1.6, this.door.at + 1.25 + this.o * 2.4);
+      if (p) light.intensity = this.contains(p.x, p.z) ? 16 : 0;
+    });
+    for (let i = 0; i < 3; i++) for (let k = 0; k < 2; k++) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.06, 24), std(0xffffff, { emissive: 0xfff4e4, emissiveIntensity: 1.8 })); l.position.set(minX + 6 + i * 7, base + H - 0.1, minZ + 5 + k * 8); S.add(l); }
+    // welcome wall
+    const wel = canvasTex(1024, 300, (c, W, Hh) => { const gr = c.createLinearGradient(0, 0, W, Hh); gr.addColorStop(0, '#0f2a4a'); gr.addColorStop(1, '#14629e'); c.fillStyle = gr; c.fillRect(0, 0, W, Hh); c.fillStyle = '#fff'; c.font = '800 96px Manrope, system-ui'; c.textAlign = 'center'; c.fillText(t('bankWelcome'), W / 2, 130); c.font = '600 46px Manrope, system-ui'; c.fillStyle = '#9fe8c9'; c.fillText(t('bankWelcomeSub'), W / 2, 220); });
+    const wm = new THREE.Mesh(new THREE.PlaneGeometry(10, 3), new THREE.MeshBasicMaterial({ map: wel })); wm.position.set(x + 2, base + 3.2, maxZ - 0.25); wm.rotation.y = Math.PI; S.add(wm);
+    // three desks along the west wall, each with a member of staff and a step-by-step screen
+    const uniforms = [0x0f2a4a, 0x14629e, 0x1d7a57];
+    [0, 1, 2].forEach(i => {
+      const dz = minZ + 3.6 + i * 5.4, dx = minX + 4.2;
+      box(dx, base + 0.55, dz, 1.2, 1.1, 3.4, std(0xffffff, { roughness: 0.3 })).castShadow = true;
+      box(dx, base + 1.13, dz, 1.4, 0.06, 3.6, std(0x23272d, { metalness: 0.6, roughness: 0.25 }));
+      box(dx + 0.62, base + 0.55, dz, 0.04, 0.8, 3.0, std([0x34e0a1, 0x1a8cff, 0xffc94d][i], { emissive: [0x34e0a1, 0x1a8cff, 0xffc94d][i], emissiveIntensity: 0.6 }), false);
+      this.block(0, dx, dz, 0.7, 1.8);
+      // hand scanner on desk 2
+      if (i === 1) { const sc = new THREE.Mesh(new RoundedBox(0.6, 0.1, 0.6, 2, 0.04), std(0x101418, { emissive: 0x00a0ff, emissiveIntensity: 0.8, metalness: 0.5 })); sc.position.set(dx + 0.3, base + 1.2, dz); S.add(sc); this.world.updaters.push((dt, tt) => { sc.material.emissiveIntensity = 0.6 + Math.sin(tt * 3) * 0.3; }); }
+      const av = new Avatar({ skin: ['#f2c49b', '#d9a066', '#ffd9b8'][i], face: 'smile', hair: ['bun', 'short', 'long'][i], hairColor: ['#1c1410', '#4a2c17', '#7a4a24'][i], top: 'plain', shirt: '#' + uniforms[i].toString(16).padStart(6, '0'), pants: '#22293a', shoes: '#1b1b1b', hat: 'none', pet: 'none', height: 1.05 }, '', 'bot');
+      av.group.position.set(minX + 2.4, base, dz); av.group.rotation.y = Math.PI / 2; S.add(av.group); this.staff.push(av);
+      const tag = labelSprite(t('bankDesk' + i), 0.42, { bg: 'rgba(15,42,74,0.92)' }); tag.position.set(dx, base + 2.9, dz); S.add(tag);
+      // the screen behind the desk
+      const cv = document.createElement('canvas'); cv.width = 768; cv.height = 512; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.8), new THREE.MeshBasicMaterial({ map: tex })); scr.position.set(minX + 0.3, base + 3.3, dz); scr.rotation.y = Math.PI / 2; S.add(scr);
+      const frame = box(minX + 0.24, base + 3.3, dz, 0.08, 3.0, 4.4, std(0x111418, { metalness: 0.6 }), false);
+      this.screens.push({ cv, tex, i }); this.drawScreen(i);
+      this.world.zone({ test: (px, py, pz) => px > dx + 0.7 && px < dx + 2.8 && Math.abs(pz - dz) < 1.7 && Math.abs(py - base) < 1.5, onEnter: () => { av.play('wave'); this.h.desk(i); } });
+    });
+    this.world.updaters.push((dt, tt) => this.staff.forEach((a, i) => { a.animate(0, dt, false); if (!a.emote && Math.sin(tt * 0.5 + i * 2) > 0.995) a.play('wave'); }));
+    // waiting area, plants, ATMs
+    for (let i = 0; i < 2; i++) { const g2 = new THREE.Group(), m = std(0x2f4f6f, { roughness: 0.85 }); const seat = new THREE.Mesh(new RoundedBox(3, 0.5, 1.1, 2, 0.15), m); seat.position.y = 0.45; const back = new THREE.Mesh(new RoundedBox(3, 0.8, 0.3, 2, 0.12), m); back.position.set(0, 0.9, -0.45); g2.add(seat, back); g2.position.set(x + 3 + i * 4.5, base, maxZ - 2); g2.rotation.y = Math.PI; S.add(g2); this.block(0, x + 3 + i * 4.5, maxZ - 2, 1.5, 0.55); }
+    for (let i = 0; i < 2; i++) { const ax = x + 2 + i * 2.4, atm = box(ax, base + 1.1, minZ + 0.6, 1.6, 2.2, 0.8, std(0x23272d, { metalness: 0.6, roughness: 0.3 })); const s2 = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.6), std(0x0a1a2a, { emissive: 0x1a8cff, emissiveIntensity: 1 })); s2.position.set(ax, base + 1.5, minZ + 1.01); S.add(s2); this.block(0, ax, minZ + 0.6, 0.8, 0.4); }
+    const atmL = labelSprite('ATM', 0.35, { bg: 'rgba(15,42,74,0.9)' }); atmL.position.set(x + 3.2, base + 2.6, minZ + 0.8); S.add(atmL);
+    for (const [px, pz] of [[maxX - 1.5, minZ + 1.5], [maxX - 1.5, maxZ - 1.5], [minX + 1.2, maxZ - 1.2]]) {
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.35, 0.8, 16), std(0xe8e4dc)); pot.position.set(px, base + 0.4, pz); S.add(pot);
+      for (let i = 0; i < 7; i++) { const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), std(new THREE.Color().setHSL(0.3, 0.5, 0.25 + i * 0.02))); leaf.position.set(px + Math.cos(i) * 0.3, base + 1.1 + (i % 3) * 0.35, pz + Math.sin(i) * 0.3); leaf.scale.set(1, 1.4, 1); S.add(leaf); }
+      this.block(0, px, pz, 0.45, 0.45);
+    }
+  }
+  drawScreen(i) {
+    const { cv, tex } = this.screens[i], g = cv.getContext('2d'), t = this.h.t, W = cv.width, H = cv.height;
+    const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#0f2a4a'); gr.addColorStop(1, '#0b4f7f'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.fillStyle = ['#34e0a1', '#5fc0ff', '#ffc94d'][i]; g.font = '800 54px Manrope, system-ui'; g.textAlign = 'left'; g.fillText(t('bankDesk' + i), 40, 80);
+    const steps = t('bankSteps' + i).split('|');
+    steps.forEach((s, k) => {
+      const y = 160 + k * 110;
+      g.fillStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.roundRect(30, y - 60, W - 60, 92, 18); g.fill();
+      g.fillStyle = '#ffffff'; g.beginPath(); g.arc(84, y - 14, 30, 0, 7); g.fill();
+      g.fillStyle = '#0f2a4a'; g.font = '800 36px Manrope, system-ui'; g.textAlign = 'center'; g.fillText(String(k + 1), 84, y - 2);
+      g.fillStyle = '#fff'; g.font = '600 34px Manrope, system-ui'; g.textAlign = 'left'; g.fillText(s, 134, y - 2);
+    });
+    tex.needsUpdate = true;
   }
 }
