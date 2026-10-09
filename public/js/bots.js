@@ -162,27 +162,49 @@ export class Bots {
     const f = this['_' + mg.type]; if (f) f.call(this, b, mg, dt);
   }
 
+  // Football bots: one goalkeeper per team, one player goes for the ball (from behind it, so it never
+  // kicks towards its own goal), the others hold positions. Shots only from close range; otherwise pass or dribble.
   _football(b, mg, dt) {
     const ball = this.mgs.ballSim; if (!ball) return;
-    const P = PITCH, dir = b.team === 'red' ? 1 : -1, goalX = P.x + dir * P.hw;
-    const mates = Object.values(this.b).filter(o => o.team === b.team);
-    const nearest = mates.sort((a, c) => Math.hypot(a.x - ball.x, a.z - ball.z) - Math.hypot(c.x - ball.x, c.z - ball.z))[0];
-    if (nearest === b) {
-      const gx = goalX - ball.x, gz = P.z - ball.z, gl = Math.hypot(gx, gz) || 1;
-      const tx = ball.x - gx / gl * 0.7, tz = ball.z - gz / gl * 0.7;
-      this.moveTo(b, tx, tz, 5.2, dt);
-      b.cd -= dt;
-      if (Math.hypot(ball.x - b.x, ball.z - b.z) < 1.0 && b.cd <= 0 && ball.y < P.h + 1.2) {
-        b.cd = 0.5; const shoot = Math.abs(goalX - ball.x) < 18, sp = shoot ? 13 : 8;
-        const aimZ = P.z + rand(-2.5, 2.5), ax = goalX - ball.x, az = aimZ - ball.z, al = Math.hypot(ax, az) || 1;
-        Object.assign(ball, { vx: ax / al * sp + rand(-1, 1), vz: az / al * sp + rand(-1, 1), vy: shoot ? rand(1, 4) : 0.8 });
-        this.app.net.emit('kick', { vx: ball.vx, vz: ball.vz, vy: ball.vy });
-      }
-    } else {
-      const homeX = P.x - dir * 10 + (mates.indexOf(b) - 1) * dir * 6;
-      this.moveTo(b, homeX * 0.5 + ball.x * 0.5, P.z + (ball.z - P.z) * 0.6 + (mates.indexOf(b) % 2 ? 6 : -6), 3.6, dt);
+    const P = PITCH, dir = b.team === 'red' ? 1 : -1, goalX = P.x + dir * P.hw, ownX = P.x - dir * P.hw;
+    const mates = Object.values(this.b).filter(o => o.team === b.team).sort((a, c) => a.id < c.id ? -1 : 1);
+    const keeper = mates[0], field = mates.slice(1);
+    b.y = P.h; b.cd = (b.cd || 0) - dt;
+    const kick = (vx, vz, vy) => { b.cd = 0.6; Object.assign(ball, { vx, vz, vy }); this.mgs.lastTouch = b.team; this.app.net.emit('kick', { vx, vz, vy, team: b.team }); };
+    const dist = Math.hypot(ball.x - b.x, ball.z - b.z), canKick = dist < 1.0 && b.cd <= 0 && ball.y < P.h + 1.2;
+    if (b === keeper && mates.length > 1) {
+      // stay on the goal line, follow the ball sideways, clear it when it comes close
+      const near = Math.abs(ball.x - ownX) < 9;
+      const tx = near && Math.abs(ball.x - ownX) < 4 ? ball.x : ownX + dir * 1.6, tz = P.z + Math.max(-3.2, Math.min(3.2, ball.z - P.z));
+      this.moveTo(b, tx, tz, 4.6, dt); b.ry = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      if (canKick) kick(dir * 11 + rand(-1, 1), rand(-4, 4), 3);
+      return;
     }
-    b.y = P.h;
+    const chaser = field.slice().sort((a, c) => Math.hypot(a.x - ball.x, a.z - ball.z) - Math.hypot(c.x - ball.x, c.z - ball.z))[0] || b;
+    if (chaser === b) {
+      const behind = (ball.x - b.x) * dir > 0.2; // standing on our side of the ball, facing the right goal
+      if (!behind) { this.moveTo(b, ball.x - dir * 1.3, ball.z + (b.z > ball.z ? 1.3 : -1.3), 5, dt); return; } // go around it
+      const gx = goalX - ball.x, gz = P.z - ball.z, gl = Math.hypot(gx, gz) || 1;
+      this.moveTo(b, ball.x - gx / gl * 0.6, ball.z - gz / gl * 0.6, 4.8, dt);
+      if (!canKick) return;
+      if (Math.abs(goalX - ball.x) < 14) { // shoot, not always perfectly
+        const aimZ = P.z + rand(-3.4, 3.4), ax = goalX - ball.x, az = aimZ - ball.z, al = Math.hypot(ax, az) || 1, sp = rand(9, 12);
+        return kick(ax / al * sp, az / al * sp + rand(-1.5, 1.5), rand(0.8, 3));
+      }
+      // pass to a teammate further up the pitch, or dribble forward
+      const mate = this.targets(mg, id => id !== b.id && mg.teams[id] === b.team).filter(m => (m.x - ball.x) * dir > 2).sort((m1, m2) => Math.hypot(m1.x - ball.x, m1.z - ball.z) - Math.hypot(m2.x - ball.x, m2.z - ball.z))[0];
+      if (mate && Math.random() < 0.6) { const ax = mate.x - ball.x, az = mate.z - ball.z, al = Math.hypot(ax, az) || 1, sp = Math.min(9, 3 + al * 0.5); return kick(ax / al * sp, az / al * sp, 0.4); }
+      const ax = goalX - ball.x, az = (P.z - ball.z) * 0.3, al = Math.hypot(ax, az) || 1; kick(ax / al * 5, az / al * 5 + rand(-1, 1), 0.3);
+    } else {
+      // hold a spot: one defender, one forward, following the ball a little
+      const k = field.indexOf(b), lane = (k % 2 ? 1 : -1) * 6;
+      const hx = k === 0 ? P.x - dir * 8 : P.x + dir * 6;
+      this.moveTo(b, hx * 0.6 + ball.x * 0.4, P.z + lane + (ball.z - P.z) * 0.4, 3.4, dt);
+    }
+  }
+  // after a goal: bots walk back into their own half
+  kickoff() {
+    for (const id in this.b) { const b = this.b[id]; if (!b.team || !this.mgs.ballSim) continue; const dir = b.team === 'red' ? 1 : -1; b.x = PITCH.x - dir * rand(4, 16); b.z = PITCH.z + rand(-12, 12); b.cd = 1.5; }
   }
 
   _dodgeball(b, mg, dt) {

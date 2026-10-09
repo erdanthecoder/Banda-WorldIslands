@@ -608,7 +608,10 @@ export class World {
       const gx = P.x + sx * P.hw;
       this.box(gx, P.h + 1.22, P.z - 3.66, 0.12, 2.44, 0.12, white); this.box(gx, P.h + 1.22, P.z + 3.66, 0.12, 2.44, 0.12, white);
       this.box(gx, P.h + 2.44, P.z, 0.12, 0.12, 7.44, white);
-      const net = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.44, 7.32), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.25 }));
+      // red defends the west goal (x < 0), blue the east goal: the nets carry the team colour
+      const net = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.44, 7.32), new THREE.MeshBasicMaterial({ color: sx < 0 ? 0xff5a4a : 0x4a8dff, wireframe: true, transparent: true, opacity: 0.55 }));
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(7.32, 2.44), new THREE.MeshBasicMaterial({ color: sx < 0 ? 0xc0392b : 0x2e6fd1, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+      back.position.set(gx + sx * 1.65, P.h + 1.22, P.z); back.rotation.y = Math.PI / 2; S.add(back);
       net.position.set(gx + sx * 0.85, P.h + 1.22, P.z); S.add(net);
     }
     const conc = this.texMat(TEX.concrete, 60, 4), seat = new THREE.MeshStandardMaterial({ color: 0x1f4d8c, roughness: 0.55 });

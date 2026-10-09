@@ -1,7 +1,7 @@
 // Multiplayer minigames. Everyone on the server is moved to the arena, a timer runs, then everyone
 // returns with results. The host (whoever started it) runs the authoritative logic.
 import * as THREE from 'three';
-import { PITCH, COURT, isl } from './world.js';
+import { PITCH, COURT, isl, labelSprite } from './world.js';
 import { Impostor } from './impostor.js';
 import { QuizBattle } from './quizbattle.js';
 import { WANT, makeBots } from './bots.js';
@@ -72,6 +72,8 @@ export class Minigames {
       w.teleport(PITCH.x + sx * (6 + r() * 14), PITCH.z + (r() - 0.5) * 24, sx < 0 ? -Math.PI / 2 : Math.PI / 2);
       w.constrain = (x, z) => [Math.max(PITCH.x - PITCH.hw - 1.5, Math.min(PITCH.x + PITCH.hw + 1.5, x)), Math.max(PITCH.z - PITCH.hd - 1.5, Math.min(PITCH.z + PITCH.hd + 1.5, z))];
       this.ballSim = { x: PITCH.x, z: PITCH.z, y: PITCH.h + 0.3, vx: 0, vz: 0, vy: 0 };
+      this.lastTouch = null; this.goalSigns(team);
+      setTimeout(() => app.ui.banner(app.t(team === 'red' ? 'fbRed' : 'fbBlue'), 5000), 3600);
     } else if (mg.type === 'dodgeball') {
       const sz = team === 'red' ? -1 : 1;
       w.teleport(COURT.x + (r() - 0.5) * 24, COURT.z + sz * (3 + r() * 5), sz < 0 ? 0 : Math.PI);
@@ -89,15 +91,30 @@ export class Minigames {
     app.ui.mgButtons(mg.type);
   }
 
+  // a coloured ring under the feet and a team shirt for the match
   setTeamRing(av, team) {
     if (av.ring) { av.group.remove(av.ring); av.ring = null; }
+    const shirt = av.mats && av.mats[1];
+    if (shirt && team) { if (av._shirt === undefined) av._shirt = shirt.color.getHex(); shirt.color.setHex(TEAM_COL[team]); }
+    else if (shirt && av._shirt !== undefined) { shirt.color.setHex(av._shirt); av._shirt = undefined; }
     if (!team) return;
     av.ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.05, 8, 28).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: TEAM_COL[team] }));
     av.ring.position.y = 0.06; av.group.add(av.ring);
   }
 
+  // over your own goal: DEFEND; over the other one: ATTACK (only you see these)
+  goalSigns(team) {
+    const w = this.app.world, P = PITCH, t = this.app.t; this.clearSigns();
+    const own = team === 'red' ? -1 : 1;
+    this.signs = [[own, '🛡️ ' + t('fbDefend'), TEAM_COL[team]], [-own, '⚽ ' + t('fbAttack'), TEAM_COL[team === 'red' ? 'blue' : 'red']]].map(([sx, text, col]) => {
+      const sp = labelSprite(text, 1.1, { bg: '#' + col.toString(16).padStart(6, '0'), weight: 800 }); sp.position.set(P.x + sx * (P.hw + 1), P.h + 4.6, P.z); w.scene.add(sp); return sp;
+    });
+  }
+  clearSigns() { (this.signs || []).forEach(sp => this.app.world.scene.remove(sp)); this.signs = []; }
+
   exit() {
     const { app } = this, w = app.world, mg = this.mg || {}, team = this.myTeam();
+    this.clearSigns();
     this.active = null; w.constrain = null; w.noFence = false; w.frozenUntil = 0; w.clearStars();
     app.ui.blind(false); app.ui.mgHud(null); app.ui.mgButtons(null);
     this.setTeamRing(w.me, null); for (const id in w.remotes) { this.setTeamRing(w.remotes[id].av, null); w.remotes[id].hidden = false; }
@@ -149,10 +166,14 @@ export class Minigames {
     if (mg.type === 'impostor') return this.impostor.event(ev, mg);
     if (mg.type === 'quiz') return this.quiz.event(ev, mg);
     if (ev.type === 'kick' && mg.type === 'football' && this.ballSim) {
+      if (d.team) this.lastTouch = d.team;
       if (ev.from !== this.me.pid) Object.assign(this.ballSim, { vx: d.vx, vz: d.vz, vy: d.vy });
     } else if (ev.type === 'goal') {
-      app.sfx('goal'); app.ui.banner(`${app.t('goal')}! ${app.t(d.team)} ${d.red}:${d.blue}`, 3000);
+      app.sfx('goal'); app.ui.banner(`${d.own ? app.t('ownGoal') : app.t('goal')}! +1 ${app.t(d.team)} · ${app.t('red')} ${d.red} : ${d.blue} ${app.t('blue')}`, 3500);
       app.world.fireworks(4, new THREE.Vector3(d.x, PITCH.h, PITCH.z));
+      // kick-off: everyone back to their own half for a moment
+      const my = this.myTeam(), sx = my === 'red' ? -1 : 1, w = app.world;
+      setTimeout(() => { if (!this.active) return; w.teleport(PITCH.x + sx * (5 + Math.random() * 12), PITCH.z + (Math.random() - 0.5) * 20, sx < 0 ? -Math.PI / 2 : Math.PI / 2); w.frozenUntil = performance.now() + 1500; if (this.ballSim) Object.assign(this.ballSim, { x: PITCH.x, z: PITCH.z, y: PITCH.h + 0.3, vx: 0, vz: 0, vy: 0 }); app.bots && app.bots.kickoff && app.bots.kickoff(); }, 1200);
     } else if (ev.type === 'throw' && mg.type === 'dodgeball') {
       const m = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12), new THREE.MeshStandardMaterial({ color: TEAM_COL[d.team], roughness: 0.5 }));
       m.castShadow = true; m.position.set(...d.o); app.world.scene.add(m);
@@ -218,9 +239,13 @@ export class Minigames {
       this.lastKick = performance.now();
       const power = performance.now() - (this.kickPower || 0) < 600;
       const sp = Math.max(3.5, (w.speedNow || 0) * 1.35) * (power ? 2.6 : 1);
-      const nx = dx / (d || 1), nz = dz / (d || 1);
-      Object.assign(b, { vx: nx * sp, vz: nz * sp, vy: power ? 5 : 0.8, x: me.x + nx * 0.95, z: me.z + nz * 0.95 });
-      this.app.sfx('kick'); this.app.net.emit('kick', { vx: b.vx, vz: b.vz, vy: b.vy });
+      // the ball goes mostly where you're facing (not just away from your body), so you don't knock it backwards
+      const px = dx / (d || 1), pz = dz / (d || 1), ry = w.me.group.rotation.y, fx = Math.sin(ry), fz = Math.cos(ry);
+      let nx = px * 0.35 + fx * 0.65, nz = pz * 0.35 + fz * 0.65; if (px * fx + pz * fz < 0) { nx = px; nz = pz; }
+      const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;
+      Object.assign(b, { vx: nx * sp, vz: nz * sp, vy: power ? 5 : 0.8, x: me.x + px * 0.95, z: me.z + pz * 0.95 });
+      this.lastTouch = this.myTeam();
+      this.app.sfx('kick'); this.app.net.emit('kick', { vx: b.vx, vz: b.vz, vy: b.vy, team: this.lastTouch });
       this.kickPower = 0;
     }
     b.vy -= 20 * dt; b.x += b.vx * dt; b.z += b.vz * dt; b.y += b.vy * dt;
@@ -230,10 +255,11 @@ export class Minigames {
     if (Math.abs(b.x - P.x) > P.hw) {
       const inGoal = Math.abs(b.z - P.z) < 3.6 && b.y < P.h + 2.4;
       if (inGoal && host) {
-        const team = b.x > P.x ? 'red' : 'blue', mg = this.mg, sc = { ...mg.scores }; sc[team]++;
+        // the ball went into the east goal: red scores; west goal: blue scores. Kicked in by the defending team = own goal.
+        const team = b.x > P.x ? 'red' : 'blue', own = !!this.lastTouch && this.lastTouch !== team, mg = this.mg, sc = { ...mg.scores }; sc[team]++;
         this.sync({ ...mg, scores: sc });
-        this.app.net.emit('goal', { team, x: b.x, red: sc.red, blue: sc.blue });
-        Object.assign(b, { x: P.x, z: P.z, y: P.h + 4, vx: 0, vz: 0, vy: 0 });
+        this.app.net.emit('goal', { team, own, x: b.x, red: sc.red, blue: sc.blue });
+        Object.assign(b, { x: P.x, z: P.z, y: P.h + 0.3, vx: 0, vz: 0, vy: 0 }); this.lastTouch = null;
       } else if (!inGoal) { b.x = P.x + Math.sign(b.x - P.x) * P.hw; b.vx *= -0.6; }
     }
     if (host && (this.bt = (this.bt || 0) + dt) > 0.12) { this.bt = 0; this.app.net.setState('ball', { x: +b.x.toFixed(2), z: +b.z.toFixed(2), y: +b.y.toFixed(2), vx: +b.vx.toFixed(2), vz: +b.vz.toFixed(2), vy: +b.vy.toFixed(2) }); }
