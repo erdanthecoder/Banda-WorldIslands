@@ -97,6 +97,20 @@ class SupaNet extends Base {
   async use(item) { const { data, error } = await this.c.rpc('banda_use', { what: item }); if (error) throw error; return data; }
   async bankOpen() { const { data, error } = await this.c.rpc('banda_bank_open'); if (error) throw error; return data; }
   async handSetup() { const { data, error } = await this.c.rpc('banda_hand_setup'); if (error) throw error; return data; }
+  // ---- phone: number, messages, calls (calls go over one channel shared by all servers) ----
+  async phone() { const { data, error } = await this.c.rpc('banda_phone'); if (error) throw error; return data; }
+  async sendMessage(to, from, name, body) { const { error } = await this.c.from('banda_messages').insert({ to_phone: to, from_phone: from, from_name: name, body }); if (error) throw error; }
+  async messages() { const { data } = await this.c.from('banda_messages').select('*').order('created_at', { ascending: false }).limit(200); return data || []; }
+  phoneJoin(num, meta, onMsg, onSig) {
+    this.c.channel('banda-msg-' + num).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banda_messages', filter: `to_phone=eq.${num}` }, ({ new: r }) => onMsg(r)).subscribe();
+    const ch = this.pch = this.c.channel('banda-phone', { config: { presence: { key: num } } });
+    this.online = {};
+    ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(), o = {}; for (const k in st) o[k] = st[k][0]; this.online = o; });
+    ch.on('broadcast', { event: 'ph' }, ({ payload: p }) => { if (p.to === num) onSig(p); });
+    ch.subscribe(s => { if (s === 'SUBSCRIBED') ch.track(meta); });
+    this.myNum = num;
+  }
+  phoneSend(to, type, data) { this.pch && this.pch.send({ type: 'broadcast', event: 'ph', payload: { to, from: this.myNum, type, data } }); }
   async inventory() { const { data } = await this.c.from('banda_inventory').select('item, qty').eq('user_id', this.uid); const o = {}; (data || []).forEach(r => { if (r.qty > 0) o[r.item] = r.qty; }); return o; }
   _bump(uid, patch) { this.users = { ...this.users, [uid]: { ...(this.users[uid] || { stars: 0, points: 0 }), ...patch } }; this._users(this.users); }
   leave() { if (this.ch) this.c.removeChannel(this.ch); }
@@ -165,6 +179,18 @@ class LocalNet extends Base {
   async myRow() { const [u, r] = this._me(); this._save(u); return r; }
   async bankOpen() { const [u, r] = this._me(); r.bank_card ||= '4400 ' + [0, 0, 0].map(() => String(Math.floor(Math.random() * 1e4)).padStart(4, '0')).join(' '); this._save(u); return r.bank_card; }
   async handSetup() { const [u, r] = this._me(); if (!r.bank_card) return false; r.hand_pay = true; this._save(u); return true; }
+  async phone() { const [u, r] = this._me(); if (!r.phone) { const used = new Set(Object.values(u).map(x => x.phone)); do r.phone = String(1000 + Math.floor(Math.random() * 9000)); while (used.has(r.phone)); this._save(u); } return r.phone; }
+  _msgs() { try { return JSON.parse(localStorage.getItem('banda_dev_msgs')) || []; } catch (e) { return []; } }
+  async sendMessage(to, from, name, body) { const m = this._msgs(); const r = { id: Date.now(), to_phone: to, from_phone: from, from_name: name, body, created_at: new Date().toISOString() }; m.unshift(r); localStorage.setItem('banda_dev_msgs', JSON.stringify(m.slice(0, 300))); this.phc && this.phc.postMessage({ k: 'msg', r }); }
+  async messages() { return this._msgs().filter(r => r.to_phone === this.myNum || r.from_phone === this.myNum); }
+  phoneJoin(num, meta, onMsg, onSig) {
+    this.myNum = num; this.online = {}; const seen = {};
+    const ch = this.phc = new BroadcastChannel('banda-phone-dev');
+    ch.onmessage = e => { const m = e.data; if (m.k === 'here') { seen[m.num] = Date.now(); this.online[m.num] = m.meta; } else if (m.k === 'msg' && m.r.to_phone === num) onMsg(m.r); else if (m.k === 'ph' && m.p.to === num) onSig(m.p); };
+    const beat = () => { ch.postMessage({ k: 'here', num, meta }); for (const k in seen) if (Date.now() - seen[k] > 6000) { delete seen[k]; delete this.online[k]; } };
+    beat(); setInterval(beat, 2000);
+  }
+  phoneSend(to, type, data) { this.phc && this.phc.postMessage({ k: 'ph', p: { to, from: this.myNum, type, data } }); }
   leave() {}
 }
 

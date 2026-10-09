@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Banda World Islands</title>
 <meta name="theme-color" content="#0e1622">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230e1622'/><path d='M10 44c8-6 14-6 22 0s14 6 22 0' stroke='%2350b3ff' stroke-width='5' fill='none'/><circle cx='32' cy='24' r='9' fill='%23ffc94d'/></svg>">
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/img/logo.svg"><rect width='64' height='64' rx='14' fill='%230e1622'/><path d='M10 44c8-6 14-6 22 0s14 6 22 0' stroke='%2350b3ff' stroke-width='5' fill='none'/><circle cx='32' cy='24' r='9' fill='%23ffc94d'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
 <link rel="stylesheet" href="/style.css">
@@ -23,7 +24,7 @@
 <!-- Language -->
 <div id="langMenu" class="screen hidden">
   <div class="card">
-    <div class="brand"><span class="mark"></span>Banda World Islands</div>
+    <div class="brand"><img class="mark-img" src="/img/logo.svg" alt="">Banda World Islands</div>
     <p class="muted">Choose your language · Выберите язык</p>
     <div class="row">
       <button class="btn primary big" data-lang="en">English</button>
@@ -35,7 +36,7 @@
 <!-- Sign in -->
 <div id="signin" class="screen hidden">
   <div class="card">
-    <div class="brand"><span class="mark"></span>Banda World Islands</div>
+    <div class="brand"><img class="mark-img" src="/img/logo.svg" alt="">Banda World Islands</div>
     <p class="pill" id="signRole"></p>
     <p data-i18n="signInText"></p>
     <button class="btn primary big" id="signBtn"><span class="ws"></span><span data-i18n="signInWs"></span></button>
@@ -44,7 +45,7 @@
   </div>
 </div>
 
-<div id="loading" class="screen hidden"><div class="card"><div class="spinner"></div><p data-i18n="loading"></p></div></div>
+<div id="loading" class="screen hidden"><div class="card"><img class="logo-big" src="/img/logo.svg" alt=""><div class="spinner"></div><p data-i18n="loading"></p></div></div>
 
 <!-- Avatar creator -->
 <div id="creator" class="modal hidden"><div class="sheet"><div class="sheet-head"><h2 data-i18n="yourAvatar"></h2></div><div id="creatorBody"></div></div></div>
@@ -100,6 +101,7 @@
   </div>
 </div>
 
+<div id="payoutBox" class="modal hidden"><div class="mpay"><div class="mpay-brand"><img src="/img/mbank.svg" class="mb-logo" alt="">mBank</div><p class="po-title" data-i18n="youEarned"></p><div class="po-amount" id="poAmount"></div><div id="poBody"></div></div></div>
 <div id="announce" class="hidden"><small data-i18n="announcement"></small><div id="announceText"></div><small id="announceBy"></small></div>
 <div id="banner" class="hidden"></div>
 <div id="toasts"></div>

@@ -23,20 +23,29 @@ const mat = (color, rough = 0.55, extra = {}) => new THREE.MeshStandardMaterial(
 const rbox = (w, h, d, r = 0.06) => new RoundedBoxGeometry(w, h, d, 3, r);
 const canvas = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
 
-function faceTexture(face) {
-  return canvas(128, 128, (g) => {
+// draws a face onto a 2D canvas context (also used by the phone's video call)
+export function drawFace(g, face) {
     g.fillStyle = '#141414'; g.strokeStyle = '#141414'; g.lineWidth = 6; g.lineCap = 'round';
     const eye = (x, y, r = 7) => { g.beginPath(); g.ellipse(x, y, r * 0.8, r * 1.2, 0, 0, 7); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(x + 2, y - 3, 2.2, 0, 7); g.fill(); g.fillStyle = '#141414'; };
     if (face === 'cool') { g.fillStyle = '#111'; g.beginPath(); g.roundRect(22, 40, 36, 20, 6); g.roundRect(70, 40, 36, 20, 6); g.fill(); g.fillRect(56, 44, 16, 5); g.strokeStyle = '#141414'; }
     else if (face === 'wink') { eye(44, 50); g.beginPath(); g.moveTo(74, 50); g.quadraticCurveTo(84, 44, 94, 50); g.stroke(); }
-    else if (face === 'happy') { for (const x of [44, 84]) { g.beginPath(); g.arc(x, 54, 9, Math.PI, 0); g.stroke(); } }
+    else if (face === 'happy' || face === 'laugh') { for (const x of [44, 84]) { g.beginPath(); g.arc(x, 54, 9, Math.PI, 0); g.stroke(); } }
+    else if (face === 'angry') { eye(44, 54, 6); eye(84, 54, 6); g.lineWidth = 7; g.beginPath(); g.moveTo(30, 34); g.lineTo(56, 44); g.moveTo(98, 34); g.lineTo(72, 44); g.stroke(); g.lineWidth = 6; }
+    else if (face === 'sad') { eye(44, 52); eye(84, 52); g.lineWidth = 5; g.beginPath(); g.moveTo(32, 40); g.lineTo(54, 34); g.moveTo(96, 40); g.lineTo(74, 34); g.stroke(); g.fillStyle = '#6cc4ff'; g.beginPath(); g.ellipse(36, 70, 4, 7, 0, 0, 7); g.fill(); g.fillStyle = '#141414'; g.lineWidth = 6; }
+    else if (face === 'excited') { const star = (cx, cy) => { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 4 : 11, a = i / 10 * Math.PI * 2 - Math.PI / 2; g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } g.fill(); }; g.fillStyle = '#f5b301'; star(44, 50); star(84, 50); g.fillStyle = '#141414'; }
     else eye(44, 50), eye(84, 50);
     if (face === 'wow') { g.beginPath(); g.ellipse(64, 88, 9, 12, 0, 0, 7); g.fill(); }
-    else if (face === 'grin') { g.fillStyle = '#141414'; g.beginPath(); g.moveTo(38, 78); g.quadraticCurveTo(64, 112, 90, 78); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.fillRect(46, 79, 36, 6); }
+    else if (face === 'grin' || face === 'laugh' || face === 'excited') { g.fillStyle = '#141414'; g.beginPath(); g.moveTo(36, 76); g.quadraticCurveTo(64, 118, 92, 76); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.fillRect(44, 77, 40, 6); g.fillStyle = '#e66'; g.beginPath(); g.ellipse(64, 98, 12, 6, 0, 0, 7); g.fill(); }
+    else if (face === 'angry') { g.beginPath(); g.moveTo(44, 94); g.quadraticCurveTo(64, 80, 84, 94); g.stroke(); }
+    else if (face === 'sad') { g.beginPath(); g.moveTo(44, 96); g.quadraticCurveTo(64, 80, 84, 96); g.stroke(); }
     else { g.beginPath(); g.moveTo(42, 82); g.quadraticCurveTo(64, 102, 86, 82); g.stroke(); }
-    if (face === 'happy' || face === 'smile') { g.fillStyle = 'rgba(255,110,110,0.35)'; g.beginPath(); g.arc(30, 72, 8, 0, 7); g.arc(98, 72, 8, 0, 7); g.fill(); }
-  });
+    if (face === 'happy' || face === 'smile' || face === 'laugh') { g.fillStyle = 'rgba(255,110,110,0.35)'; g.beginPath(); g.arc(30, 72, 8, 0, 7); g.arc(98, 72, 8, 0, 7); g.fill(); }
+    if (face === 'angry') { g.fillStyle = 'rgba(230,40,40,0.25)'; g.beginPath(); g.arc(30, 74, 10, 0, 7); g.arc(98, 74, 10, 0, 7); g.fill(); }
 }
+const faceCache = {};
+function faceTexture(face) { return faceCache[face] ||= canvas(128, 128, g => drawFace(g, face)); }
+// faces the camera can switch to during a video call
+export const MOODS = ['laugh', 'angry', 'excited', 'sad'];
 function shirtTexture(top, color) {
   return canvas(128, 128, (g, w, h) => {
     if (top === 'stripes') { for (let y = 0; y < h; y += 24) { g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(0, y, w, 10); } }
@@ -82,7 +91,7 @@ export class Avatar {
     add(new THREE.SphereGeometry(0.62 * S, 24, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), skin, 0, -0.6 * S, 0, head).scale.y = 0.35;
     add(new THREE.CylinderGeometry(0.28 * S, 0.3 * S, 0.3 * S, 12), skin, 0, -0.75 * S, 0, head);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * S, 1.0 * S), new THREE.MeshStandardMaterial({ map: faceTexture(cfg.face), transparent: true, roughness: 0.5 }));
-    face.position.set(0, 0.02 * S, 0.625 * S); head.add(face); this.mats.push(face.material);
+    face.position.set(0, 0.02 * S, 0.625 * S); head.add(face); this.mats.push(face.material); this.faceMesh = face;
     // hair
     const hs = cfg.hair, top = (h, back = 0) => add(rbox(1.36 * S, h * S, (1.36 + back) * S, 0.12), hairM, 0, (0.66 - h / 2 + 0.25) * S, -back / 2 * S, head);
     if (hs === 'short') top(0.55, 0.05);
@@ -114,6 +123,8 @@ export class Avatar {
     this.phase = 0; this.emote = null; this.emoteT = 0;
   }
   play(emote) { this.emote = emote; this.emoteT = 0; }
+  // mood from the camera during a call ('' = back to the chosen face)
+  setMood(m) { const f = m && (MOODS.includes(m) || FACES.includes(m)) ? m : this.cfg.face; if (this.mood === f) return; this.mood = f; this.faceMesh.material.map = faceTexture(f); this.faceMesh.material.needsUpdate = true; }
   animate(speed, dt, air) {
     const k = Math.min(1, speed / 6), run = speed > 6.5;
     this.phase += dt * (4 + speed * 1.3);

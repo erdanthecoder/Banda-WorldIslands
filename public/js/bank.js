@@ -12,16 +12,15 @@ export class BankUI {
     this.app = app;
     document.body.append(
       el(`<div id="bankBox" class="modal hidden"><div class="sheet small bank-sheet"><div class="sheet-head"><h2 id="bankTitle"></h2><button class="ibtn light" data-x>✕</button></div><div id="bankBody"></div></div></div>`),
-      el(`<div id="phoneBox" class="modal hidden"><div class="phone"><div class="phone-notch"></div><button class="phone-x" data-x>✕</button><div id="phoneBody"></div></div></div>`),
     );
-    document.querySelectorAll('#bankBox [data-x], #phoneBox [data-x]').forEach(b => b.onclick = () => this.close());
+    document.querySelectorAll('#bankBox [data-x]').forEach(b => b.onclick = () => this.close());
   }
   get t() { return this.app.t; }
   lock(on) { this.app.world.inputLocked = on; this.app.world.keys = {}; }
-  close() { $('#bankBox').classList.add('hidden'); $('#phoneBox').classList.add('hidden'); this.lock(false); }
+  close() { $('#bankBox').classList.add('hidden'); this.lock(false); }
   card(small = false) {
     const b = this.app.bank || {};
-    return `<div class="bankcard${small ? ' small' : ''}"><b>mBank</b><i class="chip-gold"></i><span class="cardno">${esc(b.card || '•••• •••• •••• ••••')}</span><small class="cardname">${esc(this.app.me.name)}</small>${b.hand ? '<em>✋ Hand Pay</em>' : ''}</div>`;
+    return `<div class="bankcard${small ? ' small' : ''}"><b><img src="/img/mbank.svg" alt="">mBank</b><i class="chip-gold"></i><span class="cardno">${esc(b.card || '•••• •••• •••• ••••')}</span><small class="cardname">${esc(this.app.me.name)}</small>${b.hand ? '<em>✋ Hand Pay</em>' : ''}</div>`;
   }
   say(i, html, actions = '') {
     $('#bankTitle').textContent = this.t('bankDesk' + i);
@@ -64,18 +63,16 @@ export class BankUI {
     P.addEventListener('pointerup', up); P.addEventListener('pointerleave', up); P.addEventListener('pointercancel', up);
   }
 
-  // the phone: mBank app
-  phone() {
-    const t = this.t, b = this.app.bank || {};
-    const log = this.app.payLog ? this.app.payLog() : [];
-    $('#phoneBody').innerHTML = `
-      <div class="app-head"><span class="mpay-logo">m</span><b>mBank</b></div>
-      ${b.card ? this.card(true) : `<div class="nocard">🏦<b>${t('needCard')}</b><span>${t('needCardHow')}</span></div>`}
+  // the mBank app inside the phone
+  appHtml() {
+    const t = this.t, b = this.app.bank || {}, log = this.app.payLog ? this.app.payLog() : [], pend = this.app.pending || 0;
+    return `${b.card ? this.card(true) : `<div class="nocard">🏦<b>${t('needCard')}</b><span>${t('needCardHow')}</span></div>`}
       <div class="app-bal"><small>${t('balance')}</small><b>${money(this.app.money)}</b></div>
+      ${pend ? `<button class="ph-wide primary" id="bkClaim">💵 ${t('claimMoney')} ${money(pend)}</button>` : ''}
       <div class="app-row"><span>✋ Hand Pay</span><b class="${b.hand ? 'ok' : 'off'}">${b.hand ? t('on') : t('off')}</b></div>
       <h4>${t('recent')}</h4>
-      <div class="app-log">${log.length ? log.map(l => `<div><span>${l.items.map(i => ICON[i.item] || '').join(' ')} ${l.how === 'hand' ? '✋' : '📱'}</span><b>−${money(l.total)}</b></div>`).join('') : `<p class="muted">${t('noPayments')}</p>`}</div>
+      <div class="app-log">${log.length ? log.map(l => `<div><span>${l.items ? l.items.map(i => ICON[i.item] || '').join(' ') : '💵'} ${l.how === 'hand' ? '✋' : '📱'}</span><b>${l.items ? '−' : '+'}${money(l.total)}</b></div>`).join('') : `<p class="muted">${t('noPayments')}</p>`}</div>
       <p class="app-tip">${t('earnTip')}</p>`;
-    $('#phoneBox').classList.remove('hidden'); this.lock(true); this.app.sfx('click');
   }
+  bindApp(root) { const c = root.querySelector('#bkClaim'); if (c) c.onclick = () => { this.app.phone.close(); this.app.payout(); }; }
 }

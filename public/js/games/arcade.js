@@ -23,7 +23,7 @@ export function flappy(ctx) {
       pipes.forEach(p => { p.x -= 170 * dt; if (!p.pass && p.x + 70 < 120) { p.pass = true; score++; ctx.sfx('star'); } });
       pipes = pipes.filter(p => p.x > -80);
       const hit = bird.y > 600 || bird.y < 0 || pipes.some(p => 120 + 16 > p.x && 120 - 16 < p.x + 70 && (bird.y - 14 < p.gap - 80 || bird.y + 14 > p.gap + 80));
-      if (hit) { state = 'dead'; ctx.sfx('hit'); ctx.earn && ctx.earn(score * 10); if (score > best) { best = score; localStorage.setItem('banda_flappy', best); } }
+      if (hit) { state = 'dead'; ctx.sfx('hit'); if (score > best) { best = score; localStorage.setItem('banda_flappy', best); } }
     }
     const sky = g.createLinearGradient(0, 0, 0, 640); sky.addColorStop(0, '#4fb3ff'); sky.addColorStop(1, '#c9f0ff');
     g.fillStyle = sky; g.fillRect(0, 0, 480, 640);
@@ -65,7 +65,7 @@ export function snake(ctx) {
   timer = setInterval(() => {
     if (!dead) {
       dir = nd; const hd = { x: sn[0].x + dir.x, y: sn[0].y + dir.y };
-      if (hd.x < 0 || hd.y < 0 || hd.x >= N || hd.y >= N || sn.some(p => p.x === hd.x && p.y === hd.y)) { dead = true; ctx.sfx('hit'); ctx.earn && ctx.earn(score * 10); }
+      if (hd.x < 0 || hd.y < 0 || hd.x >= N || hd.y >= N || sn.some(p => p.x === hd.x && p.y === hd.y)) { dead = true; ctx.sfx('hit'); }
       else { sn.unshift(hd); if (hd.x === food.x && hd.y === food.y) { score++; ctx.sfx('star'); place(); } else sn.pop(); }
     }
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { g.fillStyle = (x + y) % 2 ? '#a8d86a' : '#b5e27a'; g.fillRect(x * S, y * S, S, S); }
@@ -235,8 +235,8 @@ export function breaker(ctx) {
           if (--b.hp <= 0) { score += 10; ctx.sfx('star'); for (let i = 0; i < 10; i++) parts.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300, t: 0.6, c: b.c }); } else ctx.sfx('place');
           break;
         }
-        if (ball.y > H + 20) { lives--; ctx.sfx('hit'); if (lives <= 0) { state = 'over'; ctx.earn && ctx.earn(score); } else serve(); }
-        if (bricks.every(b => b.hp <= 0)) { level++; ctx.sfx('cheer'); ctx.earn && ctx.earn(50 * level); build(); serve(); }
+        if (ball.y > H + 20) { lives--; ctx.sfx('hit'); if (lives <= 0) { state = 'over'; } else serve(); }
+        if (bricks.every(b => b.hp <= 0)) { level++; ctx.sfx('cheer'); build(); serve(); }
       }
     }
     parts.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.t -= dt; }); parts = parts.filter(p => p.t > 0);
@@ -274,7 +274,7 @@ export function dodger(ctx) {
       if (touchX !== null) dir = Math.abs(touchX - me.x) < 8 ? 0 : Math.sign(touchX - me.x);
       me.vx += (dir * 420 - me.vx) * Math.min(1, dt * 10); me.x = Math.max(24, Math.min(W - 24, me.x + me.vx * dt));
       spawn -= dt; if (spawn <= 0) { spawn = Math.max(0.18, 0.7 - time * 0.012); const coin = Math.random() < 0.18; things.push({ x: 20 + Math.random() * (W - 40), y: -30, v: (coin ? 160 : 200) + time * 6 + Math.random() * 80, r: coin ? 12 : 14 + Math.random() * 14, coin, rot: 0 }); }
-      for (const o of things) { o.y += o.v * dt; o.rot += dt * 3; if (Math.hypot(o.x - me.x, o.y - (H - 70)) < o.r + 18) { if (o.coin) { coins++; o.y = H + 100; ctx.sfx('coin'); } else { state = 'over'; ctx.sfx('hit'); if (score > best) { best = score; localStorage.setItem('banda_dodger', best); } ctx.earn && ctx.earn(Math.floor(time * 2) + coins * 25); } } }
+      for (const o of things) { o.y += o.v * dt; o.rot += dt * 3; if (Math.hypot(o.x - me.x, o.y - (H - 70)) < o.r + 18) { if (o.coin) { coins++; o.y = H + 100; ctx.sfx('coin'); } else { state = 'over'; ctx.sfx('hit'); if (score > best) { best = score; localStorage.setItem('banda_dodger', best); } } } }
       things = things.filter(o => o.y < H + 40);
     }
     g.fillStyle = '#070b1d'; g.fillRect(0, 0, W, H);

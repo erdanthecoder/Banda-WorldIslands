@@ -3,14 +3,15 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { TEX, canvasTex, labelSprite, TOWER, MARKET, BANK } from './world.js';
 import { Avatar } from './avatar.js';
+import { CinemaShow } from './cinema.js';
 
 const glassMat = () => new THREE.MeshStandardMaterial({ color: 0x9cc3d6, metalness: 0.9, roughness: 0.04, transparent: true, opacity: 0.26, envMapIntensity: 1.6, depthWrite: false, side: THREE.DoubleSide });
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
 
 // A rectangular, axis-aligned building with floors you can walk on.
 export class Building {
-  constructor(world, { x, z, w, d, floors = 1, fh = 5, base, door }) {
-    Object.assign(this, { world, x, z, w, d, floors, fh, base, door });
+  constructor(world, { x, z, w, d, floors = 1, fh = 5, base, door, round = 0 }) {
+    Object.assign(this, { world, x, z, w, d, floors, fh, base, door, round });
     this.minX = x - w / 2; this.maxX = x + w / 2; this.minZ = z - d / 2; this.maxZ = z + d / 2;
     this.walls = Array.from({ length: floors }, () => []);
     this.floorFns = Array.from({ length: floors }, () => null);
@@ -20,6 +21,12 @@ export class Building {
     this.outerWalls();
   }
   outerWalls() {
+    if (this.round) {
+      // a round building: a ring of posts outside (with a gap for the door); inside, you're kept within the circle
+      const R = this.round + 0.15, gap = Math.asin(Math.min(1, (this.door.width / 2) / R));
+      for (let i = 0; i < 160; i++) { const a = i / 160 * Math.PI * 2, rel = Math.atan2(Math.sin(a), Math.cos(a)); if (Math.abs(rel) < gap) continue; this.world.solids.push({ x: this.x + Math.sin(a) * R, z: this.z + Math.cos(a) * R, r: 0.55, y0: this.base - 2, y1: this.base + 3 }); }
+      return;
+    }
     const { x, z, w, d, minX, maxX, minZ, maxZ, door } = this, t = 0.15;
     const sides = { n: [x, minZ + t, w / 2, t], s: [x, maxZ - t, w / 2, t], w: [minX + t, z, t, d / 2], e: [maxX - t, z, t, d / 2] };
     for (const k in sides) {
@@ -36,14 +43,15 @@ export class Building {
       }
     }
   }
-  contains(px, pz) { return px > this.minX && px < this.maxX && pz > this.minZ && pz < this.maxZ; }
+  contains(px, pz) { return this.round ? Math.hypot(px - this.x, pz - this.z) < this.round : px > this.minX && px < this.maxX && pz > this.minZ && pz < this.maxZ; }
   levelAt(y) { return Math.max(0, Math.min(this.floors - 1, Math.floor((y - this.base + 1.2) / this.fh))); }
   floorY(lv) { return this.base + lv * this.fh; }
   interior(px, py, pz) {
     if (!this.contains(px, pz) || py < this.base - 3 || py > this.base + this.floors * this.fh + 2) return null;
     const lv = this.levelAt(py), fy = this.floorY(lv), fn = this.floorFns[lv];
     return { floor: fy, floorAt: fn ? (ax, az) => fn(ax, az) ?? fy : null, ceil: this.fh - 0.4, walls: this.walls[lv].concat(this.dynamicWalls.filter(w => w.lv === lv && w.on())), noClamp: true,
-      minX: this.minX, maxX: this.maxX, minZ: this.minZ, maxZ: this.maxZ, level: lv, building: this };
+      minX: this.round ? this.x - this.round : this.minX, maxX: this.round ? this.x + this.round : this.maxX, minZ: this.round ? this.z - this.round : this.minZ, maxZ: this.round ? this.z + this.round : this.maxZ,
+      round: this.round ? { x: this.x, z: this.z, r: this.round - 0.45, door: lv === 0 ? this.door.width / 2 : 0 } : null, level: lv, building: this };
   }
   // furniture that blocks walking on one floor
   block(lv, cx, cz, hw, hd) { this.walls[lv].push({ x: cx, z: cz, hw, hd }); }
@@ -174,72 +182,85 @@ export const FLOORS = ['f_lobby', 'f_pool', 'f_lab', 'f_hotel', 'f_spa', 'f_cine
 export class Tower extends Building {
   constructor(world, h) {
     const T = TOWER;
-    super(world, { x: T.x, z: T.z, w: T.w, d: T.d, floors: T.floors, fh: T.fh, base: T.base, door: { side: 's', at: T.x, width: 6 } });
+    super(world, { x: T.x, z: T.z, w: T.w, d: T.d, floors: T.floors, fh: T.fh, base: T.base, door: { side: 's', at: T.x, width: 6.4 }, round: T.R });
     this.h = h; // hooks from main: { station(lv, kind, x, z), pad(lv, type, x, z), panel(elev), t }
     this.shell(); this.slabs();
     this.elevators = [new Elevator(this, T.x - 5, this.minZ + 1.9, e => h.panel(e)), new Elevator(this, T.x + 5, this.minZ + 1.9, e => h.panel(e))];
-    for (const ex of [-5, 5]) for (let lv = 0; lv < this.floors; lv++) { this.block(lv, T.x + ex - 1.72, this.minZ + 1.9, 0.1, 1.8); this.block(lv, T.x + ex + 1.72, this.minZ + 1.9, 0.1, 1.8); }
+    for (const ex of [-5, 5]) for (let lv = 0; lv < this.floors; lv++) { this.block(lv, T.x + ex - 1.72, this.minZ + 1.9, 0.1, 1.8); this.block(lv, T.x + ex + 1.72, this.minZ + 1.9, 0.1, 1.8); this.block(lv, T.x + ex, this.minZ + 0.05, 1.8, 0.15); }
     [this.lobby, this.pool, this.lab, this.hotel, this.spa, this.cinema, this.arcade, this.games].forEach((f, lv) => { f.call(this, lv); this.floorSign(lv); });
     // interior lights follow the floor you're on
     for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xfff1dc, 0, 28, 1.5); world.scene.add(l); this.lights.push(l); }
   }
-  // glass curtain wall, white floor bands, mullions, rooftop crown and sign
+  // a round glass tower: floor rings, twin LED helixes, a crown with the name and a floating halo
   shell() {
-    const { x, z, w, d, base, fh, floors, minX, maxX, minZ, maxZ } = this, H = floors * fh, S = this.world.scene, glass = glassMat();
-    const panel = (cx, cy, cz, pw, ph, rotY) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), glass); m.position.set(cx, cy, cz); m.rotation.y = rotY; m.renderOrder = 2; S.add(m); };
-    panel(x, base + H / 2, minZ, w, H, 0); panel(minX, base + H / 2, z, d, H, Math.PI / 2); panel(maxX, base + H / 2, z, d, H, Math.PI / 2);
-    panel(x, base + fh + (H - fh) / 2, maxZ, w, H - fh, 0);
-    panel(x - 3 - (w / 2 - 3) / 2, base + fh / 2, maxZ, w / 2 - 3, fh, 0); panel(x + 3 + (w / 2 - 3) / 2, base + fh / 2, maxZ, w / 2 - 3, fh, 0);
-    const white = std(0xeef0f2, { roughness: 0.4 }), dark = std(0x23272d, { metalness: 0.8, roughness: 0.3 });
+    const { x, z, base, fh, floors } = this, R = this.round, H = floors * fh, S = this.world.scene, top = base + H;
+    const glass = glassMat(); glass.opacity = 0.22; glass.color.set(0x8fd3ff);
+    const gap = Math.asin((this.door.width / 2 + 0.4) / R);
+    const ground = new THREE.Mesh(new THREE.CylinderGeometry(R, R, fh, 120, 1, true, gap, Math.PI * 2 - gap * 2), glass); ground.position.set(x, base + fh / 2, z); ground.renderOrder = 2; S.add(ground);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H - fh, 120, 1, true), glass); upper.position.set(x, base + fh + (H - fh) / 2, z); upper.renderOrder = 2; S.add(upper);
+    const white = std(0xf4f6f8, { roughness: 0.25, metalness: 0.3 }), dark = std(0x1a1f27, { metalness: 0.85, roughness: 0.25 });
+    // floor rings: a white edge with a thin cyan light line
     for (let lv = 1; lv <= floors; lv++) {
       const y = base + lv * fh;
-      // white floor band: a trim around the outside edge only
-      for (const [bx, bz, bw, bd] of [[x, minZ - 0.3, w + 1.2, 0.7], [x, maxZ + 0.3, w + 1.2, 0.7], [minX - 0.3, z, 0.7, d], [maxX + 0.3, z, 0.7, d]]) {
-        const band = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.55, bd), white); band.position.set(bx, y - 0.1, bz); band.castShadow = band.receiveShadow = true; S.add(band);
-      }
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.9, R + 0.9, 0.55, 120, 1, true), white); ring.position.set(x, y - 0.1, z); S.add(ring);
+      const lid = new THREE.Mesh(new THREE.RingGeometry(R - 0.05, R + 0.9, 120).rotateX(-Math.PI / 2), white); lid.position.set(x, y + 0.18, z); S.add(lid);
+      const under = lid.clone(); under.rotation.x = Math.PI; under.position.y = y - 0.38; S.add(under);
+      const led = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.92, R + 0.92, 0.06, 120, 1, true), std(0x5fd0ff, { emissive: 0x36c2ff, emissiveIntensity: 2.2 })); led.position.set(x, y - 0.32, z); S.add(led);
     }
-    for (let k = 0; k <= 11; k++) { const mx = minX + k * w / 11; for (const mz of [minZ, maxZ]) { if (mz === maxZ && Math.abs(mx - x) < 3.2) continue; const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, H, 0.18), dark); m.position.set(mx, base + H / 2, mz); S.add(m); } }
-    for (let k = 0; k <= 7; k++) { const mz = minZ + k * d / 7; for (const mx of [minX, maxX]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.18, H, 0.12), dark); m.position.set(mx, base + H / 2, mz); S.add(m); } }
-    // crown: set-back penthouse, LED sign, antenna, helipad
-    const top = base + H;
-    const crown = new THREE.Mesh(new RoundedBox(w - 10, 4, d - 8, 3, 0.6), std(0x1d2128, { metalness: 0.7, roughness: 0.25 })); crown.position.set(x, top + 2.2, z); crown.castShadow = true; S.add(crown);
-    const signT = canvasTex(1024, 192, (g, W, Hh) => { g.fillStyle = 'rgba(0,0,0,0)'; g.clearRect(0, 0, W, Hh); g.font = '800 128px Manrope, system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#36c2ff'; g.shadowBlur = 30; g.fillStyle = '#e9f8ff'; g.fillText('BANDA TOWER', W / 2, Hh / 2 + 6); });
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 4.9), new THREE.MeshBasicMaterial({ map: signT, transparent: true, depthWrite: false })); sign.position.set(x, top + 2.4, z + (d - 8) / 2 + 0.05); S.add(sign);
-    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, 12, 8), dark); ant.position.set(x + 10, top + 10, z - 6); S.add(ant);
-    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 8), std(0xff2a2a, { emissive: 0xff0000, emissiveIntensity: 3 })); beacon.position.set(x + 10, top + 16.2, z - 6); S.add(beacon);
-    this.world.updaters.push((dt, t) => { beacon.visible = Math.sin(t * 4) > 0; });
-    const heli = new THREE.Mesh(new THREE.CircleGeometry(5, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, g => { g.fillStyle = '#2b2f36'; g.fillRect(0, 0, 256, 256); g.strokeStyle = '#ffd34d'; g.lineWidth = 10; g.beginPath(); g.arc(128, 128, 110, 0, 7); g.stroke(); g.fillStyle = '#fff'; g.font = '900 140px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('H', 128, 136); }) }));
-    heli.position.set(x - 8, top + 4.25, z); S.add(heli);
-    // entrance canopy and sliding glass doors
-    const canopy = new THREE.Mesh(new RoundedBox(14, 0.4, 6, 2, 0.15), white); canopy.position.set(x, base + 4.4, maxZ + 3); canopy.castShadow = true; S.add(canopy);
-    for (const sx of [-6.5, 6.5]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 4.4, 12), dark); p.position.set(x + sx, base + 2.2, maxZ + 5.6); S.add(p); this.world.solids.push({ x: x + sx, z: maxZ + 5.6, r: 0.25 }); }
-    const dl = new THREE.Mesh(new THREE.BoxGeometry(3, 3.4, 0.08), glassMat()), dr = dl.clone(); S.add(dl, dr);
-    const name = labelSprite('BANDA TOWER', 0.9, { bg: null, weight: 800 }); name.position.set(x, base + 5.2, maxZ + 6.05); S.add(name);
+    // slim vertical fins
+    const finG = new THREE.BoxGeometry(0.12, H, 0.5);
+    for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2; if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < gap + 0.05) continue; const f = new THREE.Mesh(finG, dark); f.position.set(x + Math.sin(a) * (R + 0.25), base + H / 2, z + Math.cos(a) * (R + 0.25)); f.rotation.y = a; S.add(f); }
+    // two glowing helixes wrapping the tower
+    for (const [col, ph] of [[0x36c2ff, 0], [0xff4fd8, Math.PI]]) {
+      const pts = []; for (let i = 0; i <= 200; i++) { const k = i / 200, a = ph + k * Math.PI * 4; pts.push(new THREE.Vector3(x + Math.sin(a) * (R + 0.6), base + fh + k * (H - fh), z + Math.cos(a) * (R + 0.6))); }
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 400, 0.09, 8), std(col, { emissive: col, emissiveIntensity: 2.6 })); S.add(tube);
+    }
+    // crown: a tapered band with the name all around, a halo ring and a spire
+    const nameT = canvasTex(2048, 128, (g, W, Hh) => { g.fillStyle = '#0d1420'; g.fillRect(0, 0, W, Hh); g.font = '800 84px Manrope, system-ui'; g.textBaseline = 'middle'; g.shadowColor = '#36c2ff'; g.shadowBlur = 24; g.fillStyle = '#e9f8ff'; for (let i = 0; i < 3; i++) g.fillText('BANDA TOWER  ✦', i * W / 3 + 30, Hh / 2 + 4); });
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(R - 3, R + 0.9, 3.4, 120, 1, true), new THREE.MeshStandardMaterial({ map: nameT, emissive: 0xffffff, emissiveMap: nameT, emissiveIntensity: 0.9, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.3 }));
+    crown.position.set(x, top + 1.7, z); S.add(crown);
+    const roof = new THREE.Mesh(new THREE.CircleGeometry(R - 3, 96).rotateX(-Math.PI / 2), dark); roof.position.set(x, top + 3.4, z); S.add(roof);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(R - 8, 0.35, 12, 120), std(0x5fd0ff, { emissive: 0x36c2ff, emissiveIntensity: 3 })); halo.rotation.x = Math.PI / 2; halo.position.set(x, top + 8, z); S.add(halo);
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, st = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.6, 8), dark); st.position.set(x + Math.sin(a) * (R - 8), top + 5.7, z + Math.cos(a) * (R - 8)); S.add(st); }
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(1.2, 18, 24), std(0xdfe6ee, { metalness: 0.9, roughness: 0.15 })); spire.position.set(x, top + 12.4, z); S.add(spire);
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 12), std(0xff2a2a, { emissive: 0xff0000, emissiveIntensity: 4 })); beacon.position.set(x, top + 21.6, z); S.add(beacon);
+    this.world.updaters.push((dt, t) => { beacon.visible = Math.sin(t * 4) > 0; halo.position.y = top + 8 + Math.sin(t * 0.8) * 0.4; halo.rotation.z = t * 0.2; });
+    // plinth, entrance canopy and sliding doors
+    const plinth = new THREE.Mesh(new THREE.CylinderGeometry(R + 3, R + 3.4, 0.3, 120), std(0xd7d9dc, { roughness: 0.6 })); plinth.position.set(x, base - 0.14, z); plinth.receiveShadow = true; S.add(plinth);
+    const cz = z + R;
+    const canopy = new THREE.Mesh(new THREE.CylinderGeometry(R + 6, R + 6, 0.35, 64, 1, false, -0.26, 0.52), white); canopy.position.set(x, base + 4.6, z); canopy.castShadow = true; S.add(canopy);
+    const canGlow = new THREE.Mesh(new THREE.CylinderGeometry(R + 6.02, R + 6.02, 0.08, 64, 1, true, -0.26, 0.52), std(0x5fd0ff, { emissive: 0x36c2ff, emissiveIntensity: 2.5 })); canGlow.position.set(x, base + 4.5, z); S.add(canGlow);
+    for (const sx of [-5.5, 5.5]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4.6, 16), dark); p.position.set(x + sx, base + 2.3, cz + 5.2); S.add(p); this.world.solids.push({ x: x + sx, z: cz + 5.2, r: 0.3 }); }
+    const dl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.6, 0.08), glassMat()), dr = dl.clone(); S.add(dl, dr);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.4, 0.3), dark); frame.position.set(x, base + 3.8, cz - 0.1); S.add(frame);
+    const name = labelSprite('BANDA TOWER', 0.9, { bg: null, weight: 800 }); name.position.set(x, base + 5.6, cz + 5.6); S.add(name);
     this.world.updaters.push(() => {
-      const p = this.world.me?.group.position, near = p && Math.abs(p.x - x) < 4 && Math.abs(p.z - maxZ) < 5 && p.y < base + 2 ? 1 : 0;
+      const p = this.world.me?.group.position, near = p && Math.abs(p.x - x) < 4 && Math.abs(p.z - cz) < 5 && p.y < base + 2 ? 1 : 0;
       this.doorOpen = (this.doorOpen || 0) + (near - (this.doorOpen || 0)) * 0.12;
-      dl.position.set(x - 1.5 - this.doorOpen * 2.9, base + 1.7, maxZ); dr.position.set(x + 1.5 + this.doorOpen * 2.9, base + 1.7, maxZ);
+      dl.position.set(x - 1.6 - this.doorOpen * 3, base + 1.8, cz - 0.1); dr.position.set(x + 1.6 + this.doorOpen * 3, base + 1.8, cz - 0.1);
     });
   }
-  // floor slabs with openings for the two elevator shafts, ceilings with lights
+  // round floor slabs with openings for the two elevator shafts (and the pool), ceilings with lights
   slabs() {
-    const { x, w, d, minX, maxX, minZ, maxZ, floors } = this, S = this.world.scene;
-    const floorMats = [TEX.tile, TEX.tile, TEX.wood, TEX.wood, TEX.wood, TEX.wood, TEX.tile, TEX.tile].map((t, i) => this.world.texMat(t, w, d, { color: [0xf2efe8, 0xd6eef5, 0xdcd3c4, 0xb08a64, 0xc9b49a, 0x6e4c38, 0x2a2440, 0x1e2a36][i], roughness: i === 6 || i === 7 ? 0.5 : 0.6 }));
+    const { x, z, minZ, floors } = this, R = this.round, S = this.world.scene;
+    const cols = [0xf2efe8, 0xd6eef5, 0xdcd3c4, 0xb08a64, 0xc9b49a, 0x6e4c38, 0x2a2440, 0x1e2a36];
     const lamp = std(0xffffff, { emissive: 0xfff4e4, emissiveIntensity: 1.8 });
-    const shaftZ0 = minZ, shaftZ1 = minZ + 3.6;
+    const rect = (x0, x1, z0, z1) => { const p = new THREE.Path(); p.moveTo(x0, -z0); p.lineTo(x0, -z1); p.lineTo(x1, -z1); p.lineTo(x1, -z0); p.closePath(); return p; };
     for (let lv = 0; lv <= floors; lv++) {
-      const y = this.base + lv * this.fh, mat = lv < floors ? floorMats[lv] : std(0x8a8f96);
-      const piece = (x0, x1, z0, z1) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.32, z1 - z0), mat); m.position.set((x0 + x1) / 2, y - 0.16 + (lv === 0 ? 0.05 : 0), (z0 + z1) / 2); m.castShadow = lv > 0; m.receiveShadow = true; S.add(m); };
-      if (lv === 1) { // hole for the swimming pool
-        const px0 = x - 12, px1 = x + 12, pz0 = this.z - 5, pz1 = this.z + 9;
-        piece(minX, px0, shaftZ1, maxZ); piece(px1, maxX, shaftZ1, maxZ); piece(px0, px1, shaftZ1, pz0); piece(px0, px1, pz1, maxZ);
-      } else piece(minX, maxX, shaftZ1, maxZ);
-      if (lv === 0) piece(minX, maxX, shaftZ0, shaftZ1);
-      else { piece(minX, x - 6.6, shaftZ0, shaftZ1); piece(x - 3.4, x + 3.4, shaftZ0, shaftZ1); piece(x + 6.6, maxX, shaftZ0, shaftZ1); }
-      if (lv > 0) for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) { const l = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 1.2), lamp); l.position.set(minX + 5.5 + i * 11, y - 0.35, minZ + 8 + k * 8); S.add(l); }
+      const y = this.base + lv * this.fh, sh = new THREE.Shape(); sh.absarc(0, 0, R - 0.02, 0, Math.PI * 2, false);
+      const lz = minZ - z;
+      if (lv > 0) { sh.holes.push(rect(-6.6, -3.4, lz, lz + 3.6), rect(3.4, 6.6, lz, lz + 3.6)); }
+      if (lv === 1) sh.holes.push(rect(-12, 12, -5, 9));
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.32, bevelEnabled: false, curveSegments: 96 }); geo.rotateX(-Math.PI / 2);
+      const tex = (lv === 2 || lv === 3 || lv === 4 || lv === 5 ? TEX.wood : TEX.tile).clone(); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(0.125, 0.125); tex.needsUpdate = true;
+      const mat = lv < floors ? new THREE.MeshStandardMaterial({ map: tex, color: cols[lv], roughness: lv >= 6 ? 0.45 : 0.6 }) : std(0x8a8f96);
+      const m = new THREE.Mesh(geo, mat); m.position.set(x, y - 0.32 + (lv === 0 ? 0.05 : 0), z); m.castShadow = lv > 0; m.receiveShadow = true; S.add(m);
+      // round ceiling lights in rings
+      if (lv > 0) for (const [rr, n] of [[8, 8], [17, 14]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, lx = x + Math.sin(a) * rr, lz2 = z + Math.cos(a) * rr; if (lz2 < minZ + 4) continue; const l = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.05, 20), lamp); l.position.set(lx, y - 0.35, lz2); S.add(l); }
     }
-    // glass shaft fronts above the doors
+    // elevator core: dark glass shaft walls through every floor
     for (const ex of [-5, 5]) for (const sx of [-1.72, 1.72]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.1, floors * this.fh, 3.6), std(0x2b3038, { metalness: 0.7 })); m.position.set(x + ex + sx, this.base + floors * this.fh / 2, minZ + 1.9); S.add(m); }
+    for (const ex of [-5, 5]) { const m = new THREE.Mesh(new THREE.BoxGeometry(3.5, floors * this.fh, 0.1), std(0x2b3038, { metalness: 0.7 })); m.position.set(x + ex, this.base + floors * this.fh / 2, minZ); S.add(m); }
   }
   floorSign(lv) {
     const y = this.floorY(lv), t = this.h.t;
@@ -300,26 +321,69 @@ export class Tower extends Building {
     for (let i = 0; i < 3; i++) { this.box(lv, maxX - 6, 0.5, z - 8 + i * 6, 5, 1, 1.6, std(0xe9eef2), true, 0.08); const mic = this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.2, 0.6, 10), std(0x333a44, { metalness: 0.7 }))); mic.position.set(maxX - 6, y + 1.3, z - 8 + i * 6); }
     this.plant(lv, minX + 1.5, this.maxZ - 1.5);
   }
-  // 4: hotel corridor with rooms
+  // 4: hotel — reception, a carpeted corridor and furnished rooms (check in to get your own room)
   hotel(lv) {
-    const { x, z, minX, maxX, minZ, maxZ } = this, y = this.floorY(lv), wallM = std(0xe8e1d6);
-    for (let i = 0; i < 4; i++) {
-      const rx = minX + 5.5 + i * 11;
-      for (const side of [-1, 1]) {
-        const rz = side < 0 ? minZ + 8 : maxZ - 5, wz = side < 0 ? minZ + 11 : maxZ - 8.6;
-        if (side < 0 && Math.abs(rx - x) < 9) continue; // elevator lobby
-        const wall = this.add(new THREE.Mesh(new THREE.BoxGeometry(11, 3.6, 0.2), wallM)); wall.position.set(rx, y + 1.8, wz);
-        this.block(lv, rx - 3.3, wz, 2.2, 0.15); this.block(lv, rx + 3.3, wz, 2.2, 0.15);
-        const sep = this.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.6, 6), wallM)); sep.position.set(rx + 5.5, y + 1.8, rz); this.block(lv, rx + 5.5, rz, 0.15, 3);
-        const bed = this.add(new THREE.Mesh(new RoundedBox(2.4, 0.6, 3, 2, 0.12), std(0xffffff, { roughness: 0.9 }))); bed.position.set(rx - 2.5, y + 0.3, rz + side * -0.5);
-        const blanket = this.add(new THREE.Mesh(new RoundedBox(2.45, 0.1, 1.8, 2, 0.05), std([0x3b5b8f, 0x8f3b5b, 0x3b8f6b, 0x8f7a3b][i]))); blanket.position.set(rx - 2.5, y + 0.62, rz + side * -0.5 + 0.5 * side);
-        const lampG = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), std(0xfff1cf, { emissive: 0xffd28a, emissiveIntensity: 2 }))); lampG.position.set(rx - 0.5, y + 1.0, rz);
-        this.block(lv, rx - 2.5, rz + side * -0.5, 1.2, 1.5);
-        this.world.zone({ test: (px, py, pz) => Math.abs(px - (rx - 2.5)) < 1.6 && Math.abs(pz - (rz + side * -0.5)) < 2.0 && Math.abs(py - y) < 1, onEnter: () => this.h.rest && this.h.rest() });
-        const num = labelSprite(`${lv + 1}0${i * 2 + (side > 0 ? 2 : 1)}`, 0.3); num.position.set(rx, y + 2.9, wz + side * -0.15); this.world.scene.add(num);
-      }
-    }
+    const { x, z, minX, maxX, minZ, maxZ } = this, y = this.floorY(lv), wallM = std(0xece4d6, { roughness: 0.8 }), wood = std(0x6b4a2f, { roughness: 0.55 }), dark = std(0x23272d, { metalness: 0.5, roughness: 0.35 });
+    // carpet runner along the corridor
+    const carpetT = canvasTex(256, 64, (g, W, H) => { g.fillStyle = '#6d1f2c'; g.fillRect(0, 0, W, H); g.strokeStyle = '#c9a24a'; g.lineWidth = 3; g.strokeRect(4, 4, W - 8, H - 8); for (let i = 16; i < W; i += 32) { g.beginPath(); g.moveTo(i, H / 2 - 8); g.lineTo(i + 8, H / 2); g.lineTo(i, H / 2 + 8); g.lineTo(i - 8, H / 2); g.closePath(); g.stroke(); } }, [6, 1]);
+    const runner = this.add(new THREE.Mesh(new THREE.PlaneGeometry(40, 3.2).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: carpetT, roughness: 0.95 })), false); runner.position.set(x, y + 0.02, z + 1.5);
+    // reception desk by the elevators with a concierge
+    this.box(lv, x - 10, 0.55, minZ + 7, 6, 1.1, 1.2, std(0xf4efe6, { roughness: 0.3 }), true, 0.2);
+    this.box(lv, x - 10, 1.13, minZ + 7, 6.2, 0.06, 1.4, wood);
+    const bell = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), std(0xd4af37, { metalness: 0.9, roughness: 0.2 }))); bell.position.set(x - 9, y + 1.17, minZ + 7.3);
+    const con = new Avatar({ skin: '#f2c49b', face: 'smile', hair: 'short', hairColor: '#1c1410', top: 'plain', shirt: '#6d1f2c', pants: '#1d1d1f', shoes: '#1b1b1b', hat: 'none', pet: 'none', height: 1.05 }, '', 'bot');
+    con.group.position.set(x - 10, y, minZ + 5.8); this.world.scene.add(con.group); this.world.updaters.push(dt => con.animate(0, dt, false));
+    const hs = labelSprite('🛎️ Banda Hotel', 0.5, { bg: 'rgba(109,31,44,0.92)' }); hs.position.set(x - 10, y + 3.2, minZ + 7); this.world.scene.add(hs);
+    this.world.zone({ test: (px, py, pz) => Math.abs(px - (x - 10)) < 3 && pz > minZ + 7.7 && pz < minZ + 9.6 && Math.abs(py - y) < 1, onEnter: () => { con.play('wave'); this.h.hotelDesk && this.h.hotelDesk(); } });
+    // luggage cart
+    const cart = new THREE.Group(); const brass = std(0xd4af37, { metalness: 0.9, roughness: 0.25 });
+    const basePl = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.7), std(0x8a1c2c)); basePl.position.y = 0.25; cart.add(basePl);
+    for (const sx of [-0.55, 0.55]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 8), brass); p.position.set(sx, 1.05, 0); cart.add(p); }
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.15, 8).rotateZ(Math.PI / 2), brass); bar.position.y = 1.85; cart.add(bar);
+    for (const [c, h, sx] of [[0x2f5f9e, 0.6, -0.25], [0x9b59b6, 0.45, 0.28]]) { const sui = new THREE.Mesh(new RoundedBox(0.5, h, 0.4, 2, 0.06), std(c)); sui.position.set(sx, 0.3 + h / 2, 0); cart.add(sui); }
+    cart.position.set(x - 15.5, y, minZ + 7.5); this.world.scene.add(cart); this.block(lv, x - 15.5, minZ + 7.5, 0.6, 0.4);
+    // rooms along the south side (and two beside the elevators)
+    const rooms = [];
+    for (let i = 0; i < 4; i++) rooms.push({ rx: minX + 5.5 + i * 11, side: 1 });
+    rooms.push({ rx: minX + 5.5 + 3 * 11, side: -1 });
+    rooms.forEach((r, k) => {
+      const { rx, side } = r, wz = side < 0 ? minZ + 11 : maxZ - 8.6, back = side < 0 ? minZ + 4.5 : maxZ + 1.5, rz = (wz + back) / 2, num = `${lv + 1}0${k + 1}`;
+      // front wall with a door gap, side walls
+      const wl = this.add(new THREE.Mesh(new THREE.BoxGeometry(4.4, 3.6, 0.2), wallM)); wl.position.set(rx - 3.3, y + 1.8, wz); this.block(lv, rx - 3.3, wz, 2.2, 0.15);
+      const wr = this.add(new THREE.Mesh(new THREE.BoxGeometry(4.4, 3.6, 0.2), wallM)); wr.position.set(rx + 3.3, y + 1.8, wz); this.block(lv, rx + 3.3, wz, 2.2, 0.15);
+      const lintel = this.add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 0.2), wallM)); lintel.position.set(rx, y + 3.15, wz);
+      const depth = Math.abs(back - wz);
+      for (const ex of [rx - 5.5, rx + 5.5]) { const sw = this.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.6, depth), wallM)); sw.position.set(ex, y + 1.8, rz); this.block(lv, ex, rz, 0.15, depth / 2); }
+      // door plate with the room number and a key-card light
+      const plate = labelSprite(num, 0.28, { bg: 'rgba(30,30,30,0.85)', color: '#ffd76a' }); plate.position.set(rx + 1.5, y + 2.2, wz + side * -0.15); this.world.scene.add(plate);
+      const lock = this.add(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.05), std(0x111111, { emissive: 0xff3b3b, emissiveIntensity: 1.5 })), false); lock.position.set(rx + 1.3, y + 1.3, wz + side * -0.13);
+      r.lock = lock; r.num = num;
+      // bed with headboard, pillows and blanket
+      const bz = back - side * 1.7, bx = rx - 2.2, col = [0x3b5b8f, 0x8f3b5b, 0x3b8f6b, 0x8f7a3b, 0x5b3b8f][k];
+      const head = this.add(new THREE.Mesh(new RoundedBox(2.8, 1.4, 0.2, 2, 0.08), wood)); head.position.set(bx, y + 0.9, back - side * 0.2);
+      const bed = this.add(new THREE.Mesh(new RoundedBox(2.6, 0.55, 3, 2, 0.12), std(0xffffff, { roughness: 0.9 }))); bed.position.set(bx, y + 0.3, bz);
+      const blanket = this.add(new THREE.Mesh(new RoundedBox(2.65, 0.12, 1.8, 2, 0.05), std(col, { roughness: 0.9 }))); blanket.position.set(bx, y + 0.6, bz + side * 0.55);
+      for (const px of [-0.6, 0.6]) { const pil = this.add(new THREE.Mesh(new RoundedBox(0.9, 0.22, 0.5, 2, 0.1), std(0xf7f7f2))); pil.position.set(bx + px, y + 0.68, back - side * 0.65); }
+      this.block(lv, bx, bz, 1.3, 1.5);
+      // nightstand + lamp, TV on the side wall, wardrobe, rug, window plant
+      this.box(lv, bx + 1.9, 0.3, back - side * 0.6, 0.7, 0.6, 0.6, wood, true);
+      const lamp = this.add(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 0.35, 16), std(0xfff1cf, { emissive: 0xffd28a, emissiveIntensity: 1.6 }))); lamp.position.set(bx + 1.9, y + 0.85, back - side * 0.6);
+      const tv = this.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 1.7), dark), false); tv.position.set(rx + 5.35, y + 1.7, bz);
+      const scr = this.add(new THREE.Mesh(new THREE.PlaneGeometry(1.55, 0.88), std(0x0a1a2a, { emissive: [0x1a8cff, 0xff6b3b, 0x2ecc71, 0xffc94d, 0x9b59b6][k], emissiveIntensity: 0.6 })), false); scr.position.set(rx + 5.3, y + 1.7, bz); scr.rotation.y = -Math.PI / 2;
+      this.box(lv, rx + 4.6, 1.2, wz - side * 0.9, 1.4, 2.4, 0.9, wood, true);
+      const rug = this.add(new THREE.Mesh(new THREE.CircleGeometry(1.2, 32).rotateX(-Math.PI / 2), std(0xd8c7a6, { roughness: 1 })), false); rug.position.set(rx + 1.5, y + 0.02, rz);
+      // rest in bed
+      const zzz = labelSprite('💤', 0.6, { bg: null }); zzz.position.set(bx, y + 1.8, bz); zzz.visible = false; this.world.scene.add(zzz);
+      this.world.updaters.push((dt, t) => { if (zzz.visible) zzz.position.y = y + 1.7 + Math.sin(t * 2) * 0.15; });
+      this.world.zone({ test: (px, py, pz) => Math.abs(px - bx) < 1.6 && Math.abs(pz - bz) < 2.0 && Math.abs(py - y) < 1, onEnter: () => { zzz.visible = true; this.h.rest && this.h.rest('hotel', num); }, onLeave: () => { zzz.visible = false; } });
+    });
+    this.hotelRooms = (this.hotelRooms || []).concat(rooms.map(r => ({ ...r, lv })));
+    // wall sconces along the corridor
+    for (let i = 0; i < 6; i++) { const sc = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), std(0xfff1cf, { emissive: 0xffd28a, emissiveIntensity: 2 })), false); sc.position.set(minX + 4 + i * 7.2, y + 2.6, maxZ - 8.75); }
+    this.plant(lv, maxX - 2, z - 2); this.plant(lv, minX + 2, z - 2);
   }
+  // show which hotel room is yours (green light on the door)
+  setMyRoom(num) { (this.hotelRooms || []).forEach(r => { const mine = r.num === num; r.lock.material.emissive.setHex(mine ? 0x2ecc71 : 0xff3b3b); }); }
   // 5: spa & café
   spa(lv) {
     const { x, z, minX, maxX, maxZ } = this, y = this.floorY(lv);
@@ -337,12 +401,17 @@ export class Tower extends Building {
   // 6: cinema lounge
   cinema(lv) {
     const { x, z, minX, maxX } = this, y = this.floorY(lv);
-    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256; const g = cv.getContext('2d'), tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    const scr = this.add(new THREE.Mesh(new THREE.PlaneGeometry(14, 7), new THREE.MeshBasicMaterial({ map: tex })), false); scr.position.set(minX + 0.3, y + 3.2, z + 1); scr.rotation.y = Math.PI / 2;
-    let tt = 0; this.world.updaters.push(dt => { tt += dt; if ((tt * 10 | 0) % 2) return; const p = this.world.me?.group.position; if (!p || Math.abs(p.y - y) > 3) return;
-      const gr = g.createLinearGradient(0, 0, 512, 256); gr.addColorStop(0, `hsl(${(tt * 30) % 360},70%,45%)`); gr.addColorStop(1, `hsl(${(tt * 30 + 120) % 360},70%,30%)`); g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
-      for (let i = 0; i < 6; i++) { g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(256 + Math.cos(tt + i) * 160, 128 + Math.sin(tt * 1.3 + i * 2) * 80, 18 + i * 4, 0, 7); g.fill(); }
-      g.fillStyle = '#fff'; g.font = '700 34px Manrope, system-ui'; g.textAlign = 'center'; g.fillText('NOW SHOWING: OCEAN WONDERS', 256, 236); tex.needsUpdate = true; });
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 288; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const scr = this.add(new THREE.Mesh(new THREE.PlaneGeometry(8.4, 4.72), new THREE.MeshBasicMaterial({ map: tex })), false); scr.position.set(minX + 0.6, y + 2.6, z + 1); scr.rotation.y = Math.PI / 2;
+    const backing = this.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.1, 8.8), std(0x0a0a0c)), false); backing.position.set(minX + 0.4, y + 2.6, z + 1);
+    const show = new CinemaShow(cv, (txt, l) => this.h.say && this.h.say(txt, l), n => this.h.sfx && this.h.sfx(n));
+    let acc = 0, was = false;
+    this.world.updaters.push(dt => {
+      const p = this.world.me?.group.position, watching = !!p && this.contains(p.x, p.z) && Math.abs(p.y - y) < 2.5;
+      if (was && !watching && window.speechSynthesis) speechSynthesis.cancel(); was = watching;
+      acc += dt; if (acc < 1 / 15) return; const step = acc; acc = 0;
+      show.update(step, watching); if (watching) tex.needsUpdate = true;
+    });
     for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const sx = minX + 9 + r * 4, sz = z - 6 + c * 3; const seat = this.add(new THREE.Mesh(new RoundedBox(1.4, 0.9, 1.2, 2, 0.15), std(0x8f1f2b, { roughness: 0.8 }))); seat.position.set(sx, y + 0.45, sz); }
     this.world.zone({ test: (px, py, pz) => px > minX + 7 && px < minX + 19 && pz > z - 8 && pz < z + 8 && Math.abs(py - y) < 1, onEnter: () => this.h.rest && this.h.rest('cinema') });
     for (let i = 0; i < 4; i++) { const bb = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 12), std([0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71][i], { roughness: 0.9 }))); bb.scale.y = 0.6; bb.position.set(maxX - 4, y + 0.45, z - 6 + i * 3.5); }
@@ -456,7 +525,7 @@ export class Bank extends Building {
   constructor(world, h) {
     const B = BANK;
     super(world, { x: B.x, z: B.z, w: B.w, d: B.d, floors: 1, fh: 5.5, base: B.base, door: { side: 'e', at: B.z, width: 5 } });
-    this.h = h; this.staff = []; this.screens = []; this.build();
+    this.h = h; this.staff = []; this.screens = []; this.deskFront = []; this.build();
   }
   build() {
     const { x, z, w, d, base, minX, maxX, minZ, maxZ } = this, S = this.world.scene, H = 6, t = this.h.t;
@@ -477,6 +546,7 @@ export class Bank extends Building {
       c.fillStyle = '#04203f'; c.font = '900 170px Manrope, system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('m', 140, 120);
       c.fillStyle = '#ffffff'; c.textAlign = 'left'; c.font = '800 150px Manrope, system-ui'; c.fillText('mBank', 280, 132);
     });
+    { const img = new Image(); img.onload = () => { const c = logo.image.getContext('2d'); c.clearRect(30, 18, 220, 220); c.drawImage(img, 36, 24, 210, 210); logo.needsUpdate = true; }; img.src = '/img/mbank.svg'; }
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), new THREE.MeshBasicMaterial({ map: logo, transparent: true })); sign.position.set(maxX + 0.3, base + H + 1.9, z); sign.rotation.y = Math.PI / 2; S.add(sign);
     const signBack = box(maxX + 0.15, base + H + 1.9, z, 0.2, 3.4, 12.6, navy); signBack.castShadow = false;
     for (const sz of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, H, 16), std(0xf2f2f2, { roughness: 0.3 })); p.position.set(maxX + 2, base + H / 2, z + sz * 3.4); S.add(p); this.world.solids.push({ x: maxX + 2, z: z + sz * 3.4, r: 0.3 }); }
@@ -512,13 +582,34 @@ export class Bank extends Building {
       const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.8), new THREE.MeshBasicMaterial({ map: tex })); scr.position.set(minX + 0.3, base + 3.3, dz); scr.rotation.y = Math.PI / 2; S.add(scr);
       const frame = box(minX + 0.24, base + 3.3, dz, 0.08, 3.0, 4.4, std(0x111418, { metalness: 0.6 }), false);
       this.screens.push({ cv, tex, i }); this.drawScreen(i);
-      this.world.zone({ test: (px, py, pz) => px > dx + 0.7 && px < dx + 2.8 && Math.abs(pz - dz) < 1.7 && Math.abs(py - base) < 1.5, onEnter: () => { av.play('wave'); this.h.desk(i); } });
+      // queue lane with posts and a rope in front of each desk
+      for (const k of [1, 2, 3, 4]) for (const side of [-0.9, 0.9]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1, 10), std(0xd4af37, { metalness: 0.9, roughness: 0.2 })); p.position.set(dx + 1.6 + k * 1.4, base + 0.5, dz + side); S.add(p); }
+      for (const side of [-0.9, 0.9]) { const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4.2, 6).rotateZ(Math.PI / 2), std(0x8a1c2c)); rope.position.set(dx + 1.6 + 2.5 * 1.4, base + 0.85, dz + side); S.add(rope); }
+      this.deskFront.push({ x: dx + 1.8, z: dz });
+      // you're served when nobody is standing at the desk; otherwise wait in line
+      let opened = false, told = false;
+      this.world.zone({ test: (px, py, pz) => px > dx + 0.7 && px < dx + 2.8 && Math.abs(pz - dz) < 1.7 && Math.abs(py - base) < 1.5,
+        onEnter: () => { opened = false; told = false; },
+        onStay: () => { if (opened) return; const busy = this.h.someoneAt && this.h.someoneAt(dx + 1.8, dz); if (busy) { if (!told) { told = true; this.h.wait && this.h.wait(); } return; } opened = true; av.play('wave'); this.h.desk(i); } });
     });
     this.world.updaters.push((dt, tt) => this.staff.forEach((a, i) => { a.animate(0, dt, false); if (!a.emote && Math.sin(tt * 0.5 + i * 2) > 0.995) a.play('wave'); }));
     // waiting area, plants, ATMs
     for (let i = 0; i < 2; i++) { const g2 = new THREE.Group(), m = std(0x2f4f6f, { roughness: 0.85 }); const seat = new THREE.Mesh(new RoundedBox(3, 0.5, 1.1, 2, 0.15), m); seat.position.y = 0.45; const back = new THREE.Mesh(new RoundedBox(3, 0.8, 0.3, 2, 0.12), m); back.position.set(0, 0.9, -0.45); g2.add(seat, back); g2.position.set(x + 3 + i * 4.5, base, maxZ - 2); g2.rotation.y = Math.PI; S.add(g2); this.block(0, x + 3 + i * 4.5, maxZ - 2, 1.5, 0.55); }
-    for (let i = 0; i < 2; i++) { const ax = x + 2 + i * 2.4, atm = box(ax, base + 1.1, minZ + 0.6, 1.6, 2.2, 0.8, std(0x23272d, { metalness: 0.6, roughness: 0.3 })); const s2 = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.6), std(0x0a1a2a, { emissive: 0x1a8cff, emissiveIntensity: 1 })); s2.position.set(ax, base + 1.5, minZ + 1.01); S.add(s2); this.block(0, ax, minZ + 0.6, 0.8, 0.4); }
-    const atmL = labelSprite('ATM', 0.35, { bg: 'rgba(15,42,74,0.9)' }); atmL.position.set(x + 3.2, base + 2.6, minZ + 0.8); S.add(atmL);
+    for (let i = 0; i < 2; i++) { const ax = x - 2 + i * 2.4, atm = box(ax, base + 1.1, minZ + 0.6, 1.6, 2.2, 0.8, std(0x23272d, { metalness: 0.6, roughness: 0.3 })); const s2 = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.6), std(0x0a1a2a, { emissive: 0x1a8cff, emissiveIntensity: 1 })); s2.position.set(ax, base + 1.5, minZ + 1.01); S.add(s2); this.block(0, ax, minZ + 0.6, 0.8, 0.4); }
+    const atmL = labelSprite('ATM', 0.35, { bg: 'rgba(15,42,74,0.9)' }); atmL.position.set(x - 0.8, base + 2.6, minZ + 0.8); S.add(atmL);
+    // job window: a cashier counter you can work at, and the job board
+    const jx = maxX - 6.5, jz = minZ + 2.4;
+    box(jx, base + 0.55, jz, 4.2, 1.1, 1.0, std(0xffffff, { roughness: 0.3 })); box(jx, base + 1.13, jz, 4.4, 0.06, 1.2, std(0x23272d, { metalness: 0.6, roughness: 0.25 }));
+    box(jx, base + 0.55, jz + 0.52, 3.8, 0.8, 0.04, std(0xffc94d, { emissive: 0xffc94d, emissiveIntensity: 0.5 }), false);
+    this.block(0, jx, jz, 2.1, 0.5);
+    const till = new THREE.Mesh(new RoundedBox(0.7, 0.35, 0.5, 2, 0.05), std(0x2b2f36, { metalness: 0.5 })); till.position.set(jx - 1, base + 1.35, jz); S.add(till);
+    const jl = labelSprite('4 · ' + t('cashierWindow'), 0.42, { bg: 'rgba(180,120,0,0.92)' }); jl.position.set(jx, base + 2.9, jz); S.add(jl);
+    this.cashier = { x: jx, z: jz, standZ: jz - 1.1, custZ: jz + 1.3 };
+    this.world.zone({ test: (px, py, pz) => Math.abs(px - jx) < 2 && pz < jz - 0.4 && pz > minZ + 0.3 && Math.abs(py - base) < 1.5, onEnter: () => this.h.cashierIn && this.h.cashierIn(), onLeave: () => this.h.cashierOut && this.h.cashierOut() });
+    const board = canvasTex(512, 384, (c, W, Hh) => { c.fillStyle = '#0f2a4a'; c.fillRect(0, 0, W, Hh); c.fillStyle = '#ffc94d'; c.font = '800 54px Manrope, system-ui'; c.fillText('💼 ' + t('jobs'), 30, 70); c.fillStyle = '#fff'; c.font = '600 32px Manrope, system-ui'; c.fillText('🏦 ' + t('job_cashier'), 30, 160); c.fillText('🧹 ' + t('job_cleaner'), 30, 230); c.fillStyle = '#9fe8c9'; c.font = '600 26px Manrope, system-ui'; c.fillText(t('jobsHint'), 30, 320); });
+    const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.8), new THREE.MeshBasicMaterial({ map: board })); bm.position.set(maxX - 1.2, base + 2, z + 5.5); bm.rotation.y = -Math.PI / 2; S.add(bm);
+    const stand = box(maxX - 1.1, base + 0.6, z + 5.5, 0.3, 1.2, 0.4, std(0x23272d), false); this.block(0, maxX - 1.1, z + 5.5, 0.3, 0.3);
+    this.world.zone({ test: (px, py, pz) => px > maxX - 3.2 && px < maxX - 1.4 && Math.abs(pz - (z + 5.5)) < 1.3 && Math.abs(py - base) < 1.5, onEnter: () => this.h.jobs && this.h.jobs() });
     for (const [px, pz] of [[maxX - 1.5, minZ + 1.5], [maxX - 1.5, maxZ - 1.5], [minX + 1.2, maxZ - 1.2]]) {
       const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.35, 0.8, 16), std(0xe8e4dc)); pot.position.set(px, base + 0.4, pz); S.add(pot);
       for (let i = 0; i < 7; i++) { const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), std(new THREE.Color().setHSL(0.3, 0.5, 0.25 + i * 0.02))); leaf.position.set(px + Math.cos(i) * 0.3, base + 1.1 + (i % 3) * 0.35, pz + Math.sin(i) * 0.3); leaf.scale.set(1, 1.4, 1); S.add(leaf); }

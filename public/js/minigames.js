@@ -121,9 +121,8 @@ export class Minigames {
       if (this.shCount && this.shCount >= best) { reward += 5; lines.push(app.t('topCollector')); }
     } else if (mg.type === 'impostor') reward += this.impostor.exit(mg, lines);
     else if (mg.type === 'quiz') reward += this.quiz.exit(mg, lines);
-    const cash = reward > 4 ? 300 : 100; // $3 for winners, $1 for everyone who played
-    lines.push(`+${reward} ★ · +$${cash / 100}`);
-    app.award(Math.min(10, reward), true); app.earn && app.earn(cash, true);
+    lines.push(`+${reward} ★`);
+    app.award(Math.min(10, reward), true);
     app.ui.results(app.t('mg_' + mg.type), lines);
     app.sfx(reward > 4 ? 'champions' : 'cheer');
     w.noFence = false;

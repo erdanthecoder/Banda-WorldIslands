@@ -290,7 +290,7 @@ body:not(.teacher) .teacher-only { display: none; }
 .small-palm .ring .arc { stroke: #34e0a1; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
 .phone { position: relative; width: min(330px, 92vw); height: min(640px, 88vh); border-radius: 44px; background: #0b0f17; border: 10px solid #1c222c; padding: 34px 16px 18px; color: #eaf3ff; overflow: auto; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
 .phone-notch { position: absolute; left: 50%; top: 8px; width: 90px; height: 20px; border-radius: 12px; background: #1c222c; transform: translateX(-50%); }
-.phone-x { position: absolute; right: 12px; top: 10px; background: rgba(255,255,255,.1); border: 0; color: #fff; width: 28px; height: 28px; border-radius: 9px; }
+.phone-x { position: absolute; right: 12px; top: 26px; background: rgba(255,255,255,.1); border: 0; color: #fff; width: 28px; height: 28px; border-radius: 9px; }
 .app-head { display: flex; align-items: center; gap: 8px; font-size: 20px; margin-bottom: 6px; }
 .phone .bankcard { width: 100%; }
 .app-bal { text-align: center; margin: 8px 0; } .app-bal small { color: #9fb0c2; display: block; } .app-bal b { font-size: 34px; font-weight: 900; font-variant-numeric: tabular-nums; }
@@ -302,3 +302,58 @@ body:not(.teacher) .teacher-only { display: none; }
 .nocard { display: grid; gap: 4px; text-align: center; padding: 16px; border-radius: 16px; background: rgba(255,201,77,.12); font-size: 14px; } .nocard b { color: #ffd97a; font-size: 16px; }
 .elevbtn { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 7; padding: 12px 22px; border-radius: 999px; border: 0; font-weight: 800; font-size: 17px; color: #04203f; background: linear-gradient(135deg, #5fd0ff, #34e0a1); box-shadow: 0 8px 24px rgba(0,0,0,.35); animation: pulse2 1.6s infinite; }
 @keyframes pulse2 { 50% { box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 8px rgba(95,208,255,.25); } }
+
+/* ---------- logos, payout, phone apps, calls ---------- */
+.mark-img { width: 34px; height: 34px; border-radius: 9px; vertical-align: middle; margin-right: 10px; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.logo-big { width: 84px; height: 84px; border-radius: 22px; display: block; margin: 0 auto 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.mb-logo { width: 34px; height: 34px; border-radius: 9px; }
+.bankcard b img { width: 22px; height: 22px; border-radius: 6px; vertical-align: -5px; margin-right: 6px; } .bankcard.small b img { width: 16px; height: 16px; vertical-align: -3px; }
+.po-title { margin: 6px 0 0; color: #a9c4ef; font-weight: 700; text-align: center; } .po-amount { text-align: center; font-size: 46px; font-weight: 900; color: #7ee2a8; font-variant-numeric: tabular-nums; }
+.po-q { text-align: center; font-size: 18px; font-weight: 800; margin: 6px 0 0; } .link.light { color: #a9c4ef; display: block; margin: 12px auto 0; }
+#bPhone { position: relative; } #bPhone[data-badge]:not([data-badge=""])::after { content: attr(data-badge); position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; border-radius: 9px; background: #ff4757; color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; padding: 0 4px; }
+.phone-status { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #cfd8e2; margin: -22px 6px 10px; }
+.phone-home { position: absolute; left: 50%; bottom: 8px; width: 110px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.5); border: 0; transform: translateX(-50%); padding: 0; }
+.ph-me { text-align: center; margin: 14px 0 18px; } .ph-num { font-size: 30px; font-weight: 900; letter-spacing: .04em; font-variant-numeric: tabular-nums; } .ph-me small { color: #9fb0c2; }
+.ph-apps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.ph-apps button { position: relative; background: none; border: 0; color: #eaf3ff; display: grid; justify-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
+.ph-apps i { width: 62px; height: 62px; border-radius: 18px; display: grid; place-items: center; font-style: normal; font-size: 30px; box-shadow: 0 6px 16px rgba(0,0,0,.4); }
+.ph-apps i.mb img { width: 62px; height: 62px; border-radius: 18px; }
+.ph-apps em, .ph-row em { position: absolute; top: -4px; right: 18%; background: #ff4757; color: #fff; font-style: normal; font-weight: 800; font-size: 12px; border-radius: 10px; padding: 1px 7px; }
+.ph-row em { position: static; }
+.ph-tip { font-size: 12px; color: #9fb0c2; margin-top: 22px; text-align: center; }
+.ph-head { display: grid; grid-template-columns: 32px 1fr 32px; align-items: center; text-align: center; margin-bottom: 10px; font-size: 17px; }
+.ph-back { background: none; border: 0; color: #5fd0ff; font-size: 30px; line-height: 1; padding: 0; }
+.ph-dial { text-align: center; font-size: 34px; font-weight: 800; letter-spacing: .1em; margin-top: 8px; font-variant-numeric: tabular-nums; } .ph-who { text-align: center; min-height: 22px; color: #9fb0c2; font-weight: 700; }
+.ph-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 8px; }
+.ph-keys button { aspect-ratio: 1; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: #fff; font-size: 26px; font-weight: 600; }
+.ph-keys button:disabled { visibility: hidden; } .ph-keys button:active { background: rgba(255,255,255,.25); }
+.ph-actions { display: flex; justify-content: center; gap: 18px; }
+.ph-actions button { width: 58px; height: 58px; border-radius: 50%; border: 0; font-size: 22px; background: rgba(255,255,255,.12); color: #fff; }
+.ph-actions .ph-call { background: #2ecc71; } .ph-actions button:disabled { opacity: .35; }
+.ph-wide { width: 100%; padding: 11px; border-radius: 14px; border: 0; background: rgba(255,255,255,.1); color: #eaf3ff; font-weight: 800; margin-bottom: 10px; } .ph-wide.primary { background: linear-gradient(135deg, #34e0a1, #1a8cff); color: #04203f; }
+.ph-list { display: grid; gap: 6px; } .phone h4 { margin: 14px 0 6px; }
+.ph-row { display: grid; grid-template-columns: 12px 1fr auto auto; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 12px; background: rgba(255,255,255,.06); color: #eaf3ff; border: 0; text-align: left; width: 100%; }
+.ph-row.th { grid-template-columns: 12px 1fr auto; }
+.ph-row b { display: block; font-size: 15px; } .ph-row small { color: #9fb0c2; }
+.ph-row button { background: rgba(255,255,255,.1); border: 0; border-radius: 10px; width: 36px; height: 36px; font-size: 16px; color: #fff; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #56606c; } .dot.on { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+.ph-field { display: grid; gap: 6px; margin-bottom: 12px; font-weight: 700; color: #9fb0c2; font-size: 13px; }
+.ph-field input, .ph-numin input, .ph-send input { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: #fff; font-size: 16px; }
+.ph-numin { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 18px; font-weight: 800; } .ph-numin input { letter-spacing: .2em; font-weight: 800; }
+.ph-sub { text-align: center; color: #9fb0c2; font-size: 13px; margin: -6px 0 8px; } .ph-sub button { background: #2ecc71; border: 0; border-radius: 10px; padding: 3px 9px; margin-left: 6px; }
+.ph-chat { display: flex; flex-direction: column; gap: 6px; height: calc(100% - 150px); min-height: 280px; overflow: auto; padding: 4px; }
+.bub { align-self: flex-start; max-width: 78%; background: rgba(255,255,255,.12); padding: 8px 11px; border-radius: 16px 16px 16px 4px; font-size: 15px; word-wrap: break-word; }
+.bub.me { align-self: flex-end; background: #1a8cff; border-radius: 16px 16px 4px 16px; } .bub small { display: block; font-size: 10px; opacity: .6; text-align: right; }
+.ph-send { display: grid; grid-template-columns: 1fr 44px; gap: 8px; margin-top: 8px; } .ph-send button { border-radius: 50%; border: 0; background: #1a8cff; color: #fff; font-size: 18px; }
+.call { display: grid; justify-items: center; gap: 4px; padding-top: 8px; text-align: center; }
+.call #faceThem { width: 168px; height: 168px; border-radius: 50%; background: radial-gradient(circle, #1a3a5c, #0b1626); box-shadow: 0 0 0 6px rgba(95,208,255,.15), 0 0 40px rgba(95,208,255,.25); }
+.call-name { font-size: 22px; margin-top: 6px; } .call small { color: #9fb0c2; } .call-status { color: #5fd0ff; font-weight: 700; min-height: 22px; }
+.call-me { display: grid; justify-items: center; gap: 2px; margin-top: 8px; } .call-me canvas { width: 72px; height: 72px; border-radius: 50%; background: rgba(255,255,255,.08); }
+.call-btns { display: flex; gap: 22px; margin-top: 14px; }
+.call-btns button { width: 62px; height: 62px; border-radius: 50%; border: 0; font-size: 24px; background: rgba(255,255,255,.14); color: #fff; } .call-btns button.on { background: #eaf3ff; }
+.call-btns .c-no { background: #ff4757; } .call-btns .c-yes { background: #2ecc71; animation: pulse 0.8s infinite alternate; }
+.call-note { font-size: 11px; color: #74859a; max-width: 240px; margin-top: 12px; }
+#callMini { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 45; border: 0; border-radius: 999px; padding: 8px 16px; background: #2ecc71; color: #fff; font-weight: 800; box-shadow: 0 6px 18px rgba(0,0,0,.35); animation: pulse2 1.6s infinite; }
+#jobHud { position: fixed; top: 64px; left: 12px; z-index: 6; padding: 7px 10px 7px 12px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+#jobHud button { margin-left: 6px; border: 0; border-radius: 9px; padding: 4px 10px; background: #ff4757; color: #fff; font-weight: 800; }
+#basketChip { top: 108px; }

@@ -176,6 +176,43 @@ Object.assign(D.ru, {
   it_coffee: 'Кофе', it_latte: 'Латте', it_cocoa: 'Какао', it_tea: 'Чай', it_croissant: 'Круассан',
 });
 
+Object.assign(D.en, {
+  myNumber: 'My number', appCall: 'Phone', appContacts: 'Contacts', appMessages: 'Messages', phoneTip: 'Give your number to friends. Call them when they’re online!',
+  offline: 'offline', onlineWord: 'online', addContact: 'Add contact', noContacts: 'No contacts yet.', onlineNow: 'Online now', contactName: 'Name', contactNumber: 'Number', save: 'Save', contactBad: 'Write a name and a 4-digit number.',
+  newMessage: 'New message', noMessages: 'No messages yet.', sayHi: 'Say hi! 👋', typeMessage: 'Message…', msgFailed: 'Couldn’t send. Is the number right?',
+  callSelf: 'That’s your own number 🙂', notOnline: 'is not online right now. Send a message instead!', noAnswer: 'No answer.', busy: 'They’re on another call.', declined: 'Call declined.', callEnded: 'Call ended.',
+  noMic: 'No microphone — you can still hear them.', calling: 'Calling…', incoming: 'Incoming call…', camReading: 'reading your face', camOff: 'camera off',
+  camPrivacy: '📷 The camera only reads your expression to move your avatar’s face. Nobody sees your video. 🎙️ Your voice is real.',
+  camLoading: 'Starting the face reader…', camFailed: 'Camera not available.',
+  claimMoney: 'Get', dailyLimit: 'Daily limit reached — the rest waits in your mBank app.', received: 'Received', moneyWaits: 'Your money waits in the mBank app on your phone.',
+  moneyWaitsCard: 'Your money is safe! Get your free card at mBank, then collect it from the mBank app on your phone.', wantMoney: 'Would you like to get this money?', later: 'Later', receive: 'Get', youEarned: 'You earned',
+  waitInLine: 'Someone is being served. Please wait in line.', cashierWindow: 'Cashier (job)', jobs: 'Jobs', job_cashier: 'mBank cashier', job_cleaner: 'Tower cleaner',
+  job_cashier_d: 'Stand behind window 4. Help customers with money questions. $1 each.', job_cleaner_d: 'Pick up litter on Banda Tower floors. $0.50 each.', jobsHint: 'Walk up to the board to start', jobsIntro: 'Work and earn real money. Learning games pay too!',
+  quitJob: 'Quit job', cashierStart: '🏦 Go behind window 4 at mBank. Customers are coming!', cleanerStart: '🧹 Litter is on the tower floors. Take the elevator and pick it up!', shiftDone: 'Shift over', endShift: 'End', left: 'left',
+  cashierHint: 'Take the cashier job at the job board first.', customerSays: 'A customer asks', allClean: '✨ The tower is spotless!',
+  q_deposit: 'I want to put in {a} and {b}. How much is that?', q_change: 'This costs {p}. I give you {g}. What’s my change?', q_bills: 'I have {n} notes of {v}. How much money is that?', q_withdraw: 'I have {a}. I take out {b}. How much is left?',
+  earnTip: '💡 Money comes from learning games and jobs (job board in mBank).',
+  checkInFirst: 'Check in at the hotel desk next to the elevators first.', notYourRoom: 'This isn’t your room. Your room is {r}.', sweetDreams: 'Sweet dreams…', roomIsYours: 'Welcome! Room {r} is yours. 🗝️', roomHow: 'Its door light is green. Lie on the bed to rest.',
+});
+Object.assign(D.ru, {
+  myNumber: 'Мой номер', appCall: 'Телефон', appContacts: 'Контакты', appMessages: 'Сообщения', phoneTip: 'Дай свой номер друзьям. Звони, когда они в игре!',
+  offline: 'не в сети', onlineWord: 'в сети', addContact: 'Добавить контакт', noContacts: 'Контактов пока нет.', onlineNow: 'Сейчас в игре', contactName: 'Имя', contactNumber: 'Номер', save: 'Сохранить', contactBad: 'Напиши имя и 4 цифры номера.',
+  newMessage: 'Новое сообщение', noMessages: 'Сообщений пока нет.', sayHi: 'Скажи привет! 👋', typeMessage: 'Сообщение…', msgFailed: 'Не отправилось. Номер правильный?',
+  callSelf: 'Это твой номер 🙂', notOnline: 'сейчас не в игре. Отправь сообщение!', noAnswer: 'Не отвечает.', busy: 'Занято — идёт другой звонок.', declined: 'Звонок отклонён.', callEnded: 'Звонок завершён.',
+  noMic: 'Нет микрофона — но ты слышишь собеседника.', calling: 'Звоним…', incoming: 'Входящий звонок…', camReading: 'читаю лицо', camOff: 'камера выкл.',
+  camPrivacy: '📷 Камера только читает выражение лица для аватара. Видео никто не видит. 🎙️ Голос настоящий.',
+  camLoading: 'Запускаю распознавание лица…', camFailed: 'Камера недоступна.',
+  claimMoney: 'Получить', dailyLimit: 'Дневной лимит — остальное ждёт в приложении mBank.', received: 'Получено', moneyWaits: 'Деньги ждут в приложении mBank в телефоне.',
+  moneyWaitsCard: 'Деньги в сохранности! Получи бесплатную карту в mBank, потом забери их в приложении mBank.', wantMoney: 'Хочешь получить эти деньги?', later: 'Позже', receive: 'Получить', youEarned: 'Ты заработал',
+  waitInLine: 'Сейчас обслуживают другого. Подожди в очереди.', cashierWindow: 'Касса (работа)', jobs: 'Работа', job_cashier: 'Кассир mBank', job_cleaner: 'Уборщик башни',
+  job_cashier_d: 'Встань за окно 4. Помогай клиентам с деньгами. $1 за каждого.', job_cleaner_d: 'Собирай мусор на этажах Башни Банда. $0.50 за штуку.', jobsHint: 'Подойди к доске, чтобы начать', jobsIntro: 'Работай и зарабатывай настоящие деньги. Учебные игры тоже платят!',
+  quitJob: 'Уволиться', cashierStart: '🏦 Встань за окно 4 в mBank. Клиенты уже идут!', cleanerStart: '🧹 На этажах башни мусор. Поднимайся на лифте и собирай!', shiftDone: 'Смена окончена', endShift: 'Конец', left: 'осталось',
+  cashierHint: 'Сначала возьми работу кассира на доске вакансий.', customerSays: 'Клиент спрашивает', allClean: '✨ В башне идеально чисто!',
+  q_deposit: 'Хочу положить {a} и {b}. Сколько это всего?', q_change: 'Это стоит {p}. Я даю {g}. Какая сдача?', q_bills: 'У меня {n} купюр по {v}. Сколько это денег?', q_withdraw: 'У меня {a}. Я снимаю {b}. Сколько осталось?',
+  earnTip: '💡 Деньги приносят учебные игры и работа (доска вакансий в mBank).',
+  checkInFirst: 'Сначала заселись у стойки отеля рядом с лифтами.', notYourRoom: 'Это не твой номер. Твой номер — {r}.', sweetDreams: 'Сладких снов…', roomIsYours: 'Добро пожаловать! Номер {r} твой. 🗝️', roomHow: 'На двери горит зелёный свет. Ляг на кровать, чтобы отдохнуть.',
+});
+
 let lang = (() => { try { return localStorage.getItem('banda_lang') || 'en'; } catch (e) { return 'en'; } })();
 export const getLang = () => lang;
 export function setLang(l) { lang = D[l] ? l : 'en'; try { localStorage.setItem('banda_lang', lang); sessionStorage.setItem('banda_lang_chosen', '1'); } catch (e) {} }

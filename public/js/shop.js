@@ -27,13 +27,13 @@ export class Shop {
     document.body.append(
       el(`<div id="shopBox" class="modal hidden"><div class="sheet small"><div class="sheet-head"><h2 id="shopTitle"></h2><button class="ibtn light" data-x>✕</button></div><div id="shopList" class="shop-grid"></div><div class="row shop-foot"><span id="shopBasket"></span><button class="btn primary" id="shopGo"></button></div></div></div>`),
       el(`<div id="payBox" class="modal hidden"><div class="mpay"><button class="mpay-x" data-x>✕</button>
-        <div class="mpay-brand"><span class="mpay-logo">m</span>PAY</div>
+        <div class="mpay-brand"><img src="/img/mbank.svg" class="mb-logo" alt="">mPAY</div>
         <div id="payLines" class="mpay-lines"></div>
         <div class="mpay-total"><span>${t('total')}</span><b id="payTotal"></b></div>
         <div class="mpay-bal"><span>${t('balance')}</span><b id="payBal"></b></div>
         <div id="payNeed" class="mpay-need hidden"></div>
         <div class="paytabs" id="payTabs"><button data-m="phone">📱 <span>${t('payPhone')}</span></button><button data-m="hand">✋ <span>${t('payHand')}</span></button></div>
-        <div id="payPhone" class="mphone hidden"><div class="mphone-top">mBank</div><div class="bankcard small"><b>mBank</b><span class="cardno"></span><small class="cardname"></small></div><button class="btn primary big" id="phonePay"></button></div>
+        <div id="payPhone" class="mphone hidden"><div class="mphone-top">mBank</div><div class="bankcard small"><b><img src="/img/mbank.svg" alt="">mBank</b><span class="cardno"></span><small class="cardname"></small></div><button class="btn primary big" id="phonePay"></button></div>
         <div id="palm" class="palm hidden"><svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="54"/><circle id="palmArc" cx="60" cy="60" r="54" pathLength="100"/></svg><span class="hand">🖐️</span><i class="scanline"></i></div>
         <p id="payMsg" class="mpay-msg"></p></div></div>`),
       el(`<div id="bagBox" class="modal hidden"><div class="sheet small"><div class="sheet-head"><h2>${t('bag')}</h2><button class="ibtn light" data-x>✕</button></div><p class="muted" id="bagMoney"></p><div id="bagList" class="shop-grid"></div></div></div>`),

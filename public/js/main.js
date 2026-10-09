@@ -8,6 +8,8 @@ import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
 import { Tower, Market, Bank, FLOORS } from './buildings.js';
 import { Playground, coffeeKiosk } from './playground.js';
 import { BankUI } from './bank.js';
+import { Phone } from './phone.js';
+import { Jobs } from './jobs.js';
 import { Shop, money, PRICES, ICON, CAFE } from './shop.js';
 import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
@@ -82,6 +84,7 @@ async function boot() {
   if (wantsTeacher && role !== 'teacher') ui.toast(t('notTeacherAccount'));
   app.money = row?.money_cents ?? 10000;
   app.bank = { card: row?.bank_card || null, hand: !!row?.hand_pay };
+  app.loadPending();
   app.me = { uid: account.user.id, pid: account.user.id.slice(0, 8) + '-' + Math.random().toString(36).slice(2, 6), role, name: row?.name || account.profile.full_name || '', avatar: row?.avatar && Object.keys(row.avatar).length ? row.avatar : null };
   if (!app.me.avatar || !app.me.name) {
     show('#creator');
@@ -117,7 +120,7 @@ async function start(serverId) {
   const world = app.world = new World($('#scene'), { quality });
   world.setPlayer(new Avatar(me.avatar, me.name, me.role));
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
-  app.shop = new Shop(app); app.shop.loadInv(); app.bankUI = new BankUI(app);
+  app.shop = new Shop(app); app.shop.loadInv(); app.bankUI = new BankUI(app); app.phone = new Phone(app);
   buildWorld(world);
   world.teleport(0, 15, 0);
 
@@ -138,11 +141,13 @@ async function start(serverId) {
   app.mg = new Minigames(app); app.closeGame = closeGame; app.openGame = openGame;
   app.bots = new Bots(app);
   shareElevators(world, net);
+  app.phone.start();
+  if (app.pending > 0) setTimeout(() => app.settle(), 4000);
 
   let last = '', lastSent = 0;
   setInterval(() => {
     const g = world.me.group, p = g.position;
-    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0, em: world.me.emote ? app.emoteSig : '' };
+    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0, em: world.me.emote ? app.emoteSig : '', fx: app.mood || '' };
     const sig = JSON.stringify(pos);
     if (sig !== last || Date.now() - lastSent > 3000) { last = sig; lastSent = Date.now(); net.sendPos(pos); }
   }, 200);
@@ -166,13 +171,21 @@ function buildWorld(world) {
     station: (b, lv, kind, x, z, arcade) => b.spot(lv, x, z, t('g_' + kind), arcade ? 0xff3fa4 : lv === 2 ? 0x39d39a : 0x4aa8ff, () => openGame(kind)),
     pad: (b, lv, type, x, z) => addPad(world, x, z, type, b.floorY(lv)),
     panel: elev => floorPanel(elev),
-    rest: kind => { if (world.speedNow > 0.5) return; emote('sit'); ui.toast(kind === 'cinema' ? '🍿 ' + t('relax') : kind === 'spa' ? '♨️ ' + t('relax') : '😴 ' + t('relax')); },
+    rest: (kind, room) => {
+      if (world.speedNow > 0.5) return;
+      if (kind === 'hotel') { const mine = myRoom(); if (!mine) return ui.toast(`🛎️ ${t('checkInFirst')}`); if (mine !== room) return ui.toast(`🚪 ${t('notYourRoom').replace('{r}', mine)}`); emote('sit'); return ui.banner(`😴 ${t('sweetDreams')}`, 2500); }
+      emote('sit'); ui.toast(kind === 'cinema' ? '🍿 ' + t('relax') : kind === 'spa' ? '♨️ ' + t('relax') : '😴 ' + t('relax'));
+    },
+    hotelDesk: () => hotelDesk(), say: (txt, l) => say(txt, l), sfx: n => sfx(n),
     cafe: () => app.shop.openAisle('☕ ' + t('cafe'), CAFE, { cafe: true }),
   });
   app.market = new Market(world, { t, aisle: a => app.shop.openAisle(t('aisle_' + a.id), a.items), checkout: () => app.shop.checkout() });
-  app.mbank = new Bank(world, { t, desk: i => app.bankUI.desk(i) });
+  app.mbank = new Bank(world, { t, desk: i => app.bankUI.desk(i), someoneAt, wait: () => ui.toast(`⏳ ${t('waitInLine')}`),
+    jobs: () => app.jobs.board(), cashierIn: () => app.jobs.cashierIn(), cashierOut: () => app.jobs.cashierOut() });
+  app.jobs = new Jobs(app);
+  if (myRoom()) app.tower.setMyRoom(myRoom());
   coffeeKiosk(world, { t, cafe: () => app.shop.openAisle('☕ Banda Coffee', CAFE, { cafe: true }) });
-  const pg = new Playground(world, { boing, sfx, earn: () => app.earn(10) });
+  const pg = new Playground(world, { boing, sfx });
   pg.post(5, -21.5, `▲ ${t('tower')} · mBank`); pg.post(-21, 5.5, `◀ ${t('market')}`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
   [[-12, -14], [12, -14]].forEach(([x, z]) => world.trampoline(x, z, boing));
 }
@@ -232,6 +245,18 @@ function shareElevators(world, net) {
   }, 150);
 }
 
+// is any other player or bot standing at this spot (e.g. being served at an mBank desk)?
+function someoneAt(x, z) { const w = app.world; for (const id in w.remotes) { const q = w.remotes[id].av.group.position; if (Math.hypot(q.x - x, q.z - z) < 0.9 && Math.abs(q.y - 4) < 2) return true; } return false; }
+// hotel: check in at the desk to get your own room (its door light turns green)
+const roomKey = () => 'banda_room_' + app.me.uid;
+function myRoom() { try { return localStorage.getItem(roomKey()); } catch (e) { return null; } }
+function hotelDesk() {
+  let r = myRoom();
+  if (!r) { const rooms = app.tower.hotelRooms || []; r = rooms[Math.floor(Math.random() * rooms.length)].num; try { localStorage.setItem(roomKey(), r); } catch (e) {} sfx('paid'); }
+  app.tower.setMyRoom(r);
+  ui.results(`🛎️ Banda Hotel`, [t('roomIsYours').replace('{r}', r), t('roomHow')]);
+}
+
 // elevator button: call the nearest elevator to your floor, or choose a floor when you're in the cab
 function elevatorHud() {
   const T = app.tower, w = app.world, p = w.me.group.position, b = $('#bElev');
@@ -251,14 +276,51 @@ const logKey = () => 'banda_paylog_' + app.me.uid;
 app.payLog = () => { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch (e) { return []; } };
 app.logPay = (items, how) => { const l = app.payLog(); l.unshift({ items, how, total: items.reduce((a, i) => a + (PRICES[i.item] || 0) * i.qty, 0), at: Date.now() }); try { localStorage.setItem(logKey(), JSON.stringify(l.slice(0, 12))); } catch (e) {} };
 app.setMoney = c => { if (typeof c !== 'number') return; app.money = c; const el = $('#meMoney'); if (el) el.textContent = money(c); };
-let earnQ = 0, earnT = null;
-app.earn = (cents, now) => {
+// Money only comes from learning games and jobs. It first waits as "pending";
+// small amounts arrive by themselves, bigger ones (over $5) you accept with mBank phone or hand.
+const pendKey = () => 'banda_pending_' + app.me.uid;
+app.pending = 0;
+app.loadPending = () => { try { app.pending = +localStorage.getItem(pendKey()) || 0; } catch (e) { app.pending = 0; } };
+const savePending = () => { try { localStorage.setItem(pendKey(), String(app.pending)); } catch (e) {} };
+app.earn = cents => {
   cents = Math.round(cents); if (!(cents > 0)) return;
-  ui.floatMoney(cents); sfx('coin');
-  earnQ += cents; clearTimeout(earnT);
-  const flush = async () => { while (earnQ > 0) { const k = Math.min(500, earnQ); earnQ -= k; const bal = await app.net.earn(k).catch(() => null); if (bal !== null) app.setMoney(bal); } };
-  if (now) flush(); else earnT = setTimeout(flush, 800);
+  ui.floatMoney(cents); sfx('coin'); app.pending += cents; savePending();
 };
+// call when a game or a work shift ends
+app.settle = () => { if (app.pending <= 0) return; if (app.pending > 500) app.payout(); else credit(app.pending, null); };
+async function credit(cents, how) {
+  let left = cents, got = 0;
+  while (left > 0) { const k = Math.min(500, left); const bal = await app.net.earn(k).catch(() => null); if (bal === null) break; left -= k; got += k; app.setMoney(bal); }
+  app.pending = Math.max(0, app.pending - got); savePending();
+  if (got) { const l = app.payLog(); l.unshift({ how: how || 'auto', total: got, at: Date.now() }); try { localStorage.setItem(logKey(), JSON.stringify(l.slice(0, 12))); } catch (e) {} }
+  if (left > 0) ui.toast(t('dailyLimit'));
+  return got;
+}
+app.payout = () => {
+  const box = $('#payoutBox'), amt = app.pending, b = app.bank || {};
+  if (!amt) return;
+  app.world.inputLocked = true; app.world.keys = {};
+  $('#poAmount').textContent = money(amt);
+  const body = $('#poBody');
+  const done = async how => {
+    body.innerHTML = `<p class="mpay-msg">${t('processing')}</p>`;
+    const got = await credit(amt, how); sfx('paid'); app.world.fireworks(2);
+    body.innerHTML = `<p class="mpay-msg ok">✓ ${t('received')} ${money(got)} · ${t('balance')} ${money(app.money)}</p>`;
+    setTimeout(() => { show(box, false); app.world.inputLocked = false; }, 1600);
+  };
+  const later = () => { show(box, false); app.world.inputLocked = false; ui.toast(t('moneyWaits')); };
+  if (!b.card) body.innerHTML = `<div class="mpay-need"><b>🏦 ${t('needCard')}</b><span>${t('moneyWaitsCard')}</span></div><div class="row"><button class="btn" id="poLater">OK</button></div>`;
+  else body.innerHTML = `<p class="po-q">${t('wantMoney')}</p><div class="paytabs"><button id="poPhone">📱 <span>${t('payPhone')}</span></button><button id="poHand">✋ <span>${t('payHand')}</span></button></div><div id="poArea"></div><button class="link light" id="poLater">${t('later')}</button>`;
+  show(box);
+  const lt = $('#poLater'); if (lt) lt.onclick = later;
+  const ph = $('#poPhone'); if (ph) ph.onclick = () => { $('#poArea').innerHTML = `<div class="mphone"><div class="mphone-top">mBank</div><div class="bankcard small"><b>mBank</b><span class="cardno">${b.card}</span><small class="cardname">${app.me.name}</small></div><button class="btn primary big" id="poGet">${t('receive')} ${money(amt)}</button></div>`; $('#poGet').onclick = () => done('phone'); };
+  const hd = $('#poHand'); if (hd) hd.onclick = () => {
+    if (!b.hand) { $('#poArea').innerHTML = `<p class="mpay-msg bad">✋ ${t('handNotSet')}</p>`; return; }
+    $('#poArea').innerHTML = `<div class="palm small-palm" id="poPalm"><svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="54"/><circle class="arc" cx="60" cy="60" r="54" pathLength="100"/></svg><span class="hand">🖐️</span><i class="scanline"></i></div><p class="mpay-msg">${t('holdHand')}</p>`;
+    app.bankUI.scanner($('#poPalm'), () => done('hand'));
+  };
+};
+
 app.setAvatar = async a => {
   const w = app.world; app.me.avatar = a;
   await app.net.saveProfile(app.me.name, a); app.net.updateMeta({ avatar: a });
@@ -283,7 +345,7 @@ function openGame(id) {
   $('#gameTitle').textContent = t('g_' + id);
   show('#game');
   if (id === 'craft') w.pause(true);
-  const ctx = { el: $('#gameBody'), t, sfx, lang: getLang(), say: (s, l) => say(s, l), award: n => { app.award(n); app.earn(n * 25); }, earn: c => app.earn(c) };
+  const ctx = { el: $('#gameBody'), t, sfx, lang: getLang(), say: (s, l) => say(s, l), award: n => { app.award(n); app.earn(n * 25); } };
   gameCleanup = GAMES[id].run(ctx) || null;
 }
 function closeGame() {
@@ -291,6 +353,7 @@ function closeGame() {
   try { gameCleanup && gameCleanup(); } catch (e) { console.warn(e); }
   gameCleanup = null; $('#gameBody').innerHTML = ''; show('#game', false);
   app.world.inputLocked = false; app.world.pause(false); stepBack();
+  setTimeout(() => app.settle(), 300);
 }
 
 // ---------------- Stars / points ----------------
@@ -418,7 +481,7 @@ function hudSetup() {
   $('#bEmote').onclick = () => $('#emotes').classList.toggle('hidden');
   $('#bLang').onclick = () => { setLang(getLang() === 'en' ? 'ru' : 'en'); applyI18n(); app.pads.forEach(p => w.setLabel(p, t('mg_' + p.type))); renderMe(); if (app.me.role === 'teacher') teacherPanel(); };
   $('#bBag').onclick = () => app.shop.openBag();
-  $('#bPhone').onclick = () => app.bankUI.phone();
+  $('#bPhone').onclick = () => app.phone.open();
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
   $('#bAvatar').onclick = () => {
     w.pause(true); show('#creator');
@@ -454,7 +517,8 @@ function hudSetup() {
       if (!$('#game').classList.contains('hidden')) return closeGame();
       if (!$('#bldBox').classList.contains('hidden')) return closeBuilding();
       if (!$('#shopBox').classList.contains('hidden') || !$('#payBox').classList.contains('hidden') || !$('#bagBox').classList.contains('hidden')) return app.shop.close();
-      if (!$('#bankBox').classList.contains('hidden') || !$('#phoneBox').classList.contains('hidden')) return app.bankUI.close();
+      if (!$('#bankBox').classList.contains('hidden')) return app.bankUI.close();
+      if (app.phone.isOpen()) return app.phone.close();
       $$('.modal').forEach(m => !['game', 'creator', 'qModal', 'voteBox', 'quizBox'].includes(m.id) && show(m, false));
     }
     if (w.inputLocked) return;
@@ -500,7 +564,8 @@ function drawMinimap() {
     g.fillStyle = col; g.fillRect(X(x - ww / 2), Z(z - dd / 2), ww * scale, dd * scale);
     if (label && (big || scale > 1)) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, X(x), Z(z)); g.textBaseline = 'alphabetic'; }
   };
-  rect(TOWER.x, TOWER.z, TOWER.w, TOWER.d, '#2c4f73', t('tower'));
+  g.fillStyle = '#2c4f73'; g.beginPath(); g.arc(X(TOWER.x), Z(TOWER.z), TOWER.R * scale, 0, 7); g.fill();
+  if (big || scale > 1) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t('tower'), X(TOWER.x), Z(TOWER.z)); g.textBaseline = 'alphabetic'; }
   rect(MARKET.x, MARKET.z, MARKET.w, MARKET.d, '#2e8b57', t('market'));
   rect(BANK.x, BANK.z, BANK.w, BANK.d, '#14629e', 'mBank');
   rect(PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w, PLAYGROUND.d, '#d9533f', t('playground'));

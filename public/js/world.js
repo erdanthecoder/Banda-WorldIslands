@@ -29,14 +29,14 @@ export const isl = id => ISLANDS.find(i => i.id === id);
 
 export const PITCH = { x: 0, z: 86, hw: 30, hd: 18, h: 4 };
 export const COURT = { x: 78, z: 82, hw: 16, hd: 10, h: 4 };
-export const TOWER = { x: 0, z: -58, w: 44, d: 30, floors: 8, fh: 5.2, base: 4 };
+export const TOWER = { x: 0, z: -66, w: 44, d: 30, R: 26, floors: 8, fh: 5.2, base: 4 };
 export const MARKET = { x: -70, z: 6, w: 32, d: 22, base: 4 };
 export const PLAYGROUND = { x: 64, z: 10, w: 36, d: 30 };
 export const BANK = { x: -62, z: -34, w: 26, d: 18, base: 4 };
 export const CAFE_SPOT = { x: -15, z: -27 };
 // paved walkways (axis-aligned rectangles); everything else is grass behind wooden fences
 export const PATHS = [
-  { id: 'tower', x0: -3.5, x1: 3.5, z0: -43, z1: -22 },
+  { id: 'tower', x0: -3.5, x1: 3.5, z0: -40.3, z1: -22 },
   { id: 'bank', x0: -49, x1: -3, z0: -36.5, z1: -31.5 },
   { id: 'cafe', x0: -22, x1: -8, z0: -31.5, z1: -23 },
   { id: 'market', x0: -54, x1: -20, z0: 7.5, z1: 12.5 },
@@ -48,7 +48,7 @@ export const HOUSES = [];
 // built-up areas where grass and flowers must not grow
 const rectIn = (x, z, cx, cz, hw, hd, m) => Math.abs(x - cx) < hw + m && Math.abs(z - cz) < hd + m;
 export const onPath = (x, z, m = 0) => PATHS.some(P => x > P.x0 - m && x < P.x1 + m && z > P.z0 - m && z < P.z1 + m);
-export const built = (x, z, m = 1) => rectIn(x, z, TOWER.x, TOWER.z, TOWER.w / 2, TOWER.d / 2, m + 3) || rectIn(x, z, MARKET.x, MARKET.z, MARKET.w / 2, MARKET.d / 2, m)
+export const built = (x, z, m = 1) => Math.hypot(x - TOWER.x, z - TOWER.z) < TOWER.R + m + 4 || rectIn(x, z, MARKET.x, MARKET.z, MARKET.w / 2, MARKET.d / 2, m)
   || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
 export const ROAD = { x: 0, z: 0, r: -1000, w: 0 };
 const FLATS = [
@@ -761,6 +761,7 @@ export class World {
     let nx = p.x + this.vel.x * dt, nz = p.z + this.vel.z * dt;
     if (inside) {
       if (!inside.noClamp) { nx = Math.min(inside.maxX - 0.4, Math.max(inside.minX + 0.4, nx)); nz = Math.min(inside.maxZ - 0.4, Math.max(inside.minZ + 0.4, nz)); }
+      if (inside.round) { const R = inside.round, dx = nx - R.x, dz = nz - R.z, d = Math.hypot(dx, dz); if (d > R.r && !(R.door && Math.abs(dx) < R.door && dz > 0)) { nx = R.x + dx / d * R.r; nz = R.z + dz / d * R.r; } }
       for (const w of inside.walls || []) { const ex = w.hw + 0.3, ez = w.hd + 0.3, dx = nx - w.x, dz = nz - w.z; if (Math.abs(dx) < ex && Math.abs(dz) < ez) { if (ex - Math.abs(dx) < ez - Math.abs(dz)) nx = w.x + Math.sign(dx) * ex; else nz = w.z + Math.sign(dz) * ez; } }
     } else {
       [nx, nz] = this._collide(nx, nz, p.y);
@@ -803,6 +804,7 @@ export class World {
       r.av.group.position.copy(r.pos); this.scene.add(r.av.group);
     }
     r.d = d; if (d.x !== undefined) r.pos.set(d.x, d.y, d.z);
+    if (r.av.setMood) r.av.setMood(d.fx || '');
   }
   _remotes(dt) {
     for (const id in this.remotes) {

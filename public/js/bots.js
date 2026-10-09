@@ -77,10 +77,12 @@ export class Bots {
   // ---- trips up Banda Tower: walk in, call an elevator, ride, look around, ride back down ----
   trip(b, dt) {
     const T = this.app.tower, w = this.app.world; if (!T) return;
+    if (!b.trip && (b.kind = !b.kind) && this.app.mbank) return this.bankTrip(b, dt);
+    if (b.trip && b.trip.bank) return this.bankTrip(b, dt);
     if (!b.trip) {
       const e = T.elevators.find(x => !x.botBusy) || T.elevators[b.id.length % 2];
       const lv = 1 + Math.floor(Math.random() * 7), land = [e.cx + rand(-0.6, 0.6), e.cz + 3.2];
-      const out = [[rand(-2, 2), -22], [rand(-2, 2), -41], [rand(-2, 2), -49]];
+      const fz = T.z + T.round, out = [[rand(-2, 2), -22], [rand(-2, 2), fz - 1], [rand(-2, 2), fz - 9]];
       b.trip = { e, i: 0, t: 0, steps: [
         ...out.map(([x, z]) => ({ k: 'walk', x, z, lv: 0 })), { k: 'walk', x: land[0], z: land[1], lv: 0 },
         { k: 'call', lv: 0 }, { k: 'walk', x: e.cx + rand(-0.6, 0.6), z: e.cz - 0.3, lv: 0, cab: true }, { k: 'ride', lv },
@@ -112,6 +114,29 @@ export class Bots {
       if (b.wait > 0) { b.wait -= dt; b.speed = 0; } else if (this.moveTo(b, b.tx, b.tz, 2, dt, y)) { b.wait = rand(1, 4); b.tx = T.x + rand(-T.w / 2 + 3, T.w / 2 - 3); b.tz = T.z + rand(-T.d / 2 + 6, T.d / 2 - 3); }
       if (tr.t > st.t) next();
     }
+  }
+
+  // ---- a visit to mBank: walk there, wait in line at a desk, get served, walk back ----
+  bankTrip(b, dt) {
+    const B = this.app.mbank;
+    if (!b.trip) {
+      const i = Math.floor(Math.random() * 3), zz = B.z + rand(-1.2, 1.2);
+      B.q ||= [[], [], []];
+      const there = [[rand(-1, 1), -24], [rand(-1.5, 1.5), -34], [B.maxX + 3, zz], [B.maxX - 2, zz]];
+      b.trip = { bank: true, i: 0, t: 0, desk: i, steps: [...there.map(([x, z]) => ({ k: 'walk', x, z })), { k: 'queue' }, ...there.slice().reverse().map(([x, z]) => ({ k: 'walk', x, z }))] };
+    }
+    const tr = b.trip, st = tr.steps[tr.i], q = B.q[tr.desk];
+    const next = () => { tr.i++; tr.t = 0; if (tr.i >= tr.steps.length) { b.trip = null; b.nextTrip = rand(20, 50); b.tx = b.x; b.tz = b.z; } };
+    tr.t += dt;
+    if (st.k === 'walk') { if (this.moveTo(b, st.x, st.z, 2.4, dt) || tr.t > 30) next(); return; }
+    // queue: stand in line; the first in line is served for a few seconds
+    for (let j = q.length - 1; j >= 0; j--) if (!this.b[q[j]]) q.splice(j, 1);
+    if (!q.includes(b.id)) q.push(b.id);
+    const k = q.indexOf(b.id), f = B.deskFront[tr.desk], spot = [f.x + k * 1.4, f.z];
+    const there = this.moveTo(b, spot[0], spot[1], 1.6, dt);
+    if (there) { b.speed = 0; b.ry = -Math.PI / 2; }
+    if (k === 0 && there) { st.served = (st.served || 0) + dt; if (st.served > 0.3 && !st.waved) { st.waved = 1; B.staff[tr.desk].play('wave'); } if (st.served > rand(4, 6)) { q.splice(q.indexOf(b.id), 1); next(); } }
+    if (tr.t > 90) { const j = q.indexOf(b.id); if (j >= 0) q.splice(j, 1); next(); }
   }
 
   // ---- minigames ----
