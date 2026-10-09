@@ -1,4 +1,4 @@
-// Walk-in buildings: Banda Tower (8 floors, glass elevators) and the supermarket.
+// Walk-in buildings: World Tower (8 floors, glass elevators) and the supermarket.
 import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { TEX, canvasTex, labelSprite, TOWER, MARKET, BANK } from './world.js';
@@ -176,7 +176,7 @@ class Elevator {
   }
 }
 
-// ---------------- Banda Tower ----------------
+// ---------------- World Tower ----------------
 export const FLOORS = ['f_lobby', 'f_pool', 'f_lab', 'f_hotel', 'f_spa', 'f_cinema', 'f_arcade', 'f_games'];
 
 export class Tower extends Building {
@@ -216,7 +216,7 @@ export class Tower extends Building {
       const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 400, 0.09, 8), std(col, { emissive: col, emissiveIntensity: 2.6 })); S.add(tube);
     }
     // crown: a tapered band with the name all around, a halo ring and a spire
-    const nameT = canvasTex(2048, 128, (g, W, Hh) => { g.fillStyle = '#0d1420'; g.fillRect(0, 0, W, Hh); g.font = '800 84px Manrope, system-ui'; g.textBaseline = 'middle'; g.shadowColor = '#36c2ff'; g.shadowBlur = 24; g.fillStyle = '#e9f8ff'; for (let i = 0; i < 3; i++) g.fillText('BANDA TOWER  ✦', i * W / 3 + 30, Hh / 2 + 4); });
+    const nameT = canvasTex(2048, 128, (g, W, Hh) => { g.fillStyle = '#0d1420'; g.fillRect(0, 0, W, Hh); g.font = '800 84px Manrope, system-ui'; g.textBaseline = 'middle'; g.shadowColor = '#36c2ff'; g.shadowBlur = 24; g.fillStyle = '#e9f8ff'; for (let i = 0; i < 3; i++) g.fillText('WORLD TOWER  ✦', i * W / 3 + 30, Hh / 2 + 4); });
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(R - 3, R + 0.9, 3.4, 120, 1, true), new THREE.MeshStandardMaterial({ map: nameT, emissive: 0xffffff, emissiveMap: nameT, emissiveIntensity: 0.9, side: THREE.DoubleSide, metalness: 0.5, roughness: 0.3 }));
     crown.position.set(x, top + 1.7, z); S.add(crown);
     const roof = new THREE.Mesh(new THREE.CircleGeometry(R - 3, 96).rotateX(-Math.PI / 2), dark); roof.position.set(x, top + 3.4, z); S.add(roof);
@@ -233,7 +233,7 @@ export class Tower extends Building {
     for (const sx of [-5.5, 5.5]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4.6, 16), dark); p.position.set(x + sx, base + 2.3, cz + 5.2); S.add(p); this.world.solids.push({ x: x + sx, z: cz + 5.2, r: 0.3 }); }
     const dl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.6, 0.08), glassMat()), dr = dl.clone(); S.add(dl, dr);
     const frame = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.4, 0.3), dark); frame.position.set(x, base + 3.8, cz - 0.1); S.add(frame);
-    const name = labelSprite('BANDA TOWER', 0.9, { bg: null, weight: 800 }); name.position.set(x, base + 5.6, cz + 5.6); S.add(name);
+    const name = labelSprite('WORLD TOWER', 0.9, { bg: null, weight: 800 }); name.position.set(x, base + 5.6, cz + 5.6); S.add(name);
     this.world.updaters.push(() => {
       const p = this.world.me?.group.position, near = p && Math.abs(p.x - x) < 4 && Math.abs(p.z - cz) < 5 && p.y < base + 2 ? 1 : 0;
       this.doorOpen = (this.doorOpen || 0) + (near - (this.doorOpen || 0)) * 0.12;
@@ -286,7 +286,7 @@ export class Tower extends Building {
     const { x, minX, maxX, maxZ } = this, y = this.floorY(lv);
     this.box(lv, minX + 7, 0.55, maxZ - 9, 8, 1.1, 1.4, std(0xf4f1ea, { roughness: 0.35 }), true, 0.2);
     this.box(lv, minX + 7, 1.12, maxZ - 9, 8.2, 0.06, 1.6, std(0x2a2e34, { metalness: 0.6, roughness: 0.2 }));
-    const wall = canvasTex(1024, 512, (g, W, H) => { const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#0d3a5c'); gr.addColorStop(1, '#3aa0d8'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = '800 120px Manrope, system-ui'; g.textAlign = 'center'; g.fillText('BANDA', W / 2, H / 2); g.font = '500 48px Manrope, system-ui'; g.fillText('Learn · Play · Explore', W / 2, H / 2 + 90); });
+    const wall = canvasTex(1024, 512, (g, W, H) => { const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#0d3a5c'); gr.addColorStop(1, '#3aa0d8'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = '800 104px Manrope, system-ui'; g.textAlign = 'center'; g.fillText('WORLD ISLANDS', W / 2, H / 2); g.font = '500 48px Manrope, system-ui'; g.fillText('Learn · Play · Explore', W / 2, H / 2 + 90); });
     const screen = this.add(new THREE.Mesh(new THREE.PlaneGeometry(10, 5), new THREE.MeshStandardMaterial({ map: wall, emissive: 0xffffff, emissiveMap: wall, emissiveIntensity: 0.6 })), false);
     screen.position.set(minX + 0.35, y + 2.8, this.z); screen.rotation.y = Math.PI / 2;
     this.sofa(lv, maxX - 6, maxZ - 7, -Math.PI / 2); this.sofa(lv, maxX - 6, maxZ - 12, -Math.PI / 2, 0x6b3b3b);
@@ -333,7 +333,7 @@ export class Tower extends Building {
     const bell = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), std(0xd4af37, { metalness: 0.9, roughness: 0.2 }))); bell.position.set(x - 9, y + 1.17, minZ + 7.3);
     const con = new Avatar({ skin: '#f2c49b', face: 'smile', hair: 'short', hairColor: '#1c1410', top: 'plain', shirt: '#6d1f2c', pants: '#1d1d1f', shoes: '#1b1b1b', hat: 'none', pet: 'none', height: 1.05 }, '', 'bot');
     con.group.position.set(x - 10, y, minZ + 5.8); this.world.scene.add(con.group); this.world.updaters.push(dt => con.animate(0, dt, false));
-    const hs = labelSprite('🛎️ Banda Hotel', 0.5, { bg: 'rgba(109,31,44,0.92)' }); hs.position.set(x - 10, y + 3.2, minZ + 7); this.world.scene.add(hs);
+    const hs = labelSprite('🛎️ Island Hotel', 0.5, { bg: 'rgba(109,31,44,0.92)' }); hs.position.set(x - 10, y + 3.2, minZ + 7); this.world.scene.add(hs);
     this.world.zone({ test: (px, py, pz) => Math.abs(px - (x - 10)) < 3 && pz > minZ + 7.7 && pz < minZ + 9.6 && Math.abs(py - y) < 1, onEnter: () => { con.play('wave'); this.h.hotelDesk && this.h.hotelDesk(); } });
     // luggage cart
     const cart = new THREE.Group(); const brass = std(0xd4af37, { metalness: 0.9, roughness: 0.25 });
@@ -480,7 +480,7 @@ export class Market extends Building {
     gp(minZ, da); gp(db, maxZ); box(maxX, base + H - 0.5, z, 0.4, 1, d, std(0x2e8b57));
     const roof = box(x, base + H, z, w + 0.6, 0.4, d + 0.6, std(0x9aa0a6)); roof.castShadow = true;
     const floor = box(x, base - 0.01, z, w, 0.12, d, this.world.texMat(TEX.tile, w, d, { color: 0xf4f4f0, roughness: 0.3 }));
-    const signT = canvasTex(1024, 256, (c, W, Hh) => { c.fillStyle = '#2e8b57'; c.fillRect(0, 0, W, Hh); c.fillStyle = '#fff'; c.font = '800 120px Manrope, system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Banda Market', W / 2, Hh / 2 + 6); });
+    const signT = canvasTex(1024, 256, (c, W, Hh) => { c.fillStyle = '#2e8b57'; c.fillRect(0, 0, W, Hh); c.fillStyle = '#fff'; c.font = '800 120px Manrope, system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('World Market', W / 2, Hh / 2 + 6); });
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), new THREE.MeshStandardMaterial({ map: signT, emissive: 0xffffff, emissiveMap: signT, emissiveIntensity: 0.4 })); sign.position.set(maxX + 0.25, base + H + 1.6, z); sign.rotation.y = Math.PI / 2; S.add(sign);
     for (let i = 0; i < 4; i++) for (let k = 0; k < 2; k++) { const l = new THREE.Mesh(new THREE.BoxGeometry(5, 0.06, 0.6), std(0xffffff, { emissive: 0xffffff, emissiveIntensity: 1.6 })); l.position.set(minX + 5 + i * 7.5, base + H - 0.25, minZ + 6 + k * 10); S.add(l); }
     const ml = new THREE.PointLight(0xffffff, 0, 30, 1.4); ml.position.set(x, base + 4.5, z); S.add(ml); this.lights.push(ml);

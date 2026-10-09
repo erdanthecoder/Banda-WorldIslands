@@ -1,7 +1,7 @@
 const D = {
   en: {
-    title: 'Banda World Islands', loading: 'Loading the islands…', teacher: 'Teacher', student: 'Student',
-    signInText: 'Sign in with your school account to play with your class.', signInWs: 'Sign in with The4Workspace',
+    title: 'World Islands', loading: 'Loading the islands…', teacher: 'Teacher', student: 'Student',
+    signInText: 'Sign in with your school account to play with your class.', signInWs: 'Sign in with Recoon',
     signInNote: 'You will come straight back here after signing in.', notTeacherAccount: 'This is not a teacher account, so you play as a student.',
     pickServer: 'Pick a server. Your class should all join the same one.', hello: 'Hi', players: 'players', online: 'online',
     yourAvatar: 'Your avatar', randomize: 'Random', displayName: 'Name in the game', saveAvatar: 'Save and play', cancel: 'Cancel',
@@ -17,7 +17,7 @@ const D = {
     endGame: 'End the minigame now', sounds: 'Sounds', kidsHelp: 'Students on this server. Stars and points are saved to their account.', teacherOnly: 'Only teachers can do that.',
     island_hub: 'Central Square', island_math: 'Math Island', island_lang: 'Language Island', island_arcade: 'Arcade Island', island_sports: 'Sports Island', island_teacher: 'Teacher Island', ocean: 'Open sea',
     isl_desc_hub: 'School, Quiz Battle, Hide & Seek', isl_desc_math: 'Math Academy', isl_desc_lang: 'English and Russian', isl_desc_arcade: 'Mini-Craft, Impostor', isl_desc_sports: 'Stadium and court', isl_desc_teacher: 'Teachers’ Hall',
-    metro: 'Metro', metroPlatform: 'Banda Metro · wait for the train', boardTrain: 'Board the train', trainComing: 'The train is arriving…', chooseStation: 'Where to?', nextStation: 'Next station',
+    metro: 'Metro', metroPlatform: 'Metro · wait for the train', boardTrain: 'Board the train', trainComing: 'The train is arriving…', chooseStation: 'Where to?', nextStation: 'Next station',
     g_math: 'Math Quiz', g_speed: 'Speed Math', g_times: 'Times Tables', g_english: 'English', g_russian: 'Russian', g_match: 'Word Match', g_craft: 'Mini-Craft', g_flappy: 'Flappy Bird', g_snake: 'Snake',
     mg_football: 'Football', mg_dodgeball: 'Dodgeball', mg_hide: 'Hide & Seek', mg_starhunt: 'Star Hunt', mg_impostor: 'Impostor', mg_quiz: 'Quiz Battle',
     mgd_football: 'Teams, one pitch, 2+ players', mgd_dodgeball: 'Two teams, 2+ players', mgd_hide: 'One seeker, 2+ players', mgd_starhunt: 'Collect the most stars', mgd_impostor: 'Tasks are questions, 3+ players', mgd_quiz: 'Everyone answers live',
@@ -47,8 +47,8 @@ const D = {
     craftHelp: 'Click to start · WASD move · Space jump · Left click break · Right click place · 1–9 blocks · diamond ore = star', tapToFly: 'Tap or press Space', gameOver: 'Game over', best: 'Best', tapToRetry: 'Tap to try again',
   },
   ru: {
-    title: 'Банда: Мир островов', loading: 'Загружаем острова…', teacher: 'Учитель', student: 'Ученик',
-    signInText: 'Войди через школьный аккаунт, чтобы играть с классом.', signInWs: 'Войти через The4Workspace',
+    title: 'Мир островов', loading: 'Загружаем острова…', teacher: 'Учитель', student: 'Ученик',
+    signInText: 'Войди через школьный аккаунт, чтобы играть с классом.', signInWs: 'Войти через Recoon',
     signInNote: 'После входа ты сразу вернёшься сюда.', notTeacherAccount: 'Это не аккаунт учителя, поэтому ты играешь как ученик.',
     pickServer: 'Выбери сервер. Весь класс должен зайти на один и тот же.', hello: 'Привет', players: 'игроков', online: 'онлайн',
     yourAvatar: 'Твой аватар', randomize: 'Случайно', displayName: 'Имя в игре', saveAvatar: 'Сохранить и играть', cancel: 'Отмена',
@@ -64,7 +64,7 @@ const D = {
     endGame: 'Закончить мини-игру', sounds: 'Звуки', kidsHelp: 'Ученики на этом сервере. Звёзды и баллы сохраняются в их аккаунте.', teacherOnly: 'Это может только учитель.',
     island_hub: 'Центральная площадь', island_math: 'Остров математики', island_lang: 'Остров языков', island_arcade: 'Остров аркад', island_sports: 'Спортивный остров', island_teacher: 'Остров учителей', ocean: 'Открытое море',
     isl_desc_hub: 'Школа, Битва знаний, Прятки', isl_desc_math: 'Академия математики', isl_desc_lang: 'Английский и русский', isl_desc_arcade: 'Мини-Крафт, Предатель', isl_desc_sports: 'Стадион и площадка', isl_desc_teacher: 'Зал учителей',
-    metro: 'Метро', metroPlatform: 'Метро «Банда» · ждите поезд', boardTrain: 'Сесть в поезд', trainComing: 'Поезд прибывает…', chooseStation: 'Куда едем?', nextStation: 'Следующая станция',
+    metro: 'Метро', metroPlatform: 'Метро · ждите поезд', boardTrain: 'Сесть в поезд', trainComing: 'Поезд прибывает…', chooseStation: 'Куда едем?', nextStation: 'Следующая станция',
     g_math: 'Математика', g_speed: 'Быстрый счёт', g_times: 'Таблица умножения', g_english: 'Английский', g_russian: 'Русский язык', g_match: 'Найди пару', g_craft: 'Мини-Крафт', g_flappy: 'Флэппи Бёрд', g_snake: 'Змейка',
     mg_football: 'Футбол', mg_dodgeball: 'Вышибалы', mg_hide: 'Прятки', mg_starhunt: 'Охота за звёздами', mg_impostor: 'Предатель', mg_quiz: 'Битва знаний',
     mgd_football: 'Команды, одно поле, от 2 игроков', mgd_dodgeball: 'Две команды, от 2 игроков', mgd_hide: 'Один водит, от 2 игроков', mgd_starhunt: 'Собери больше всех звёзд', mgd_impostor: 'Задания — вопросы, от 3 игроков', mgd_quiz: 'Все отвечают вживую',
@@ -95,9 +95,9 @@ const D = {
   },
 };
 
-// Banda Tower, the market and mPAY
+// World Tower, the market and mPAY
 Object.assign(D.en, {
-  island_hub: 'Banda Island', island_east: 'Quiet Island', isl_desc_hub: 'Banda Tower, market, playground', isl_desc_east: 'Nature',
+  island_hub: 'Main Island', island_east: 'Quiet Island', isl_desc_hub: 'World Tower, market, playground', isl_desc_east: 'Nature',
   f_lobby: 'Lobby · Learning games', f_pool: 'Swimming pool', f_lab: 'Discovery Lab', f_hotel: 'Hotel', f_spa: 'Spa & Café', f_cinema: 'Cinema', f_arcade: 'Arcade', f_games: 'Game Center',
   fd_lobby: 'Math, English, Russian, Speed Math', fd_pool: 'Swim and dive', fd_lab: 'Geography, science, spelling, logic', fd_hotel: 'Rooms to relax', fd_spa: 'Hot tub, café', fd_cinema: 'Watch a film', fd_arcade: 'Flappy, Snake, Mini-Craft, Brick Breaker, Dodger', fd_games: 'Impostor, Quiz Battle, Hide & Seek, Football…',
   elevator: 'Elevator', chooseFloor: 'Choose a floor', youAreHere: 'you are here', floor: 'Floor',
@@ -111,15 +111,15 @@ Object.assign(D.en, {
   payAtCheckout: 'Pay at the checkout ✋', payMpay: 'Pay with mPAY', holdHand: 'Press and hold your hand on the scanner', scanning: 'Scanning your palm…', processing: 'Paying…',
   approved: 'Payment approved', notEnough: 'Not enough money. Play games to earn more!', payFailed: 'Payment failed. Try again.',
   boughtFood: 'Bought! Open your bag in the menu to eat it.', boughtWear: 'Bought! Open your bag in the menu to wear it.', owned: 'yours', alreadyOwn: 'You already have this.',
-  bag: 'My bag', bagEmpty: 'Your bag is empty. Visit Banda Market!', eat: 'Eat', wear: 'Wear', takeOff: 'Take off', walkPet: 'Walk with me', sendHome: 'Send home',
-  yum: 'Yum!', energy: 'Energy boost! You run faster.', floaty: 'You feel light as a balloon!', locked: 'Buy it at Banda Market', money: 'Money',
-  cafe: 'Café', relax: 'Relaxing…', welcomeTower: 'Banda Tower', poolSplash: 'Splash!',
-  howToPlay: 'Banda Tower has 8 floors — walk to the glass elevators to ride. Outside: the playground, Banda Market (pay with your hand on mPAY) and the stadium. You start with $100 and earn more by playing.',
+  bag: 'My bag', bagEmpty: 'Your bag is empty. Visit World Market!', eat: 'Eat', wear: 'Wear', takeOff: 'Take off', walkPet: 'Walk with me', sendHome: 'Send home',
+  yum: 'Yum!', energy: 'Energy boost! You run faster.', floaty: 'You feel light as a balloon!', locked: 'Buy it at World Market', money: 'Money',
+  cafe: 'Café', relax: 'Relaxing…', welcomeTower: 'World Tower', poolSplash: 'Splash!',
+  howToPlay: 'World Tower has 8 floors — walk to the glass elevators to ride. Outside: the playground, World Market (pay with your hand on mPAY) and the stadium. You start with $100 and earn more by playing.',
   help: '<b>WASD</b> walk · <b>Shift</b> run · <b>Space</b> jump / hop off · drag to look · <b>M</b> map · <b>F</b> kick / throw · <b>Enter</b> chat',
-  playground: 'Playground', market: 'Banda Market', stadium: 'Stadium', tower: 'Banda Tower',
+  playground: 'Playground', market: 'World Market', stadium: 'Stadium', tower: 'World Tower',
 });
 Object.assign(D.ru, {
-  island_hub: 'Остров Банда', island_east: 'Тихий остров', isl_desc_hub: 'Башня Банда, магазин, площадка', isl_desc_east: 'Природа',
+  island_hub: 'Главный остров', island_east: 'Тихий остров', isl_desc_hub: 'Башня Мира, магазин, площадка', isl_desc_east: 'Природа',
   f_lobby: 'Холл · Учебные игры', f_pool: 'Бассейн', f_lab: 'Лаборатория открытий', f_hotel: 'Отель', f_spa: 'Спа и кафе', f_cinema: 'Кинотеатр', f_arcade: 'Аркада', f_games: 'Игровой центр',
   fd_lobby: 'Математика, английский, русский', fd_pool: 'Плавай и ныряй', fd_lab: 'География, наука, орфография, логика', fd_hotel: 'Номера для отдыха', fd_spa: 'Джакузи, кафе', fd_cinema: 'Смотри кино', fd_arcade: 'Flappy, Змейка, Мини-Крафт, Арканоид, Метеоры', fd_games: 'Предатель, Битва знаний, Прятки, Футбол…',
   elevator: 'Лифт', chooseFloor: 'Выбери этаж', youAreHere: 'ты здесь', floor: 'Этаж',
@@ -133,18 +133,18 @@ Object.assign(D.ru, {
   payAtCheckout: 'Оплата на кассе ✋', payMpay: 'Оплатить mPAY', holdHand: 'Приложи и держи ладонь на сканере', scanning: 'Сканируем ладонь…', processing: 'Оплата…',
   approved: 'Оплата прошла', notEnough: 'Не хватает денег. Играй, чтобы заработать!', payFailed: 'Ошибка оплаты. Попробуй ещё.',
   boughtFood: 'Куплено! Открой сумку в меню, чтобы съесть.', boughtWear: 'Куплено! Открой сумку в меню, чтобы надеть.', owned: 'твоё', alreadyOwn: 'У тебя это уже есть.',
-  bag: 'Моя сумка', bagEmpty: 'Сумка пуста. Загляни в Банда Маркет!', eat: 'Съесть', wear: 'Надеть', takeOff: 'Снять', walkPet: 'Гулять со мной', sendHome: 'Отправить домой',
-  yum: 'Вкусно!', energy: 'Заряд энергии! Ты бегаешь быстрее.', floaty: 'Ты лёгкий как шарик!', locked: 'Купи в Банда Маркете', money: 'Деньги',
-  cafe: 'Кафе', relax: 'Отдыхаем…', welcomeTower: 'Башня Банда', poolSplash: 'Плюх!',
-  howToPlay: 'В Башне Банда 8 этажей — подойди к стеклянным лифтам. Снаружи: детская площадка, Банда Маркет (оплата ладонью через mPAY) и стадион. У тебя $100, играй и зарабатывай ещё.',
+  bag: 'Моя сумка', bagEmpty: 'Сумка пуста. Загляни в Мир Маркет!', eat: 'Съесть', wear: 'Надеть', takeOff: 'Снять', walkPet: 'Гулять со мной', sendHome: 'Отправить домой',
+  yum: 'Вкусно!', energy: 'Заряд энергии! Ты бегаешь быстрее.', floaty: 'Ты лёгкий как шарик!', locked: 'Купи в Мир Маркете', money: 'Деньги',
+  cafe: 'Кафе', relax: 'Отдыхаем…', welcomeTower: 'Башня Мира', poolSplash: 'Плюх!',
+  howToPlay: 'В Башне Мира 8 этажей — подойди к стеклянным лифтам. Снаружи: детская площадка, Мир Маркет (оплата ладонью через mPAY) и стадион. У тебя $100, играй и зарабатывай ещё.',
   help: '<b>WASD</b> ходить · <b>Shift</b> бег · <b>Пробел</b> прыжок / слезть · мышь — обзор · <b>M</b> карта · <b>F</b> удар / бросок · <b>Enter</b> чат',
-  playground: 'Детская площадка', market: 'Банда Маркет', stadium: 'Стадион', tower: 'Башня Банда',
+  playground: 'Детская площадка', market: 'Мир Маркет', stadium: 'Стадион', tower: 'Башня Мира',
 });
 
 Object.assign(D.en, {
   payPhone: 'mBank phone', payHand: 'Hand pay', payBtn: 'Pay', phoneHint: 'Tap Pay on your phone', phone: 'Phone',
   handNotSet: 'Hand Pay is not set up yet. Visit mBank, desk 2 — it takes 2 seconds!',
-  needCard: 'You need an mBank card to pay', needCardHow: 'It’s free! Walk to mBank (left of Banda Tower) and visit desk 1.',
+  needCard: 'You need an mBank card to pay', needCardHow: 'It’s free! Walk to mBank (left of World Tower) and visit desk 1.',
   bankWelcome: 'Welcome to mBank', bankWelcomeSub: 'Free card · Hand Pay · Phone Pay', bankDesk0: '1 · Get your card', bankDesk1: '2 · Hand Pay', bankDesk2: '3 · How to pay',
   bankSteps0: 'Walk up to my desk|Tap “Get my card”|Your card is in your phone 📱', bankSteps1: 'Have your mBank card|Put your hand on the scanner|Hold until the circle is full ✓', bankSteps2: 'Choose things in a shop|Go to the checkout|Pay with 📱 phone or ✋ hand',
   bankOffer: 'Hi! I’m your banker. 😊 Every student gets a <b>free mBank card</b> with their money on it. Want yours?', bankGetCard: 'Get my card',
@@ -155,13 +155,13 @@ Object.assign(D.en, {
   bankHelp: 'Paying is easy:<br>1. Pick things in the shop or café.<br>2. Go to the checkout.<br>3. Choose <b>📱 mBank phone</b> and tap Pay — or <b>✋ Hand pay</b> and hold your hand on the scanner.<br>You started with $100. Play games to earn more!',
   gotIt: 'Got it!', recent: 'Recent payments', noPayments: 'No payments yet.', earnTip: '💡 Learning games, arcade games and minigames earn you money.',
   callElevator: 'Call elevator', elevatorComing: 'The elevator is on its way', elevatorHere: 'The elevator is here — walk in',
-  coffeeHere: 'Banda Coffee', coffeeBoost: 'Coffee power! You run faster.',
+  coffeeHere: 'Island Coffee', coffeeBoost: 'Coffee power! You run faster.',
   it_coffee: 'Coffee', it_latte: 'Latte', it_cocoa: 'Hot cocoa', it_tea: 'Tea', it_croissant: 'Croissant',
 });
 Object.assign(D.ru, {
   payPhone: 'Телефон mBank', payHand: 'Оплата ладонью', payBtn: 'Оплатить', phoneHint: 'Нажми «Оплатить» на телефоне', phone: 'Телефон',
   handNotSet: 'Оплата ладонью ещё не настроена. Зайди в mBank, окно 2 — это 2 секунды!',
-  needCard: 'Чтобы платить, нужна карта mBank', needCardHow: 'Это бесплатно! Иди в mBank (слева от Башни Банда), окно 1.',
+  needCard: 'Чтобы платить, нужна карта mBank', needCardHow: 'Это бесплатно! Иди в mBank (слева от Башни Мира), окно 1.',
   bankWelcome: 'Добро пожаловать в mBank', bankWelcomeSub: 'Бесплатная карта · Ладонь · Телефон', bankDesk0: '1 · Получи карту', bankDesk1: '2 · Оплата ладонью', bankDesk2: '3 · Как платить',
   bankSteps0: 'Подойди к моему столу|Нажми «Получить карту»|Карта появится в телефоне 📱', bankSteps1: 'Нужна карта mBank|Положи ладонь на сканер|Держи, пока круг не заполнится ✓', bankSteps2: 'Выбери товары в магазине|Иди на кассу|Плати 📱 телефоном или ✋ ладонью',
   bankOffer: 'Привет! Я твой банкир. 😊 Каждый ученик получает <b>бесплатную карту mBank</b> со своими деньгами. Хочешь?', bankGetCard: 'Получить карту',
@@ -172,7 +172,7 @@ Object.assign(D.ru, {
   bankHelp: 'Платить легко:<br>1. Выбери товары в магазине или кафе.<br>2. Иди на кассу.<br>3. Выбери <b>📱 телефон mBank</b> и нажми «Оплатить» — или <b>✋ ладонь</b> и подержи её на сканере.<br>У тебя было $100. Играй, чтобы заработать ещё!',
   gotIt: 'Понятно!', recent: 'Последние покупки', noPayments: 'Покупок пока нет.', earnTip: '💡 Учебные игры, аркады и мини-игры приносят деньги.',
   callElevator: 'Вызвать лифт', elevatorComing: 'Лифт уже едет', elevatorHere: 'Лифт здесь — заходи',
-  coffeeHere: 'Банда Кофе', coffeeBoost: 'Сила кофе! Ты бегаешь быстрее.',
+  coffeeHere: 'Кофе «Остров»', coffeeBoost: 'Сила кофе! Ты бегаешь быстрее.',
   it_coffee: 'Кофе', it_latte: 'Латте', it_cocoa: 'Какао', it_tea: 'Чай', it_croissant: 'Круассан',
 });
 
@@ -187,7 +187,7 @@ Object.assign(D.en, {
   claimMoney: 'Get', dailyLimit: 'Daily limit reached — the rest waits in your mBank app.', received: 'Received', moneyWaits: 'Your money waits in the mBank app on your phone.',
   moneyWaitsCard: 'Your money is safe! Get your free card at mBank, then collect it from the mBank app on your phone.', wantMoney: 'Would you like to get this money?', later: 'Later', receive: 'Get', youEarned: 'You earned',
   waitInLine: 'Someone is being served. Please wait in line.', cashierWindow: 'Cashier (job)', jobs: 'Jobs', job_cashier: 'mBank cashier', job_cleaner: 'Tower cleaner',
-  job_cashier_d: 'Stand behind window 4. Help customers with money questions. $1 each.', job_cleaner_d: 'Pick up litter on Banda Tower floors. $0.50 each.', jobsHint: 'Walk up to the board to start', jobsIntro: 'Work and earn real money. Learning games pay too!',
+  job_cashier_d: 'Stand behind window 4. Help customers with money questions. $1 each.', job_cleaner_d: 'Pick up litter on World Tower floors. $0.50 each.', jobsHint: 'Walk up to the board to start', jobsIntro: 'Work and earn real money. Learning games pay too!',
   quitJob: 'Quit job', cashierStart: '🏦 Go behind window 4 at mBank. Customers are coming!', cleanerStart: '🧹 Litter is on the tower floors. Take the elevator and pick it up!', shiftDone: 'Shift over', endShift: 'End', left: 'left',
   cashierHint: 'Take the cashier job at the job board first.', customerSays: 'A customer asks', allClean: '✨ The tower is spotless!',
   q_deposit: 'I want to put in {a} and {b}. How much is that?', q_change: 'This costs {p}. I give you {g}. What’s my change?', q_bills: 'I have {n} notes of {v}. How much money is that?', q_withdraw: 'I have {a}. I take out {b}. How much is left?',
@@ -205,7 +205,7 @@ Object.assign(D.ru, {
   claimMoney: 'Получить', dailyLimit: 'Дневной лимит — остальное ждёт в приложении mBank.', received: 'Получено', moneyWaits: 'Деньги ждут в приложении mBank в телефоне.',
   moneyWaitsCard: 'Деньги в сохранности! Получи бесплатную карту в mBank, потом забери их в приложении mBank.', wantMoney: 'Хочешь получить эти деньги?', later: 'Позже', receive: 'Получить', youEarned: 'Ты заработал',
   waitInLine: 'Сейчас обслуживают другого. Подожди в очереди.', cashierWindow: 'Касса (работа)', jobs: 'Работа', job_cashier: 'Кассир mBank', job_cleaner: 'Уборщик башни',
-  job_cashier_d: 'Встань за окно 4. Помогай клиентам с деньгами. $1 за каждого.', job_cleaner_d: 'Собирай мусор на этажах Башни Банда. $0.50 за штуку.', jobsHint: 'Подойди к доске, чтобы начать', jobsIntro: 'Работай и зарабатывай настоящие деньги. Учебные игры тоже платят!',
+  job_cashier_d: 'Встань за окно 4. Помогай клиентам с деньгами. $1 за каждого.', job_cleaner_d: 'Собирай мусор на этажах Башни Мира. $0.50 за штуку.', jobsHint: 'Подойди к доске, чтобы начать', jobsIntro: 'Работай и зарабатывай настоящие деньги. Учебные игры тоже платят!',
   quitJob: 'Уволиться', cashierStart: '🏦 Встань за окно 4 в mBank. Клиенты уже идут!', cleanerStart: '🧹 На этажах башни мусор. Поднимайся на лифте и собирай!', shiftDone: 'Смена окончена', endShift: 'Конец', left: 'осталось',
   cashierHint: 'Сначала возьми работу кассира на доске вакансий.', customerSays: 'Клиент спрашивает', allClean: '✨ В башне идеально чисто!',
   q_deposit: 'Хочу положить {a} и {b}. Сколько это всего?', q_change: 'Это стоит {p}. Я даю {g}. Какая сдача?', q_bills: 'У меня {n} купюр по {v}. Сколько это денег?', q_withdraw: 'У меня {a}. Я снимаю {b}. Сколько осталось?',

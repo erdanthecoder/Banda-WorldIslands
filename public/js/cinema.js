@@ -1,4 +1,4 @@
-// Banda Cinema: short funny cartoons. No words on screen — the characters speak Russian.
+// Island Cinema: short funny cartoons. No words on screen — the characters speak Russian.
 const EP = [];
 const ease = k => k < 0 ? 0 : k > 1 ? 1 : k * k * (3 - 2 * k);
 const sky = (g, W, H, a = '#7ec8ff', b = '#e6f7ff') => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, a); gr.addColorStop(1, b); g.fillStyle = gr; g.fillRect(0, 0, W, H); };

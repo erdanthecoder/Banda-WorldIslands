@@ -1,0 +1,13 @@
+{
+  "name": "World Islands",
+  "short_name": "World Islands",
+  "description": "A 3D island world for learning, playing and exploring with your class.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#0e1622",
+  "theme_color": "#0e1622",
+  "icons": [
+    { "src": "/img/logo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/img/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

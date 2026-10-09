@@ -1,11 +1,11 @@
-// ===== Banda World Islands — settings =====
+// ===== World Islands — settings =====
 export const CONFIG = {
-  // The4Workspace account server (the LearnKyrgyz Supabase project). The publishable key is safe
+  // Recoon account server (the LearnKyrgyz Supabase project). The publishable key is safe
   // to ship: every Banda table is protected by row-level security (supabase/migrations).
   supabaseUrl: 'https://lzamxwqxnzcrazyuipjx.supabase.co',
   supabaseKey: 'sb_publishable_zSvDRXqxLlW1tuaoJ06PUw_Tges-7OG',
   // Sign-in hub. It sends people back here already signed in (#oit=…).
-  hub: 'https://the4workspace.web.app',
+  hub: 'https://recoon.web.app',
 
   // Game servers (each one is its own world with its own players).
   servers: [

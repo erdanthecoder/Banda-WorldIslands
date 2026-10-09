@@ -1,4 +1,4 @@
-// Outdoor playground next to Banda Tower: swings, a slide, a merry-go-round, a seesaw,
+// Outdoor playground next to World Tower: swings, a slide, a merry-go-round, a seesaw,
 // a sandpit and trampolines. Rides move you with world.carrier; jump (Space) to hop off.
 import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -201,7 +201,7 @@ export function paths(world) {
   return post;
 }
 
-// Banda Coffee: an outdoor kiosk with a barista and umbrella tables on the café terrace
+// Island Coffee: an outdoor kiosk with a barista and umbrella tables on the café terrace
 export function coffeeKiosk(world, h) {
   const S = world.scene, y = heightAt(-15, -27), cx = -20.2, cz = -27.2;
   const add = (m, x, yy, z) => { m.position.set(x, y + yy, z); m.castShadow = true; m.receiveShadow = true; S.add(m); return m; };
@@ -215,7 +215,7 @@ export function coffeeKiosk(world, h) {
   const aw = add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 6.8), new THREE.MeshStandardMaterial({ map: stripes })), cx + 1.2, 3.1, cz); aw.rotation.z = -0.25;
   const machine = add(new THREE.Mesh(new RoundedBox(0.7, 0.6, 0.5, 2, 0.05), metal(0xb8bec6)), cx + 0.8, 1.45, cz - 1.8);
   for (let i = 0; i < 4; i++) add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.16, 12), std(0xffffff)), cx + 0.9, 1.24, cz + i * 0.5);
-  const logo = canvasTex(512, 160, (g, W, H) => { g.fillStyle = '#2e6b4a'; g.beginPath(); g.roundRect(0, 0, W, H, 30); g.fill(); g.fillStyle = '#fff'; g.font = '800 70px Manrope, system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('☕ Banda Coffee', W / 2, H / 2 + 4); });
+  const logo = canvasTex(512, 160, (g, W, H) => { g.fillStyle = '#2e6b4a'; g.beginPath(); g.roundRect(0, 0, W, H, 30); g.fill(); g.fillStyle = '#fff'; g.font = '800 70px Manrope, system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('☕ Island Coffee', W / 2, H / 2 + 4); });
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.56), new THREE.MeshBasicMaterial({ map: logo, transparent: true })); sign.position.set(cx + 0.55, y + 3.9, cz); sign.rotation.y = Math.PI / 2; S.add(sign);
   const menu = canvasTex(256, 320, (g, W, H) => { g.fillStyle = '#1f1a16'; g.fillRect(0, 0, W, H); g.fillStyle = '#fff'; g.font = '700 26px Manrope, system-ui'; g.fillText('MENU', 20, 40); [['☕ Coffee', '$2.00'], ['🧋 Latte', '$3.00'], ['🍫 Cocoa', '$2.50'], ['🍵 Tea', '$1.00'], ['🥐 Croissant', '$2.00']].forEach(([a, b], i) => { g.font = '500 24px system-ui'; g.fillText(a, 20, 90 + i * 46); g.fillText(b, 180, 90 + i * 46); }); });
   const mb = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.6), new THREE.MeshBasicMaterial({ map: menu })); mb.position.set(cx + 0.52, y + 2.2, cz + 2.2); mb.rotation.y = Math.PI / 2; S.add(mb);

@@ -22,7 +22,7 @@ const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1
 const rnd = (() => { let s = 12345; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
 
 export const ISLANDS = [
-  { id: 'hub', x: 0, z: 0, r: 165, h: 4, peak: 16 },   // Banda Island: tower, plaza, supermarket, playground, pitch
+  { id: 'hub', x: 0, z: 0, r: 165, h: 4, peak: 16 },   // Main Island: tower, plaza, supermarket, playground, pitch
   { id: 'east', x: 470, z: 90, r: 110, h: 6, peak: 34 }, // the second island: nature only
 ];
 export const isl = id => ISLANDS.find(i => i.id === id);

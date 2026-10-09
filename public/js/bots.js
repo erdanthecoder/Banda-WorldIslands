@@ -74,7 +74,7 @@ export class Bots {
     for (const id in w.remotes) if (id.startsWith('bot-') && !ids.has(id)) w.upsertRemote(id, null);
   }
 
-  // ---- trips up Banda Tower: walk in, call an elevator, ride, look around, ride back down ----
+  // ---- trips up World Tower: walk in, call an elevator, ride, look around, ride back down ----
   trip(b, dt) {
     const T = this.app.tower, w = this.app.world; if (!T) return;
     if (!b.trip && (b.kind = !b.kind) && this.app.mbank) return this.bankTrip(b, dt);

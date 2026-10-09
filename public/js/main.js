@@ -161,7 +161,7 @@ async function start(serverId) {
   world.start(frame);
 }
 
-// ---------------- the island: Banda Tower, market, playground ----------------
+// ---------------- the island: World Tower, market, playground ----------------
 function buildWorld(world) {
   app.pads = [];
   const boing = () => sfx('boing');
@@ -184,7 +184,7 @@ function buildWorld(world) {
     jobs: () => app.jobs.board(), cashierIn: () => app.jobs.cashierIn(), cashierOut: () => app.jobs.cashierOut() });
   app.jobs = new Jobs(app);
   if (myRoom()) app.tower.setMyRoom(myRoom());
-  coffeeKiosk(world, { t, cafe: () => app.shop.openAisle('☕ Banda Coffee', CAFE, { cafe: true }) });
+  coffeeKiosk(world, { t, cafe: () => app.shop.openAisle('☕ Island Coffee', CAFE, { cafe: true }) });
   const pg = new Playground(world, { boing, sfx });
   pg.post(5, -21.5, `▲ ${t('tower')} · mBank`); pg.post(-21, 5.5, `◀ ${t('market')}`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
   [[-12, -14], [12, -14]].forEach(([x, z]) => world.trampoline(x, z, boing));
@@ -254,7 +254,7 @@ function hotelDesk() {
   let r = myRoom();
   if (!r) { const rooms = app.tower.hotelRooms || []; r = rooms[Math.floor(Math.random() * rooms.length)].num; try { localStorage.setItem(roomKey(), r); } catch (e) {} sfx('paid'); }
   app.tower.setMyRoom(r);
-  ui.results(`🛎️ Banda Hotel`, [t('roomIsYours').replace('{r}', r), t('roomHow')]);
+  ui.results(`🛎️ Island Hotel`, [t('roomIsYours').replace('{r}', r), t('roomHow')]);
 }
 
 // elevator button: call the nearest elevator to your floor, or choose a floor when you're in the cab

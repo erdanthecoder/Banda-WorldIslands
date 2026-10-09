@@ -1,6 +1,6 @@
 // Jobs: earn real money by working.
 //  🏦 mBank cashier — customers line up at window 4 and ask money questions; $1 for each one served right.
-//  🧹 Tower cleaner — litter appears on Banda Tower floors; $0.50 for each piece picked up.
+//  🧹 Tower cleaner — litter appears on World Tower floors; $0.50 for each piece picked up.
 import * as THREE from 'three';
 import { Avatar } from './avatar.js';
 import { botAvatar } from './bots.js';

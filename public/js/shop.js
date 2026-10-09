@@ -1,4 +1,4 @@
-// Banda Market: shelves -> basket -> mPAY palm-scanner checkout. Money lives on the server
+// World Market: shelves -> basket -> mPAY palm-scanner checkout. Money lives on the server
 // (cents); prices here are only for showing — the server charges its own prices.
 export const PRICES = {
   apple: 100, banana: 100, juice: 150, soda: 150, chips: 150, chocolate: 200, icecream: 250, pizza: 300, burger: 400, cake: 500,
