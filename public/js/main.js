@@ -3,14 +3,16 @@ import { t, setLang, getLang, applyI18n, langChosen } from './i18n.js';
 import { sfx, say, playSong, stopSong, SONGS, setMuted, isMuted, unlockAudio, ambience } from './audio.js';
 import { createNet } from './net.js';
 import { currentAccount, signInWithHub, signOut } from './auth.js';
-import { World, ISLANDS, isl, heightAt } from './world.js';
+import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
-import { Metro, METRO } from './metro.js';
-import { Rail } from './rail.js';
+import { Tower, Market, FLOORS } from './buildings.js';
+import { Playground } from './playground.js';
+import { Shop, money, PRICES, ICON, CAFE } from './shop.js';
 import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
-import { flappy, snake, minicraft } from './games/arcade.js';
+import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
+import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -21,14 +23,8 @@ const wantsTeacher = /^\/teachers?(\/|$)/i.test(location.pathname) || (DEV && (n
 const GAMES = {
   math: { run: mathQuiz }, speed: { run: speedMath }, times: { run: timesTable },
   english: { run: c => langQuiz(c, 'en') }, russian: { run: c => langQuiz(c, 'ru') }, match: { run: wordMatch },
-  craft: { run: minicraft }, flappy: { run: flappy }, snake: { run: snake },
-};
-const ISLAND_SETUP = {
-  hub: { building: { name: 'Banda School', tex: 'stone', w: 26, h: 14 }, angle: -Math.PI / 2, games: ['math', 'english', 'russian'], pads: ['quiz', 'starhunt', 'hide'] },
-  math: { building: { name: 'Math Academy', tex: 'glass', h: 16 }, games: ['math', 'speed', 'times'] },
-  lang: { building: { name: 'Language Library', tex: 'brick', h: 12 }, games: ['english', 'russian', 'match'] },
-  arcade: { building: { name: 'Arcade Hall', tex: 'concrete', h: 10 }, games: ['craft', 'flappy', 'snake'], pads: ['impostor'] },
-  teacher: { building: { name: 'Teachers’ Hall', tex: 'stone', w: 24, h: 13 }, games: [] },
+  geo: { run: geoQuiz }, science: { run: scienceQuiz }, spelling: { run: spellingBee }, logic: { run: logicQuiz },
+  craft: { run: minicraft, arcade: true }, flappy: { run: flappy, arcade: true }, snake: { run: snake, arcade: true }, breaker: { run: breaker, arcade: true }, dodger: { run: dodger, arcade: true },
 };
 
 const app = { t, sfx, say, players: {}, users: {}, me: null, effects: {}, evCbs: [], onEvent(cb) { this.evCbs.push(cb); } };
@@ -39,6 +35,7 @@ const ui = app.ui = {
   toast(msg) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; $('#toasts').appendChild(d); setTimeout(() => d.remove(), 3500); },
   banner(msg, ms = 2500) { const b = $('#banner'); b.textContent = msg; show(b); b.style.animation = 'none'; b.offsetHeight; b.style.animation = ''; clearTimeout(this._bt); this._bt = setTimeout(() => show(b, false), ms); },
   floatStar(n) { const d = document.createElement('div'); d.className = 'floatStar'; d.textContent = `+${n} ★`; document.body.appendChild(d); setTimeout(() => d.remove(), 1300); },
+  floatMoney(c) { const d = document.createElement('div'); d.className = 'floatMoney'; d.textContent = `+${money(c)}`; document.body.appendChild(d); setTimeout(() => d.remove(), 1300); },
   mgHud(text) { show('#mgHud', !!text); if (text && $('#mgHud').textContent !== text) $('#mgHud').textContent = text; },
   mgButtons(type) { show('#mgBtns', type === 'football' || type === 'dodgeball'); $('#bAction').textContent = type === 'dodgeball' ? t('throw') : t('kick'); },
   impostorButtons(s) {
@@ -82,6 +79,7 @@ async function boot() {
   const row = await net.myRow().catch(() => null);
   const role = account.profile.role === 'teacher' ? 'teacher' : 'student';
   if (wantsTeacher && role !== 'teacher') ui.toast(t('notTeacherAccount'));
+  app.money = row?.money_cents ?? 10000;
   app.me = { uid: account.user.id, pid: account.user.id.slice(0, 8) + '-' + Math.random().toString(36).slice(2, 6), role, name: row?.name || account.profile.full_name || '', avatar: row?.avatar && Object.keys(row.avatar).length ? row.avatar : null };
   if (!app.me.avatar || !app.me.name) {
     show('#creator');
@@ -117,11 +115,9 @@ async function start(serverId) {
   const world = app.world = new World($('#scene'), { quality });
   world.setPlayer(new Avatar(me.avatar, me.name, me.role));
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
-  buildIslands(world);
-  buildFun(world);
-  app.rail = new Rail(world);
-  app.metro = new Metro(world, { title: 'Banda Metro', stations: ISLANDS.map(I => t('island_' + I.id)), onBoard: metroDestinations, onExit: metroExit });
-  if (me.role === 'teacher') world.teleport(isl('teacher').x + 4, isl('teacher').z + 12, Math.PI);
+  app.shop = new Shop(app); app.shop.loadInv();
+  buildWorld(world);
+  world.teleport(0, 15, 0);
 
   net.onPlayers((id, d) => {
     const was = app.players[id];
@@ -137,7 +133,7 @@ async function start(serverId) {
   net.onState('effects', e => { app.effects = e || {}; world.setEffects(app.effects); });
 
   await net.joinServer(serverId, { pid: me.pid, uid: me.uid, name: me.name, role: me.role, avatar: me.avatar });
-  app.mg = new Minigames(app); app.closeGame = closeGame;
+  app.mg = new Minigames(app); app.closeGame = closeGame; app.openGame = openGame;
   app.bots = new Bots(app);
 
   let last = '', lastSent = 0;
@@ -157,29 +153,29 @@ async function start(serverId) {
   world.start(frame);
 }
 
-// ---------------- islands: buildings, doors, pads, metro ----------------
-function buildIslands(world) {
-  app.stations = {}; app.pads = [];
-  for (const I of ISLANDS) {
-    const out = Math.atan2(I.z, I.x), setup = ISLAND_SETUP[I.id];
-    if (I.id === 'sports') {
-      addPad(world, -6, -273, 'football'); addPad(world, 6, -273, 'dodgeball');
-      app.stations.sports = world.metroEntrance(-26, -270, Math.PI / 2, `Ⓜ ${t('metro')}`, () => metroDown('sports'));
-      continue;
-    }
-    const ang = setup.angle ?? out;
-    const door = world.building(I, ang, 31, { w: 22, d: 12, ...setup.building });
-    if (setup.games.length) world.zone({ x: door.x, z: door.z, r: 1.6, onEnter: () => openBuilding(setup.building.name, setup.games) });
-    (setup.pads || []).forEach((type, k, a) => { const pa = ang + Math.PI + (k - (a.length - 1) / 2) * 0.45; addPad(world, I.x + Math.cos(pa) * 15, I.z + Math.sin(pa) * 15, type); });
-    const ma = ang + Math.PI / 2, mx = I.x + Math.cos(ma) * 16, mz = I.z + Math.sin(ma) * 16;
-    app.stations[I.id] = world.metroEntrance(mx, mz, Math.atan2(-Math.cos(ma), -Math.sin(ma)), `Ⓜ ${t('metro')}`, () => metroDown(I.id));
-  }
+// ---------------- the island: Banda Tower, market, playground ----------------
+function buildWorld(world) {
+  app.pads = [];
+  const boing = () => sfx('boing');
+  world.onElevatorDing = () => sfx('ding'); world.onElevatorCall = () => sfx('beep');
+  app.tower = new Tower(world, {
+    t, boing,
+    station: (b, lv, kind, x, z, arcade) => b.spot(lv, x, z, t('g_' + kind), arcade ? 0xff3fa4 : lv === 2 ? 0x39d39a : 0x4aa8ff, () => openGame(kind)),
+    pad: (b, lv, type, x, z) => addPad(world, x, z, type, b.floorY(lv)),
+    panel: elev => floorPanel(elev),
+    rest: kind => { if (world.speedNow > 0.5) return; emote('sit'); ui.toast(kind === 'cinema' ? '🍿 ' + t('relax') : kind === 'spa' ? '♨️ ' + t('relax') : '😴 ' + t('relax')); },
+    cafe: () => app.shop.openAisle('☕ ' + t('cafe'), CAFE, { cafe: true }),
+  });
+  app.market = new Market(world, { t, aisle: a => app.shop.openAisle(t('aisle_' + a.id), a.items), checkout: () => app.shop.checkout() });
+  const pg = new Playground(world, { boing, sfx, earn: () => app.earn(10) });
+  pg.post(5, -27, `▲ ${t('tower')}`); pg.post(-27, 5, `◀ ${t('market')}`); pg.post(27, 5, `${t('playground')} ▶`); pg.post(5, 27, `▼ ${t('stadium')}`);
+  [[-12, -14], [12, -14]].forEach(([x, z]) => world.trampoline(x, z, boing));
 }
 
-function addPad(world, x, z, type) {
+function addPad(world, x, z, type, y) {
   const pad = world.pad(x, z, t('mg_' + type), type === 'impostor' ? 0xd64545 : type === 'quiz' ? 0xffc94d : 0x4aa8ff);
-  pad.type = type; app.pads.push(pad);
-  world.zone({ x, z, r: 1.7,
+  pad.group.position.y = y; pad.y = y; pad.type = type; app.pads.push(pad);
+  world.zone({ test: (px, py, pz) => Math.hypot(px - x, pz - z) < 1.7 && Math.abs(py - y) < 1.5,
     onEnter: () => { if (app.mg.running()) return ui.toast(t('mgRunning')); pad.armed = performance.now(); },
     onStay: () => {
       if (!pad.armed || app.mg.running()) return;
@@ -190,71 +186,52 @@ function addPad(world, x, z, type) {
     onLeave: () => { if (pad.armed) { pad.armed = 0; ui.mgHud(null); } } });
 }
 
-function openBuilding(name, games) {
-  if (app.mg.active) return;
-  $('#bldTitle').textContent = name;
-  $('#bldList').innerHTML = games.map(g => `<button class="tile" data-g="${g}"><span>${t('g_' + g)}</span><small>${t('gd_' + g)}</small></button>`).join('');
-  app.world.inputLocked = true; app.world.keys = {}; show('#bldBox'); sfx('click');
-  $$('#bldList .tile').forEach(b => b.onclick = () => { show('#bldBox', false); openGame(b.dataset.g); });
-}
-function closeBuilding() { show('#bldBox', false); app.world.inputLocked = false; stepBack(); }
-// after closing a menu, step back out of the doorway so it doesn't reopen at once
-function stepBack() { const w = app.world, g = w.me.group; g.position.x -= Math.sin(g.rotation.y) * 1.6; g.position.z -= Math.cos(g.rotation.y) * 1.6; }
-
-// ---------------- fun: trampolines, jump pads, obby, hidden stars ----------------
-const today = () => new Date().toISOString().slice(0, 10);
-const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
-function buildFun(world) {
-  const boing = () => sfx('boing');
-  [[-27, -14], [27, 18], [-20, 28]].forEach(([x, z]) => world.trampoline(x, z, boing));
-  [[18, -240], [-18, -240]].forEach(([x, z]) => world.trampoline(x, z, boing));
-  world.jumpPad(28, -14, boing); world.jumpPad(22, 214, boing, 24);
-  world.obby(42, 207, () => {
-    const k = 'banda_obby_' + today();
-    if (store.get(k, false)) return ui.banner(t('obbyAgain'), 2500);
-    store.set(k, true); app.award(10); sfx('champions'); world.fireworks(8); ui.banner(t('obbyWin'), 3500);
+// inside the elevator: pick a floor
+function floorPanel(elev) {
+  if (app.mg.active || app.world.carrier) return;
+  const w = app.world; w.inputLocked = true; w.keys = {}; sfx('click');
+  $('#bldTitle').textContent = `${t('elevator')} · ${t('chooseFloor')}`;
+  $('#bldList').className = 'floors';
+  $('#bldList').innerHTML = FLOORS.map((f, lv) => ({ f, lv })).reverse().map(({ f, lv }) => `<button data-lv="${lv}" class="${lv === elev.level ? 'here' : ''}"><b>${lv + 1}</b><span>${t(f)}<small>${lv === elev.level ? t('youAreHere') : t('fd_' + f.slice(2))}</small></span></button>`).join('');
+  show('#bldBox');
+  $$('#bldList button').forEach(b => b.onclick = () => {
+    const lv = +b.dataset.lv; show('#bldBox', false); w.inputLocked = false;
+    if (lv === elev.level) return stepOut(elev);
+    sfx('click');
+    elev.ride(lv, () => { ui.banner(`${lv + 1} · ${t(FLOORS[lv])}`, 2500); });
   });
-  // 30 hidden stars on the islands, each can be found once a day
-  const pts = []; let seed = 7;
-  const r = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  while (pts.length < 30) { const I = ISLANDS[pts.length % ISLANDS.length], a = r() * 6.28, d = (0.35 + r() * 0.6) * I.r, x = I.x + Math.cos(a) * d, z = I.z + Math.sin(a) * d, h = heightAt(x, z); if (h > 0.8 && h < 16) pts.push([x, z]); }
-  const key = 'banda_hs_' + today(), got = new Set(store.get(key, []));
-  world.hiddenStars(pts, i => got.has(i), i => { got.add(i); store.set(key, [...got]); app.award(1); sfx('star'); ui.toast(`${t('hiddenStar')} ${got.size} / 30`); if (got.size === 30) { app.award(10); ui.banner(t('allHidden'), 3000); } });
+  app.closePanel = () => stepOut(elev);
 }
+function stepOut(elev) { const p = app.world.me.group.position; p.z = elev.cz + 2.6; p.x = elev.cx; }
+function closeBuilding() { show('#bldBox', false); app.world.inputLocked = false; if (app.closePanel) { app.closePanel(); app.closePanel = null; } else stepBack(); }
+// after closing a menu, step back so it doesn't reopen at once
+function stepBack() { const w = app.world, g = w.me.group; g.position.x -= Math.sin(g.rotation.y) * 1.6; g.position.z -= Math.cos(g.rotation.y) * 1.6; }
 function emote(name) { const w = app.world; if (w.speedNow > 0.5) return; w.me.play(name); app.emoteSig = name + ':' + Date.now(); }
 
-// ---------------- metro ----------------
-const stationName = id => t('island_' + id);
-function metroDown(id) {
-  if (app.mg.active) return;
-  app.metroAt = id; sfx('teleport'); ui.fade(true);
-  setTimeout(() => { app.metro.enter(stationName(id), true); ambience(true, { underground: true }); ui.fade(false); ui.banner(`Ⓜ ${stationName(id)}`, 2000); }, 450);
-}
-function metroExit() {
-  const id = app.metroAt || 'hub', st = app.stations[id];
-  ui.fade(true);
-  setTimeout(() => {
-    const [x, z] = st.toWorld(0, -1.8);
-    app.world.teleport(x, z, st.rot - Math.PI);
-    app.metro.leave(); ambience(true); ui.fade(false); ui.banner(stationName(id), 1800);
-  }, 450);
-}
-function metroDestinations() {
-  const w = app.world; w.inputLocked = true; w.keys = {};
-  $('#metroList').innerHTML = ISLANDS.filter(I => I.id !== app.metroAt).map(I => `<button class="tile" data-id="${I.id}"><span>${stationName(I.id)}</span><small>${t('isl_desc_' + I.id)}</small></button>`).join('');
-  show('#metroBox');
-  $$('#metroList .tile').forEach(b => b.onclick = () => {
-    show('#metroBox', false); sfx('teleport');
-    const dest = b.dataset.id;
-    ui.banner(`${t('nextStation')}: ${stationName(dest)}`, 3000);
-    const from = app.metroAt;
-    app.metro.ride(resume => app.rail.ride(from, dest, on => ui.fade(on), resume), () => {
-      app.metroAt = dest; app.metro.setStation(stationName(dest));
-      w.teleport(METRO.x - 6, METRO.z + 1.2, -Math.PI / 2, METRO.y);
-      ui.banner(`${stationName(dest)} · ${t('followExit')}`, 3000);
-    }, on => ui.fade(on));
-  });
-}
+// ---------------- money (mPAY) ----------------
+app.setMoney = c => { if (typeof c !== 'number') return; app.money = c; const el = $('#meMoney'); if (el) el.textContent = money(c); };
+let earnQ = 0, earnT = null;
+app.earn = (cents, now) => {
+  cents = Math.round(cents); if (!(cents > 0)) return;
+  ui.floatMoney(cents); sfx('coin');
+  earnQ += cents; clearTimeout(earnT);
+  const flush = async () => { while (earnQ > 0) { const k = Math.min(500, earnQ); earnQ -= k; const bal = await app.net.earn(k).catch(() => null); if (bal !== null) app.setMoney(bal); } };
+  if (now) flush(); else earnT = setTimeout(flush, 800);
+};
+app.setAvatar = async a => {
+  const w = app.world; app.me.avatar = a;
+  await app.net.saveProfile(app.me.name, a); app.net.updateMeta({ avatar: a });
+  w.replacePlayer(new Avatar(a, app.me.name, app.me.role));
+};
+app.useItem = k => {
+  const w = app.world; sfx(k === 'ball' || k === 'balloon' || k === 'teddy' ? 'cheer' : 'eat');
+  const d = document.createElement('div'); d.className = 'floatStar'; d.textContent = ICON[k]; document.body.appendChild(d); setTimeout(() => d.remove(), 1300);
+  const boost = (key, sec, msg) => { w.effects = { ...w.effects, [key]: true }; ui.banner(msg, 2600); clearTimeout(app['_b' + key]); app['_b' + key] = setTimeout(() => { w.effects = { ...w.effects, [key]: !!app.effects[key] }; }, sec * 1000); };
+  if (k === 'balloon') boost('lowGravity', 20, `🎈 ${t('floaty')}`);
+  else if (k === 'ball') { w.fireworks(3); emote('cheer'); }
+  else if (k === 'teddy') emote('sit');
+  else boost('speed', ['pizza', 'burger', 'cake'].includes(k) ? 45 : 20, `${t('yum')} ${t('energy')}`);
+};
 
 // ---------------- Games overlay ----------------
 let gameCleanup = null;
@@ -264,7 +241,7 @@ function openGame(id) {
   $('#gameTitle').textContent = t('g_' + id);
   show('#game');
   if (id === 'craft') w.pause(true);
-  const ctx = { el: $('#gameBody'), t, sfx, lang: getLang(), say: (s, l) => say(s, l), award: n => app.award(n) };
+  const ctx = { el: $('#gameBody'), t, sfx, lang: getLang(), say: (s, l) => say(s, l), award: n => { app.award(n); app.earn(n * 25); }, earn: c => app.earn(c) };
   gameCleanup = GAMES[id].run(ctx) || null;
 }
 function closeGame() {
@@ -323,7 +300,7 @@ async function onEvent(ev) {
     case 'sfx': sfx(d.name); break;
     case 'summon':
       if (app.mg.active || ev.from === app.me.uid) return;
-      sfx('teleport'); ui.flash(); w.teleport(d.x + (Math.random() - 0.5) * 8, d.z + 3 + Math.random() * 5); ui.banner(t('summoned'), 2000);
+      sfx('teleport'); ui.flash(); w.teleport(d.x + (Math.random() - 0.5) * 3, d.z + 2 + Math.random() * 2, undefined, d.y); ui.banner(t('summoned'), 2000);
       break;
     case 'freeze': if (kid) { w.frozenUntil = performance.now() + d.sec * 1000; ui.banner(`${t('frozen')} ${d.sec} s`, 2000); sfx('hit'); } break;
     case 'gift':
@@ -344,7 +321,7 @@ function teacherPanel() {
   const abuse = [
     ['starRain', () => cmd('starRain', { n: 25 })], ['fireworks', () => cmd('fireworks')],
     ['night'], ['disco'], ['lowGravity'], ['speed'], ['giant'],
-    ['summon', () => { const p = app.world.me.group.position; cmd('summon', { x: p.x, z: p.z }); }],
+    ['summon', () => { const p = app.world.me.group.position; cmd('summon', { x: p.x, z: p.z, y: p.y }); }],
     ['freeze', () => cmd('freeze', { sec: 5 })], ['chatLock'],
   ];
   const grid = $('#abuseGrid'); grid.innerHTML = '';
@@ -398,10 +375,11 @@ function hudSetup() {
   $('#bChat').onclick = () => { const i = $('#chatIn'); show(i); i.focus(); $$('#chatLog div').forEach(d => d.classList.remove('old')); };
   $('#bEmote').onclick = () => $('#emotes').classList.toggle('hidden');
   $('#bLang').onclick = () => { setLang(getLang() === 'en' ? 'ru' : 'en'); applyI18n(); app.pads.forEach(p => w.setLabel(p, t('mg_' + p.type))); renderMe(); if (app.me.role === 'teacher') teacherPanel(); };
+  $('#bBag').onclick = () => app.shop.openBag();
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
   $('#bAvatar').onclick = () => {
     w.pause(true); show('#creator');
-    avatarCreator($('#creatorBody'), { t, cfg: app.me.avatar, name: app.me.name, onCancel: () => { show('#creator', false); w.pause(false); },
+    avatarCreator($('#creatorBody'), { t, cfg: app.me.avatar, name: app.me.name, owned: app.shop.inv, onLocked: v => ui.toast(`🔒 ${t('it_' + v)} · ${money(PRICES[v])} · ${t('locked')}`), onCancel: () => { show('#creator', false); w.pause(false); },
       onSave: async (cfg, name) => { app.me.avatar = cfg; app.me.name = name; await net.saveProfile(name, cfg); net.updateMeta({ name, avatar: cfg }); w.replacePlayer(new Avatar(cfg, name, app.me.role)); show('#creator', false); w.pause(false); renderMe(); } });
   };
   $('#bQuality').onclick = () => { const q = w.hq ? 'low' : 'high'; try { localStorage.setItem('banda_quality', q); } catch (e) {} ui.toast(t('qualityReload')); setTimeout(() => location.reload(), 900); };
@@ -409,7 +387,6 @@ function hudSetup() {
   $('#bPanel').onclick = () => show('#panel');
   $('#gameClose').onclick = closeGame;
   $('#bldClose').onclick = closeBuilding;
-  $('#metroClose').onclick = () => { show('#metroBox', false); w.inputLocked = false; w.me.group.position.z -= 1.5; };
   $$('[data-close]').forEach(b => b.onclick = () => show(b.closest('.modal'), false));
   if (app.me.role === 'teacher') teacherPanel();
   $('#bReport').onclick = () => app.mg.impostor.report();
@@ -433,7 +410,7 @@ function hudSetup() {
     if (e.key === 'Escape') {
       if (!$('#game').classList.contains('hidden')) return closeGame();
       if (!$('#bldBox').classList.contains('hidden')) return closeBuilding();
-      if (!$('#metroBox').classList.contains('hidden')) return $('#metroClose').click();
+      if (!$('#shopBox').classList.contains('hidden') || !$('#payBox').classList.contains('hidden') || !$('#bagBox').classList.contains('hidden')) return app.shop.close();
       $$('.modal').forEach(m => !['game', 'creator', 'qModal', 'voteBox', 'quizBox'].includes(m.id) && show(m, false));
     }
     if (w.inputLocked) return;
@@ -459,24 +436,32 @@ function hudSetup() {
   $('#minimap').onclick = () => $('#minimap').classList.toggle('big');
   $('#emotes').innerHTML = EMOTES.map((e, i) => `<button class="chip dark" data-e="${e}" title="${i + 1}">${t('em_' + e)}</button>`).join('');
   $$('#emotes button').forEach(b => b.onclick = () => { emote(b.dataset.e); $('#emotes').classList.add('hidden'); });
-  renderMe();
+  renderMe(); app.setMoney(app.money);
 }
 
 // ---------------- minimap ----------------
 function drawMinimap() {
   const c = $('#minimap'), g = c.getContext('2d'), W = c.width, w = app.world, p = w.me.group.position;
-  const big = c.classList.contains('big'), scale = big ? W / 760 : W / 260, cx = big ? 0 : p.x, cz = big ? -10 : p.z;
+  const big = c.classList.contains('big'), scale = big ? W / 360 : W / 200, cx = big ? 0 : p.x, cz = big ? 0 : p.z;
   const X = x => W / 2 + (x - cx) * scale, Z = z => W / 2 + (z - cz) * scale;
   g.clearRect(0, 0, W, W);
   g.fillStyle = '#16384c'; g.fillRect(0, 0, W, W);
   for (const I of ISLANDS) {
     g.fillStyle = '#c8b48a'; g.beginPath(); g.arc(X(I.x), Z(I.z), I.r * 1.02 * scale, 0, 7); g.fill();
     g.fillStyle = '#4f6b34'; g.beginPath(); g.arc(X(I.x), Z(I.z), I.r * 0.92 * scale, 0, 7); g.fill();
-    if (big || Math.hypot(I.x - p.x, I.z - p.z) < 200) { g.fillStyle = '#fff'; g.font = `600 ${big ? 18 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.fillText(t('island_' + I.id), X(I.x), Z(I.z) - I.r * scale * 0.5); }
   }
-  for (const id in app.stations) { const s = app.stations[id]; g.fillStyle = '#c8102e'; g.beginPath(); g.arc(X(s.x), Z(s.z), big ? 9 : 6, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = `700 ${big ? 11 : 8}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('M', X(s.x), Z(s.z) + 0.5); g.textBaseline = 'alphabetic'; }
-  for (const pd of app.pads) { g.strokeStyle = '#ffc94d'; g.lineWidth = 2; g.beginPath(); g.arc(X(pd.x), Z(pd.z), 4, 0, 7); g.stroke(); }
-  for (const id in w.remotes) { const q = w.remotes[id].av.group.position; if (q.y < -20) continue; g.fillStyle = id.startsWith('bot-') ? '#9fb0c2' : '#4aa8ff'; g.beginPath(); g.arc(X(q.x), Z(q.z), 3.5, 0, 7); g.fill(); }
+  g.fillStyle = '#a89f8d'; g.beginPath(); g.arc(X(0), Z(0), 25 * scale, 0, 7); g.fill();
+  const rect = (x, z, ww, dd, col, label) => {
+    g.fillStyle = col; g.fillRect(X(x - ww / 2), Z(z - dd / 2), ww * scale, dd * scale);
+    if (label && (big || scale > 1)) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, X(x), Z(z)); g.textBaseline = 'alphabetic'; }
+  };
+  rect(TOWER.x, TOWER.z, TOWER.w, TOWER.d, '#2c4f73', t('tower'));
+  rect(MARKET.x, MARKET.z, MARKET.w, MARKET.d, '#2e8b57', t('market'));
+  rect(PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w, PLAYGROUND.d, '#d9533f', t('playground'));
+  rect(PITCH.x, PITCH.z, PITCH.hw * 2, PITCH.hd * 2, '#3e7c30', t('stadium'));
+  rect(COURT.x, COURT.z, COURT.hw * 2, COURT.hd * 2, '#b07a46', '');
+  const myY = p.y;
+  for (const id in w.remotes) { const q = w.remotes[id].av.group.position; if (q.y < -20 || Math.abs(q.y - myY) > 4) continue; g.fillStyle = id.startsWith('bot-') ? '#cfd8e2' : '#4aa8ff'; g.beginPath(); g.arc(X(q.x), Z(q.z), 3.5, 0, 7); g.fill(); }
   if (p.y > -20) { g.save(); g.translate(X(p.x), Z(p.z)); g.rotate(-w.me.group.rotation.y + Math.PI); g.fillStyle = '#ffc94d'; g.beginPath(); g.moveTo(0, -8); g.lineTo(5.5, 6); g.lineTo(0, 3); g.lineTo(-5.5, 6); g.fill(); g.restore(); }
 }
 
@@ -485,9 +470,11 @@ function frame(dt) {
   // if the first seconds run slowly, switch to lighter graphics automatically
   if (!perf.done) { perf.t += dt; perf.n++; if (perf.t > 8) { perf.done = true; if (perf.n / perf.t < 28 && app.world.hq) { app.world.lighten(); ui.toast(t('autoLight')); } } }
   const w = app.world, p = w.me.group.position;
-  const under = p.y < -20, where = w.inside ? (w.inside === app.metro.interior ? `Ⓜ ${stationName(app.metroAt || 'hub')}` : t('mg_impostor')) : (() => { const I = w.islandAt(p.x, p.z); return I ? t('island_' + I.id) : t('ocean'); })();
+  const I = w.inside, under = p.y < -20;
+  const where = I ? (I.building === app.tower ? `${I.level + 1} · ${t(FLOORS[I.level])}` : I.building === app.market ? t('market') : t('mg_impostor'))
+    : (() => { const isl = w.islandAt(p.x, p.z); return isl ? t('island_' + isl.id) : t('ocean'); })();
   if (where !== whereLast) { $('#where').textContent = where; whereLast = where; const wb = $('#whereBox'); wb.classList.remove('quiet'); clearTimeout(app._wq); app._wq = setTimeout(() => wb.classList.add('quiet'), 4000); }
-  app.mg.tick(dt); app.bots.tick(dt);
+  app.mg.tick(dt); app.bots.tick(dt); app.tower.update(p);
   if ((mapT += dt) > 0.2) { mapT = 0; show('#minimap', !under); if (!under) drawMinimap(); }
 }
 

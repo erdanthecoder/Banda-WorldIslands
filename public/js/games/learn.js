@@ -111,7 +111,7 @@ export function makeQuestion(subject, level, ui) {
 }
 
 // ---------- round runner ----------
-function runRound(ctx, title, level, makeQ, rounds = 10, secs = 20) {
+export function runRound(ctx, title, level, makeQ, rounds = 10, secs = 20) {
   const { el, t } = ctx;
   let i = 0, score = 0, timer;
   const next = () => {
@@ -151,7 +151,7 @@ function runRound(ctx, title, level, makeQ, rounds = 10, secs = 20) {
   return () => clearInterval(timer);
 }
 
-function levelPicker(el, t, current, onPick) {
+export function levelPicker(el, t, current, onPick) {
   const row = h('div', 'levels');
   [1, 2, 3, 4].forEach(l => { const b = h('button', 'chip' + (l === current ? ' on' : ''), `${t('level')} ${l} · ${t('lvl' + l)}`); b.onclick = () => onPick(l); row.appendChild(b); });
   el.appendChild(row);

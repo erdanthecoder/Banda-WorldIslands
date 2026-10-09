@@ -95,6 +95,52 @@ const D = {
   },
 };
 
+// Banda Tower, the market and mPAY
+Object.assign(D.en, {
+  island_hub: 'Banda Island', island_east: 'Quiet Island', isl_desc_hub: 'Banda Tower, market, playground', isl_desc_east: 'Nature',
+  f_lobby: 'Lobby · Learning games', f_pool: 'Swimming pool', f_lab: 'Discovery Lab', f_hotel: 'Hotel', f_spa: 'Spa & Café', f_cinema: 'Cinema', f_arcade: 'Arcade', f_games: 'Game Center',
+  fd_lobby: 'Math, English, Russian, Speed Math', fd_pool: 'Swim and dive', fd_lab: 'Geography, science, spelling, logic', fd_hotel: 'Rooms to relax', fd_spa: 'Hot tub, café', fd_cinema: 'Watch a film', fd_arcade: 'Flappy, Snake, Mini-Craft, Brick Breaker, Dodger', fd_games: 'Impostor, Quiz Battle, Hide & Seek, Football…',
+  elevator: 'Elevator', chooseFloor: 'Choose a floor', youAreHere: 'you are here', floor: 'Floor',
+  g_geo: 'Geography', g_science: 'Science', g_spelling: 'Spelling Bee', g_logic: 'Logic', g_breaker: 'Brick Breaker', g_dodger: 'Space Dodger',
+  gd_geo: 'Capitals, flags, continents', gd_science: 'Planets, animals, the body', gd_spelling: 'Listen and spell', gd_logic: 'Patterns and sequences', gd_breaker: 'Smash all the bricks', gd_dodger: 'Dodge meteors, grab coins',
+  tapToStart: 'Tap or press Space to launch', dodgeHelp: '← → to move · dodge the rocks', play: 'Play', earned: 'earned',
+  aisle_fruit: 'Fruit', aisle_drinks: 'Drinks', aisle_snacks: 'Snacks', aisle_meals: 'Meals', aisle_toys: 'Toys', aisle_style: 'Hats', aisle_pets: 'Pets', checkout: 'Checkout · mPAY',
+  it_apple: 'Apple', it_banana: 'Banana', it_juice: 'Juice', it_soda: 'Soda', it_chips: 'Fries', it_chocolate: 'Chocolate', it_icecream: 'Ice cream', it_pizza: 'Pizza', it_burger: 'Burger', it_cake: 'Cake',
+  it_ball: 'Ball', it_balloon: 'Balloon', it_teddy: 'Teddy bear', it_crown: 'Crown', it_headphones: 'Headphones', it_tophat: 'Top hat', it_dog: 'Puppy', it_cat: 'Kitten', it_bunny: 'Bunny', it_dragon: 'Baby dragon',
+  basket: 'Basket', basketEmpty: 'Your basket is empty. Pick things from the shelves first.', remove: 'remove', done: 'Done', total: 'Total', balance: 'Balance',
+  payAtCheckout: 'Pay at the checkout ✋', payMpay: 'Pay with mPAY', holdHand: 'Press and hold your hand on the scanner', scanning: 'Scanning your palm…', processing: 'Paying…',
+  approved: 'Payment approved', notEnough: 'Not enough money. Play games to earn more!', payFailed: 'Payment failed. Try again.',
+  boughtFood: 'Bought! Open your bag in the menu to eat it.', boughtWear: 'Bought! Open your bag in the menu to wear it.', owned: 'yours', alreadyOwn: 'You already have this.',
+  bag: 'My bag', bagEmpty: 'Your bag is empty. Visit Banda Market!', eat: 'Eat', wear: 'Wear', takeOff: 'Take off', walkPet: 'Walk with me', sendHome: 'Send home',
+  yum: 'Yum!', energy: 'Energy boost! You run faster.', floaty: 'You feel light as a balloon!', locked: 'Buy it at Banda Market', money: 'Money',
+  cafe: 'Café', relax: 'Relaxing…', welcomeTower: 'Banda Tower', poolSplash: 'Splash!',
+  howToPlay: 'Banda Tower has 8 floors — walk to the glass elevators to ride. Outside: the playground, Banda Market (pay with your hand on mPAY) and the stadium. You start with $100 and earn more by playing.',
+  help: '<b>WASD</b> walk · <b>Shift</b> run · <b>Space</b> jump / hop off · drag to look · <b>M</b> map · <b>F</b> kick / throw · <b>Enter</b> chat',
+  playground: 'Playground', market: 'Banda Market', stadium: 'Stadium', tower: 'Banda Tower',
+});
+Object.assign(D.ru, {
+  island_hub: 'Остров Банда', island_east: 'Тихий остров', isl_desc_hub: 'Башня Банда, магазин, площадка', isl_desc_east: 'Природа',
+  f_lobby: 'Холл · Учебные игры', f_pool: 'Бассейн', f_lab: 'Лаборатория открытий', f_hotel: 'Отель', f_spa: 'Спа и кафе', f_cinema: 'Кинотеатр', f_arcade: 'Аркада', f_games: 'Игровой центр',
+  fd_lobby: 'Математика, английский, русский', fd_pool: 'Плавай и ныряй', fd_lab: 'География, наука, орфография, логика', fd_hotel: 'Номера для отдыха', fd_spa: 'Джакузи, кафе', fd_cinema: 'Смотри кино', fd_arcade: 'Flappy, Змейка, Мини-Крафт, Арканоид, Метеоры', fd_games: 'Предатель, Битва знаний, Прятки, Футбол…',
+  elevator: 'Лифт', chooseFloor: 'Выбери этаж', youAreHere: 'ты здесь', floor: 'Этаж',
+  g_geo: 'География', g_science: 'Наука', g_spelling: 'Диктант', g_logic: 'Логика', g_breaker: 'Арканоид', g_dodger: 'Метеоры',
+  gd_geo: 'Столицы, флаги, континенты', gd_science: 'Планеты, животные, тело', gd_spelling: 'Послушай и выбери', gd_logic: 'Закономерности', gd_breaker: 'Разбей все кирпичи', gd_dodger: 'Уклоняйся и собирай монеты',
+  tapToStart: 'Нажми или Пробел, чтобы запустить', dodgeHelp: '← → двигаться · уклоняйся от камней', play: 'Играть', earned: 'заработано',
+  aisle_fruit: 'Фрукты', aisle_drinks: 'Напитки', aisle_snacks: 'Сладости', aisle_meals: 'Еда', aisle_toys: 'Игрушки', aisle_style: 'Шапки', aisle_pets: 'Питомцы', checkout: 'Касса · mPAY',
+  it_apple: 'Яблоко', it_banana: 'Банан', it_juice: 'Сок', it_soda: 'Газировка', it_chips: 'Картошка фри', it_chocolate: 'Шоколад', it_icecream: 'Мороженое', it_pizza: 'Пицца', it_burger: 'Бургер', it_cake: 'Торт',
+  it_ball: 'Мяч', it_balloon: 'Шарик', it_teddy: 'Мишка', it_crown: 'Корона', it_headphones: 'Наушники', it_tophat: 'Цилиндр', it_dog: 'Щенок', it_cat: 'Котёнок', it_bunny: 'Зайчик', it_dragon: 'Дракончик',
+  basket: 'Корзина', basketEmpty: 'Корзина пуста. Сначала возьми товары с полок.', remove: 'убрать', done: 'Готово', total: 'Итого', balance: 'Баланс',
+  payAtCheckout: 'Оплата на кассе ✋', payMpay: 'Оплатить mPAY', holdHand: 'Приложи и держи ладонь на сканере', scanning: 'Сканируем ладонь…', processing: 'Оплата…',
+  approved: 'Оплата прошла', notEnough: 'Не хватает денег. Играй, чтобы заработать!', payFailed: 'Ошибка оплаты. Попробуй ещё.',
+  boughtFood: 'Куплено! Открой сумку в меню, чтобы съесть.', boughtWear: 'Куплено! Открой сумку в меню, чтобы надеть.', owned: 'твоё', alreadyOwn: 'У тебя это уже есть.',
+  bag: 'Моя сумка', bagEmpty: 'Сумка пуста. Загляни в Банда Маркет!', eat: 'Съесть', wear: 'Надеть', takeOff: 'Снять', walkPet: 'Гулять со мной', sendHome: 'Отправить домой',
+  yum: 'Вкусно!', energy: 'Заряд энергии! Ты бегаешь быстрее.', floaty: 'Ты лёгкий как шарик!', locked: 'Купи в Банда Маркете', money: 'Деньги',
+  cafe: 'Кафе', relax: 'Отдыхаем…', welcomeTower: 'Башня Банда', poolSplash: 'Плюх!',
+  howToPlay: 'В Башне Банда 8 этажей — подойди к стеклянным лифтам. Снаружи: детская площадка, Банда Маркет (оплата ладонью через mPAY) и стадион. У тебя $100, играй и зарабатывай ещё.',
+  help: '<b>WASD</b> ходить · <b>Shift</b> бег · <b>Пробел</b> прыжок / слезть · мышь — обзор · <b>M</b> карта · <b>F</b> удар / бросок · <b>Enter</b> чат',
+  playground: 'Детская площадка', market: 'Банда Маркет', stadium: 'Стадион', tower: 'Башня Банда',
+});
+
 let lang = (() => { try { return localStorage.getItem('banda_lang') || 'en'; } catch (e) { return 'en'; } })();
 export const getLang = () => lang;
 export function setLang(l) { lang = D[l] ? l : 'en'; try { localStorage.setItem('banda_lang', lang); sessionStorage.setItem('banda_lang_chosen', '1'); } catch (e) {} }

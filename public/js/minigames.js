@@ -80,8 +80,8 @@ export class Minigames {
     } else if (mg.type === 'hide' || mg.type === 'starhunt') {
       const seeker = mg.type === 'hide' && mg.seeker === this.me.pid;
       if (seeker) w.teleport(HUB.x + 2, HUB.z + 8); else { const a = r() * 6.28, d = 12 + r() * 40; w.teleport(HUB.x + Math.cos(a) * d, HUB.z + Math.sin(a) * d); }
-      w.constrain = (x, z) => { const d = Math.hypot(x - HUB.x, z - HUB.z), R = HUB.r - 6; return d > R ? [HUB.x + (x - HUB.x) / d * R, HUB.z + (z - HUB.z) / d * R] : [x, z]; };
-      if (mg.type === 'starhunt') w.spawnStars(45, HUB.x, HUB.z, HUB.r - 14, () => { this.shCount++; app.sfx('star'); app.award(1, true); });
+      w.constrain = (x, z) => { const d = Math.hypot(x - HUB.x, z - HUB.z), R = 95; return d > R ? [HUB.x + (x - HUB.x) / d * R, HUB.z + (z - HUB.z) / d * R] : [x, z]; };
+      if (mg.type === 'starhunt') w.spawnStars(45, HUB.x, HUB.z, 80, () => { this.shCount++; app.sfx('star'); app.award(1, true); });
     } else if (mg.type === 'impostor') this.impostor.enter(mg);
     else if (mg.type === 'quiz') this.quiz.enter(mg);
     w.frozenUntil = performance.now() + Math.max(0, mg.start - Date.now()) + (mg.type === 'hide' && mg.seeker === this.me.pid ? 30000 : 0);
@@ -121,8 +121,9 @@ export class Minigames {
       if (this.shCount && this.shCount >= best) { reward += 5; lines.push(app.t('topCollector')); }
     } else if (mg.type === 'impostor') reward += this.impostor.exit(mg, lines);
     else if (mg.type === 'quiz') reward += this.quiz.exit(mg, lines);
-    lines.push(`+${reward} ★`);
-    app.award(Math.min(10, reward), true);
+    const cash = reward > 4 ? 300 : 100; // $3 for winners, $1 for everyone who played
+    lines.push(`+${reward} ★ · +$${cash / 100}`);
+    app.award(Math.min(10, reward), true); app.earn && app.earn(cash, true);
     app.ui.results(app.t('mg_' + mg.type), lines);
     app.sfx(reward > 4 ? 'champions' : 'cheer');
     if (mg.type !== 'quiz') { w.fireworks(5); if (this.back) w.teleport(this.back.x, this.back.z, undefined, this.back.y); }

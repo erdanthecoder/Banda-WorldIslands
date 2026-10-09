@@ -102,7 +102,7 @@ class Elevator {
         onEnter: () => { if (this.level !== lv || this.state !== 'idle') { this.go(lv); b.world.onElevatorCall && b.world.onElevatorCall(); } } });
     }
     // stepping into the open cab shows the floor buttons
-    b.world.zone({ test: (px, py, pz) => this.state === 'idle' && Math.abs(px - cx) < 1.3 && pz < cz + 1.2 && pz > cz - 1.4 && Math.abs(py - this.y) < 1, onEnter: () => this.onPanel(this) });
+    b.world.zone({ test: (px, py, pz) => Math.abs(px - cx) < 1.3 && pz < cz + 1.2 && pz > cz - 1.4 && Math.abs(py - this.y) < 1.4, onEnter: () => { if (this.state === 'idle' && !b.world.carrier) this.onPanel(this); } });
     b.world.updaters.push(dt => this.update(dt));
   }
   contains(p) { return Math.abs(p.x - this.cx) < 1.45 && Math.abs(p.z - this.cz) < 1.45 && Math.abs(p.y - this.y) < 1.2; }
@@ -153,7 +153,10 @@ export class Tower extends Building {
     const white = std(0xeef0f2, { roughness: 0.4 }), dark = std(0x23272d, { metalness: 0.8, roughness: 0.3 });
     for (let lv = 1; lv <= floors; lv++) {
       const y = base + lv * fh;
-      const band = new THREE.Mesh(new RoundedBox(w + 1.2, 0.55, d + 1.2, 2, 0.2), white); band.position.set(x, y - 0.1, z); band.castShadow = band.receiveShadow = true; S.add(band);
+      // white floor band: a trim around the outside edge only
+      for (const [bx, bz, bw, bd] of [[x, minZ - 0.3, w + 1.2, 0.7], [x, maxZ + 0.3, w + 1.2, 0.7], [minX - 0.3, z, 0.7, d], [maxX + 0.3, z, 0.7, d]]) {
+        const band = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.55, bd), white); band.position.set(bx, y - 0.1, bz); band.castShadow = band.receiveShadow = true; S.add(band);
+      }
     }
     for (let k = 0; k <= 11; k++) { const mx = minX + k * w / 11; for (const mz of [minZ, maxZ]) { if (mz === maxZ && Math.abs(mx - x) < 3.2) continue; const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, H, 0.18), dark); m.position.set(mx, base + H / 2, mz); S.add(m); } }
     for (let k = 0; k <= 7; k++) { const mz = minZ + k * d / 7; for (const mx of [minX, maxX]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.18, H, 0.12), dark); m.position.set(mx, base + H / 2, mz); S.add(m); } }
@@ -181,13 +184,16 @@ export class Tower extends Building {
   // floor slabs with openings for the two elevator shafts, ceilings with lights
   slabs() {
     const { x, w, d, minX, maxX, minZ, maxZ, floors } = this, S = this.world.scene;
-    const floorMats = [TEX.tile, TEX.tile, TEX.wood, TEX.wood, TEX.wood, TEX.wood, TEX.tile, TEX.tile].map((t, i) => this.world.texMat(t, w, d, { color: [0xf2efe8, 0xd6eef5, 0xdcd3c4, 0xb08a64, 0xc9b49a, 0x6e4c38, 0x2a2440, 0x1e2a36][i], roughness: i === 6 || i === 7 ? 0.3 : 0.55 }));
+    const floorMats = [TEX.tile, TEX.tile, TEX.wood, TEX.wood, TEX.wood, TEX.wood, TEX.tile, TEX.tile].map((t, i) => this.world.texMat(t, w, d, { color: [0xf2efe8, 0xd6eef5, 0xdcd3c4, 0xb08a64, 0xc9b49a, 0x6e4c38, 0x2a2440, 0x1e2a36][i], roughness: i === 6 || i === 7 ? 0.5 : 0.6 }));
     const lamp = std(0xffffff, { emissive: 0xfff4e4, emissiveIntensity: 1.8 });
     const shaftZ0 = minZ, shaftZ1 = minZ + 3.6;
     for (let lv = 0; lv <= floors; lv++) {
       const y = this.base + lv * this.fh, mat = lv < floors ? floorMats[lv] : std(0x8a8f96);
-      const piece = (x0, x1, z0, z1) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.32, z1 - z0), mat); m.position.set((x0 + x1) / 2, y - 0.16, (z0 + z1) / 2); m.castShadow = lv > 0; m.receiveShadow = true; S.add(m); };
-      piece(minX, maxX, shaftZ1, maxZ);
+      const piece = (x0, x1, z0, z1) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.32, z1 - z0), mat); m.position.set((x0 + x1) / 2, y - 0.16 + (lv === 0 ? 0.05 : 0), (z0 + z1) / 2); m.castShadow = lv > 0; m.receiveShadow = true; S.add(m); };
+      if (lv === 1) { // hole for the swimming pool
+        const px0 = x - 12, px1 = x + 12, pz0 = this.z - 5, pz1 = this.z + 9;
+        piece(minX, px0, shaftZ1, maxZ); piece(px1, maxX, shaftZ1, maxZ); piece(px0, px1, shaftZ1, pz0); piece(px0, px1, pz1, maxZ);
+      } else piece(minX, maxX, shaftZ1, maxZ);
       if (lv === 0) piece(minX, maxX, shaftZ0, shaftZ1);
       else { piece(minX, x - 6.6, shaftZ0, shaftZ1); piece(x - 3.4, x + 3.4, shaftZ0, shaftZ1); piece(x + 6.6, maxX, shaftZ0, shaftZ1); }
       if (lv > 0) for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) { const l = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.06, 1.2), lamp); l.position.set(minX + 5.5 + i * 11, y - 0.35, minZ + 8 + k * 8); S.add(l); }
@@ -312,14 +318,26 @@ export class Tower extends Building {
   // 8: game center — popular multiplayer games
   games(lv) {
     const { x, z } = this;
-    ['impostor', 'quiz', 'hide', 'starhunt', 'football', 'dodgeball'].forEach((g, i) => this.h.pad(this, lv, g, x - 15 + (i % 3) * 15, z + (i < 3 ? -2 : 7)));
+    const y = this.floorY(lv), cols = [0xff3b3b, 0xffc94d, 0x7b6bff, 0xffe066, 0x39d353, 0x36c2ff];
+    ['impostor', 'quiz', 'hide', 'starhunt', 'football', 'dodgeball'].forEach((g, i) => {
+      const px = x - 15 + (i % 3) * 15, pz = z + (i < 3 ? -2 : 7);
+      this.h.pad(this, lv, g, px, pz);
+      // glowing stage under each game pad
+      const stage = this.add(new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.3, 0.08, 48), std(0x111620, { metalness: 0.6, roughness: 0.35 })), false); stage.position.set(px, y + 0.02, pz);
+      const ring = this.add(new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.06, 8, 64).rotateX(Math.PI / 2), std(cols[i], { emissive: cols[i], emissiveIntensity: 2.5 })), false); ring.position.set(px, y + 0.08, pz);
+    });
+    // LED wall + neon ceiling strips
+    const T = canvasTex(1024, 256, (g, W, H) => { const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#2a0b4d'); gr.addColorStop(1, '#0b2a4d'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.font = '900 120px Manrope, system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#ff4fd8'; g.shadowBlur = 30; g.fillStyle = '#fff'; g.fillText('GAME CENTER', W / 2, H / 2 + 6); });
+    const wall = this.add(new THREE.Mesh(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: T })), false); wall.position.set(x, y + 2.6, this.maxZ - 0.35); wall.rotation.y = Math.PI;
+    for (let k = 0; k < 5; k++) { const c = cols[k % 6], m = this.add(new THREE.Mesh(new THREE.BoxGeometry(this.w - 4, 0.06, 0.12), std(c, { emissive: c, emissiveIntensity: 2 })), false); m.position.set(x, y + this.fh - 0.45, this.minZ + 6 + k * 5.5); }
+    for (let i = 0; i < 4; i++) { const bb = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 12), std(cols[i + 1], { roughness: 0.9 }))); bb.scale.y = 0.6; bb.position.set(this.minX + 2.5, y + 0.45, z - 6 + i * 4); this.block(lv, this.minX + 2.5, z - 6 + i * 4, 0.7, 0.7); }
   }
 
   update(p) {
     // move the interior lights to the floor you're on
     const inside = this.contains(p.x, p.z) && p.y > this.base - 2 && p.y < this.base + this.floors * this.fh;
     const lv = this.levelAt(p.y), y = this.floorY(lv) + 3.8;
-    this.lights.forEach((l, i) => { l.intensity = inside ? 22 : 0; l.position.set(this.x - 14 + i * 14, y, this.z); });
+    this.lights.forEach((l, i) => { l.intensity = inside ? 12 : 0; l.position.set(this.x - 14 + i * 14, y, this.z); });
   }
 }
 
@@ -342,14 +360,14 @@ export class Market extends Building {
   }
   build() {
     const { x, z, w, d, base, minX, maxX, minZ, maxZ } = this, S = this.world.scene, H = 5.5;
-    const facade = this.world.texMat(TEX.concrete, w, H, { color: 0xf4f1ea });
+    const facade = this.world.texMat(TEX.plaster, w, H, { color: 0xffffff, roughness: 0.9 });
     const box = (cx, cy, cz, ww, hh, dd, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(ww, hh, dd), m); o.position.set(cx, cy, cz); o.castShadow = o.receiveShadow = true; S.add(o); return o; };
     box(x, base + H / 2, minZ, w, H, 0.3, facade); box(x, base + H / 2, maxZ, w, H, 0.3, facade); box(minX, base + H / 2, z, 0.3, H, d, facade);
     const g = glassMat(), da = this.door.at - 2.5, db = this.door.at + 2.5;
     const gp = (z0, z1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(z1 - z0, H - 1), g); m.position.set(maxX, base + (H - 1) / 2, (z0 + z1) / 2); m.rotation.y = Math.PI / 2; S.add(m); };
     gp(minZ, da); gp(db, maxZ); box(maxX, base + H - 0.5, z, 0.4, 1, d, std(0x2e8b57));
     const roof = box(x, base + H, z, w + 0.6, 0.4, d + 0.6, std(0x9aa0a6)); roof.castShadow = true;
-    const floor = box(x, base - 0.05, z, w, 0.12, d, this.world.texMat(TEX.tile, w, d, { color: 0xf4f4f0, roughness: 0.3 }));
+    const floor = box(x, base - 0.01, z, w, 0.12, d, this.world.texMat(TEX.tile, w, d, { color: 0xf4f4f0, roughness: 0.3 }));
     const signT = canvasTex(1024, 256, (c, W, Hh) => { c.fillStyle = '#2e8b57'; c.fillRect(0, 0, W, Hh); c.fillStyle = '#fff'; c.font = '800 120px Manrope, system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Banda Market', W / 2, Hh / 2 + 6); });
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), new THREE.MeshStandardMaterial({ map: signT, emissive: 0xffffff, emissiveMap: signT, emissiveIntensity: 0.4 })); sign.position.set(maxX + 0.25, base + H + 1.6, z); sign.rotation.y = Math.PI / 2; S.add(sign);
     for (let i = 0; i < 4; i++) for (let k = 0; k < 2; k++) { const l = new THREE.Mesh(new THREE.BoxGeometry(5, 0.06, 0.6), std(0xffffff, { emissive: 0xffffff, emissiveIntensity: 1.6 })); l.position.set(minX + 5 + i * 7.5, base + H - 0.25, minZ + 6 + k * 10); S.add(l); }
@@ -366,7 +384,9 @@ export class Market extends Building {
     const productColors = [0xe74c3c, 0xf1c40f, 0x2ecc71, 0x3498db, 0x9b59b6, 0xe67e22, 0xffffff];
     AISLES.forEach((a, i) => {
       const sx = minX + 3 + i * 3.3, sz = z - 1.5;
-      const shelf = box(sx, base + 1.1, sz, 1.0, 2.2, 13, std(0xdedad2, { roughness: 0.5 }));
+      const shelf = box(sx, base + 1.1, sz, 0.5, 2.2, 13, std(0x59606a, { metalness: 0.5, roughness: 0.45 }));
+      for (let lvl = 0; lvl < 4; lvl++) box(sx, base + 0.18 + lvl * 0.55, sz, 1.0, 0.04, 13, std(0xd9dde2, { metalness: 0.6, roughness: 0.3 }));
+      for (const e of [-6.6, 6.6]) box(sx, base + 1.1, sz + e, 1.1, 2.3, 0.12, std(a.color, { roughness: 0.4 }));
       this.block(0, sx, sz, 0.55, 6.5);
       for (let lvl = 0; lvl < 4; lvl++) for (let k = 0; k < 10; k++) for (const side of [-1, 1]) {
         const pr = new THREE.Mesh(i === 1 ? new THREE.CylinderGeometry(0.12, 0.12, 0.38, 8) : new THREE.BoxGeometry(0.22, 0.3, 0.28), std(productColors[(i + k + lvl) % productColors.length], { roughness: 0.5 }));

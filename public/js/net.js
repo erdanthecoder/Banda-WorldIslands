@@ -3,6 +3,7 @@
 // Dev (?dev=1 on localhost): BroadcastChannel between tabs of one browser.
 import { CONFIG, DEV } from './config.js';
 import { sb } from './auth.js';
+import { PRICES } from './shop.js';
 
 const CLOCK_KEYS = ['start', 'phaseEnds', 'qEnds'];
 function stamp(val) { return val && typeof val === 'object' && !Array.isArray(val) ? { ...val, _sent: Date.now() } : val; }
@@ -90,6 +91,11 @@ class SupaNet extends Base {
   async award(n) { const { data, error } = await this.c.rpc('banda_award', { n }); if (!error) { this._bump(this.uid, { stars: data }); } return data; }
   async give(uid, stars, points) { const { error } = await this.c.rpc('banda_give', { target: uid, d_stars: stars, d_points: points }); if (error) throw error; this.loadUsers(); }
   async claim(id) { const { data } = await this.c.rpc('banda_claim', { cmd: id }); this.loadUsers(); return data || 0; }
+  // mPAY money (cents) and the supermarket; prices are checked on the server
+  async earn(cents) { const { data, error } = await this.c.rpc('banda_earn', { cents: Math.round(cents) }); if (error) throw error; return data; }
+  async buy(items) { const { data, error } = await this.c.rpc('banda_buy', { items }); if (error) throw error; return data; }
+  async use(item) { const { data, error } = await this.c.rpc('banda_use', { what: item }); if (error) throw error; return data; }
+  async inventory() { const { data } = await this.c.from('banda_inventory').select('item, qty').eq('user_id', this.uid); const o = {}; (data || []).forEach(r => { if (r.qty > 0) o[r.item] = r.qty; }); return o; }
   _bump(uid, patch) { this.users = { ...this.users, [uid]: { ...(this.users[uid] || { stars: 0, points: 0 }), ...patch } }; this._users(this.users); }
   leave() { if (this.ch) this.c.removeChannel(this.ch); }
 }
@@ -140,11 +146,21 @@ class LocalNet extends Base {
     this.emit(kind, data, true);
   }
   loadUsers() { this._users(this._load()); }
-  async myRow() { return this._load()[this.uid] || null; }
   async saveProfile(name, avatar) { const u = this._load(); u[this.uid] = { stars: 0, points: 0, ...(u[this.uid] || {}), id: this.uid, name, avatar }; this._save(u); }
   async award(n) { const u = this._load(), r = u[this.uid] ||= { id: this.uid, stars: 0, points: 0 }; r.stars += Math.min(10, n); this._save(u); return r.stars; }
   async give(uid, stars, points) { const u = this._load(), r = u[uid] ||= { id: uid, stars: 0, points: 0 }; r.stars = Math.max(0, r.stars + stars); r.points = Math.max(0, r.points + points); this._save(u); }
   async claim(id) { const k = 'banda_dev_claim_' + id; if (sessionStorage.getItem(k)) return 0; sessionStorage.setItem(k, 1); return null; }
+  _me() { const u = this._load(); const r = u[this.uid] ||= { id: this.uid, stars: 0, points: 0 }; if (r.money_cents === undefined) r.money_cents = 10000; r.inv ||= {}; return [u, r]; }
+  async earn(cents) { const [u, r] = this._me(); r.money_cents += Math.max(1, Math.min(500, Math.round(cents))); this._save(u); return r.money_cents; }
+  async buy(items) {
+    const [u, r] = this._me(); let total = 0;
+    for (const { item, qty } of items) { if (!(item in PRICES)) throw new Error('unknown item'); total += PRICES[item] * qty; }
+    if (total > r.money_cents) throw new Error('not enough money');
+    r.money_cents -= total; for (const { item, qty } of items) r.inv[item] = (r.inv[item] || 0) + qty; this._save(u); return r.money_cents;
+  }
+  async use(item) { const [u, r] = this._me(); if (!r.inv[item] || ['crown', 'headphones', 'tophat', 'dog', 'cat', 'bunny', 'dragon'].includes(item)) return -1; r.inv[item]--; this._save(u); return r.inv[item]; }
+  async inventory() { const [, r] = this._me(); const o = {}; for (const k in r.inv) if (r.inv[k] > 0) o[k] = r.inv[k]; return o; }
+  async myRow() { const [u, r] = this._me(); this._save(u); return r; }
   leave() {}
 }
 

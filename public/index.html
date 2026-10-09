@@ -52,7 +52,7 @@
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div id="me" class="glass" data-i18n-title="points">
-    <span class="star">★</span><b id="meStars">0</b><span class="sep"></span><b id="mePoints">0</b><small data-i18n="pointShort"></small>
+    <span class="star">★</span><b id="meStars">0</b><span class="sep"></span><b id="mePoints">0</b><small data-i18n="pointShort"></small><span class="sep"></span><b id="meMoney" class="money">$100.00</b>
     <div class="prog"><i id="meProg"></i></div>
     <span id="meName" hidden></span><small id="meNext" hidden></small>
   </div>
@@ -85,6 +85,7 @@
     <div class="sheet-head"><h2 id="menuName"></h2><button class="ibtn light" data-close>✕</button></div>
     <p class="muted" id="menuNext"></p>
     <div class="menu-grid">
+      <button class="tile" id="bBag"><span data-i18n="bag"></span><small>🛍️ mPAY</small></button>
       <button class="tile" id="bAvatar"><span data-i18n="yourAvatar"></span></button>
       <button class="tile" id="bBoard"><span data-i18n="leaderboard"></span></button>
       <button class="tile" id="bMute"><span data-i18n="sound"></span><small id="muteState"></small></button>
@@ -111,13 +112,6 @@
 </div>
 
 <div id="qModal" class="modal hidden"><div class="sheet small"><div class="sheet-head"><h2 id="qTitle"></h2></div><div id="qBody"></div></div></div>
-
-<div id="metroBox" class="modal hidden">
-  <div class="sheet small">
-    <div class="sheet-head"><h2><span class="mline">M</span> <span data-i18n="chooseStation"></span></h2><button class="ibtn light" id="metroClose">✕</button></div>
-    <div id="metroList" class="menu-grid"></div>
-  </div>
-</div>
 
 <div id="bldBox" class="modal hidden">
   <div class="sheet small">

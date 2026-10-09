@@ -150,12 +150,12 @@ export class Bots {
       const hiders = this.targets(mg, id => id !== b.id && mg.teams[id] && !mg.found[id]);
       const near = hiders.sort((a, c) => Math.hypot(a.x - b.x, a.z - b.z) - Math.hypot(c.x - b.x, c.z - b.z))[0];
       if (near && Math.hypot(near.x - b.x, near.z - b.z) < 9) { this.moveTo(b, near.x, near.z, 4.2, dt); if (Math.hypot(near.x - b.x, near.z - b.z) < 2.2 && !(b.sent ||= {})[near.id]) { b.sent[near.id] = 1; this.app.net.emit('found', { id: near.id, name: this.app.mg.nameOf(near.id), by: b.id }); } }
-      else this.wander(b, dt, HUB.x, HUB.z, 5, HUB.r - 12, 3.4);
+      else this.wander(b, dt, HUB.x, HUB.z, 5, 90, 3.4);
     } else this.moveTo(b, b.tx, b.tz, 3.4, dt);
   }
 
   _starhunt(b, mg, dt) {
-    this.wander(b, dt, HUB.x, HUB.z, 5, HUB.r - 14, 3.2);
+    this.wander(b, dt, HUB.x, HUB.z, 5, 80, 3.2);
     b.cd -= dt; if (b.cd <= 0) { b.cd = rand(3, 7); b.sh = (b.sh || 0) + 1; }
   }
 

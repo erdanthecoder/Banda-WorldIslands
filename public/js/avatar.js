@@ -168,8 +168,10 @@ export function makePet(type) {
 }
 
 // ---------------- Avatar creator ----------------
-export function avatarCreator(el, { t, cfg, name, onSave, onCancel }) {
+const PREMIUM = ['crown', 'headphones', 'tophat', 'dog', 'cat', 'bunny', 'dragon'];
+export function avatarCreator(el, { t, cfg, name, onSave, onCancel, owned = {}, onLocked }) {
   cfg = { ...randomAvatar(), ...(cfg || {}) };
+  const locked = v => PREMIUM.includes(v) && !(owned[v] > 0);
   el.innerHTML = `
     <div class="creator">
       <div class="creator-view"><canvas id="acCanvas"></canvas><button class="btn ghost" id="acRandom">${t('randomize')}</button></div>
@@ -190,10 +192,10 @@ export function avatarCreator(el, { t, cfg, name, onSave, onCancel }) {
   const draw = () => {
     box.innerHTML = rows.map(([k, title, vals, kind]) => `<div class="opt-row"><span>${title}</span><div class="opts">${vals.map((v, i) =>
       kind === 'swatch' ? `<button class="sw${cfg[k] === v ? ' on' : ''}" data-k="${k}" data-i="${i}" style="background:${v}" aria-label="${v}"></button>`
-        : `<button class="chip${cfg[k] === v ? ' on' : ''}" data-k="${k}" data-i="${i}">${label(k, v)}</button>`).join('')}</div></div>`).join('');
+        : `<button class="chip${cfg[k] === v ? ' on' : ''}${locked(v) ? ' locked' : ''}" data-k="${k}" data-i="${i}">${locked(v) ? '🔒 ' : ''}${label(k, v)}</button>`).join('')}</div></div>`).join('');
   };
   draw();
-  box.onclick = e => { const b = e.target.closest('button'); if (!b) return; const r = rows.find(x => x[0] === b.dataset.k); cfg[r[0]] = r[2][+b.dataset.i]; draw(); rebuild(); };
+  box.onclick = e => { const b = e.target.closest('button'); if (!b) return; const r = rows.find(x => x[0] === b.dataset.k), v = r[2][+b.dataset.i]; if (locked(v)) { onLocked && onLocked(v); return; } cfg[r[0]] = v; draw(); rebuild(); };
 
   const cv = el.querySelector('#acCanvas');
   const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true });
@@ -220,7 +222,7 @@ export function avatarCreator(el, { t, cfg, name, onSave, onCancel }) {
   };
   loop();
   const close = () => { cancelAnimationFrame(raf); renderer.dispose(); };
-  el.querySelector('#acRandom').onclick = () => { cfg = randomAvatar(); draw(); rebuild(); };
+  el.querySelector('#acRandom').onclick = () => { cfg = { ...randomAvatar(), hat: locked(cfg.hat) ? 'none' : cfg.hat, pet: locked(cfg.pet) ? 'none' : cfg.pet }; draw(); rebuild(); };
   el.querySelector('#acSave').onclick = () => {
     const n = el.querySelector('#acName').value.replace(/[<>]/g, '').trim();
     if (n.length < 2) { el.querySelector('#acName').focus(); el.querySelector('#acName').classList.add('bad'); return; }

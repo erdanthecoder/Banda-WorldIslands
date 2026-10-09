@@ -101,6 +101,14 @@ const SFX = {
   },
   drumroll: t => { for (let i = 0; i < 30; i++) snare(t + i * 0.05, sfxGain); kick(t + 1.55, sfxGain); noise(t + 1.55, 1, { vol: 0.4, freq: 4000 }); },
   airhorn: t => [0, 0.35, 0.7].forEach(d => [415, 466, 554].forEach(f => tone(f, t + d, d === 0.7 ? 0.9 : 0.25, { type: 'sawtooth', vol: 0.08, cutoff: 3000 }))),
+  whoosh: t => noise(t, 0.7, { vol: 0.35, type: 'bandpass', freq: 900 }),
+  ding: t => { tone(1318, t, 0.9, { type: 'sine', vol: 0.25 }); tone(1046, t + 0.25, 1.1, { type: 'sine', vol: 0.22 }); },
+  beep: t => tone(1760, t, 0.08, { type: 'square', vol: 0.08 }),
+  scan: t => tone(400, t, 1.4, { type: 'sine', vol: 0.12, slide: 3 }),
+  paid: t => { tone(1046, t, 0.12, { type: 'triangle', vol: 0.25 }); tone(1568, t + 0.1, 0.35, { type: 'triangle', vol: 0.25 }); },
+  coin: t => { tone(988, t, 0.08, { type: 'square', vol: 0.1 }); tone(1318, t + 0.07, 0.25, { type: 'square', vol: 0.1 }); },
+  eat: t => [0, 0.12, 0.24].forEach(d => noise(t + d, 0.07, { vol: 0.3, type: 'lowpass', freq: 1800 })),
+  splash: t => noise(t, 0.8, { vol: 0.5, type: 'lowpass', freq: 1200 }),
   firework: t => { tone(800, t, 0.6, { vol: 0.08, slide: 3 }); noise(t + 0.6, 0.8, { vol: 0.4, type: 'lowpass', freq: 1500 }); },
 };
 
