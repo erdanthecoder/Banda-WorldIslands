@@ -18,7 +18,13 @@ export class Shows {
       if (!ev.trusted) return; const d = ev.data || {};
       if (ev.type === 'show') { if (d.kind === 'stop') this.stop(); else if (SHOWS[d.kind]) this.start(d.kind); }
       if (ev.type === 'botcount' && app.bots) app.bots.setCount(d.n);
+      if (ev.type === 'fx') this.fx(d.type);
+      if (ev.type === 'money' && d.uid === app.me.uid) this.gotMoney(d.cents);
+      if (ev.type === 'moneyall') app.net.claimMoney(ev.id, d.cents).then(n => { if (n) this.gotMoney(n); }).catch(() => {});
+      // a big match on every server: each server's host starts it there
+      if (ev.type === 'bigfootball' && app.bots && app.bots.amHost() && !app.mg.running()) app.mg.start(d.type === 'basketball' ? 'basketball' : 'football', 5, { bots: d.type === 'basketball' ? 8 : 16 });
     });
+    this.fxObjs = [];
     app.world.updaters.push((dt, t) => this.tick(dt, t));
   }
   get w() { return this.app.world; }
@@ -49,6 +55,101 @@ export class Shows {
     if (performance.now() > this.on.until) return this.stop();
     const beat = BEAT[this.on.kind], ph = ((performance.now() - this.on.t0) / 1000) / beat;
     this.anim.forEach(f => f(dt, t, ph));
+  }
+
+  async gotMoney(cents) {
+    const app = this.app; app.sfx('paid'); app.sfx('cheer'); this.w.fireworks(3);
+    app.ui.banner(`🎁 +$${(cents / 100).toFixed(2)} · ${app.t('fromAdmin')}`, 4000); app.ui.floatMoney && app.ui.floatMoney(cents);
+    try { const row = await app.net.myRow(); if (row && typeof row.money_cents === 'number') app.setMoney(row.money_cents); } catch (e) {}
+  }
+
+  // ---------- quick fun for everyone (admin) ----------
+  fx(type) {
+    const app = this.app, w = this.w, t = app.t, me = w.me.group.position, inGame = app.mg && app.mg.active;
+    app.ui.banner(t('fx_' + type), 3000);
+    if (type === 'launch') { if (inGame) return; w.vel.y = 26; w.onGround = false; app.sfx('slideUp'); app.sfx('boing'); }
+    if (type === 'dance') { w.me.play('dance'); app.emoteSig = 'dance:' + Date.now(); if (app.bots) for (const id in app.bots.b) app.bots.emote(app.bots.b[id], 'dance'); app.sfx('airhorn'); }
+    if (type === 'confetti') { w.fireworks(14); app.sfx('cheer'); }
+    if (type === 'candy') this.rain(['🍬', '🍭', '🍫', '🍩', '🧁', '🍪'], 45, true);
+    if (type === 'fish') this.rain(['🐟', '🐠', '🐡'], 40, false);
+    if (type === 'snow') this.snow();
+    if (type === 'meteors') this.meteors();
+    if (type === 'barsik') this.giantCat();
+  }
+  // things fall from the sky around you; touch them to eat them
+  rain(icons, n, yum) {
+    const w = this.w, me = w.me.group.position, list = [];
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.28, r = Math.random() * 16, x = me.x + Math.cos(a) * r, z = me.z + Math.sin(a) * r;
+      const sp = labelSprite(icons[i % icons.length], 0.8, { bg: null }); sp.position.set(x, me.y + 18 + Math.random() * 20, z); w.scene.add(sp);
+      list.push({ sp, vy: 0, floor: w.groundAt(x, z) + 0.4, life: 25 });
+    }
+    w.updaters.push(dt => {
+      const p = w.me.group.position;
+      for (const c of list) {
+        if (c.gone) continue;
+        if (c.sp.position.y > c.floor) { c.vy -= 9.8 * dt; c.sp.position.y = Math.max(c.floor, c.sp.position.y + c.vy * dt * 0.6); }
+        if ((c.life -= dt) < 0) { w.scene.remove(c.sp); c.gone = true; continue; }
+        if (c.sp.position.distanceTo(p) < 1.6) { w.scene.remove(c.sp); c.gone = true; this.app.sfx(yum ? 'eat' : 'splash'); }
+      }
+      return list.every(c => c.gone);
+    });
+  }
+  snow() {
+    const w = this.w, N = 1500, g = new THREE.BufferGeometry(), pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) pos.set([(Math.random() - 0.5) * 80, Math.random() * 40, (Math.random() - 0.5) * 80], i * 3);
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.25, transparent: true, opacity: 0.9, depthWrite: false })); w.scene.add(pts);
+    let life = 45;
+    w.updaters.push(dt => {
+      const me = w.me.group.position; pts.position.set(me.x, me.y - 5, me.z);
+      for (let i = 0; i < N; i++) { pos[i * 3 + 1] -= dt * (2 + (i % 5) * 0.4); pos[i * 3] += Math.sin(life + i) * dt * 0.3; if (pos[i * 3 + 1] < 0) pos[i * 3 + 1] = 40; }
+      g.attributes.position.needsUpdate = true;
+      if ((life -= dt) < 0) { w.scene.remove(pts); return true; }
+    });
+  }
+  meteors() {
+    const w = this.w; let n = 0;
+    const one = () => {
+      if (n++ > 14) return;
+      const me = w.me.group.position, tx = me.x + (Math.random() - 0.5) * 60, tz = me.z + (Math.random() - 0.5) * 60, ty = w.groundAt(tx, tz);
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffa040 }));
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.7, 6, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xff5a1f, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+      tail.rotation.x = Math.PI; tail.position.y = 3.2; m.add(tail);
+      const from = new THREE.Vector3(tx + 30, ty + 70, tz - 20), to = new THREE.Vector3(tx, ty, tz); m.position.copy(from); w.scene.add(m);
+      m.lookAt(to); m.rotateX(-Math.PI / 2);
+      let k = 0; this.app.sfx('whoosh');
+      w.updaters.push(dt => { k += dt / 1.4; m.position.lerpVectors(from, to, Math.min(1, k)); if (k >= 1) { w.scene.remove(m); w.fireworks(1, to); this.app.sfx('firework'); return true; } });
+      setTimeout(one, 600 + Math.random() * 900);
+    };
+    one();
+  }
+  // a GIANT Barsik (the cinema cat) walks across the island and meows
+  giantCat() {
+    const w = this.w, g = new THREE.Group(), orange = std(0xf5a142), cream = std(0xfff1d6), dark = std(0xd27a22), black = std(0x111111), white = std(0xffffff), pink = std(0xff8fa3);
+    const add = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); g.add(m); return m; };
+    add(new THREE.SphereGeometry(1, 20, 14), orange, 0, 1.4, 0, 1.0, 0.85, 1.5);
+    add(new THREE.SphereGeometry(1, 16, 12), cream, 0, 1.2, 0.6, 0.7, 0.6, 0.8);
+    const legs = [[-0.55, 0.9], [0.55, 0.9], [-0.55, -0.9], [0.55, -0.9]].map(([x, z]) => add(new THREE.CylinderGeometry(0.25, 0.25, 1, 10), orange, x, 0.5, z));
+    const head = new THREE.Group(); head.position.set(0, 2.5, 1.4); g.add(head);
+    const hm = (geo, mat, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); head.add(m); return m; };
+    hm(new THREE.SphereGeometry(0.9, 20, 14), orange, 0, 0, 0);
+    for (const sx of [-1, 1]) { const ear = hm(new THREE.ConeGeometry(0.35, 0.7, 4), orange, sx * 0.5, 0.85, 0); ear.rotation.z = -sx * 0.3; hm(new THREE.SphereGeometry(0.22, 12, 8), white, sx * 0.32, 0.15, 0.75); hm(new THREE.SphereGeometry(0.12, 10, 8), black, sx * 0.32, 0.15, 0.93); }
+    hm(new THREE.SphereGeometry(0.1, 8, 6), pink, 0, -0.1, 0.9);
+    for (let i = 0; i < 3; i++) hm(new THREE.BoxGeometry(0.5, 0.06, 0.06), dark, 0, 0.55 - i * 0.12, 0.6).rotation.x = 0;
+    const tail = add(new THREE.CylinderGeometry(0.15, 0.2, 2.2, 10), orange, 0, 2.2, -1.8); tail.rotation.x = -0.6;
+    g.scale.setScalar(4.5); w.scene.add(g);
+    const tag = labelSprite('🐱 БАРСИК', 2, { bg: 'rgba(245,161,66,0.95)', weight: 900 }); tag.position.set(0, 4.3, 0.8); tag.scale.multiplyScalar(1 / 4.5 * 1.6); g.add(tag);
+    const x0 = -50, x1 = 50, z = -2; let t = 0, meow = 0;
+    w.updaters.push(dt => {
+      t += dt; const k = t / 32, x = x0 + (x1 - x0) * k;
+      g.position.set(x, w.groundAt(x, z), z); g.rotation.y = Math.PI / 2;
+      legs.forEach((l, i) => { l.rotation.x = Math.sin(t * 6 + (i % 2 ? Math.PI : 0)) * 0.5; });
+      head.rotation.z = Math.sin(t * 2) * 0.15; tail.rotation.z = Math.sin(t * 3) * 0.5;
+      if ((meow -= dt) < 0) { meow = 3.5; const me = w.me.group.position; if (Math.hypot(me.x - x, me.z - z) < 60) this.app.sfx('meow'); }
+      const me = w.me.group.position; if (Math.hypot(me.x - x, me.z - z) < 5 && w.onGround && !(this.app.mg && this.app.mg.active)) { w.vel.y = 18; w.onGround = false; this.app.sfx('boing'); }
+      if (k >= 1) { w.scene.remove(g); return true; }
+    });
   }
 
   // ---------- 🪩 disco: mirror ball, light beams and a flashing dance floor ----------

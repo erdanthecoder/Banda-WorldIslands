@@ -379,3 +379,8 @@ body:not(.teacher) .teacher-only { display: none; }
 .adm-bots button { background: #1c2533; border: 1px solid #2c3a4f; color: #eaf3ff; border-radius: 10px; padding: 6px 10px; font-weight: 800; }
 .adm-bots b { min-width: 40px; text-align: center; font-size: 22px; }
 .phone h4 { margin: 16px 0 6px; font-size: 13px; color: #9fb0c2; }
+.adm-grid button.on { border-color: var(--gold); background: #3a3215; }
+.adm-money { display: grid; gap: 8px; }
+.adm-money select { background: #1c2533; color: #eaf3ff; border: 1px solid #2c3a4f; border-radius: 10px; padding: 8px; font: inherit; }
+.adm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-chips button { background: #1c2533; border: 1px solid #2c3a4f; color: #9fe8c9; border-radius: 999px; padding: 4px 10px; font-weight: 800; font-size: 12px; }

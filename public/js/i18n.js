@@ -1,5 +1,9 @@
 const D = {
   en: {
+    me: 'me', adminAll: 'Everything here works on every server.', shows: 'Shows', summonAll: 'Bring everyone to me', summoned2: 'Everyone is coming to you!', funAll: 'Fun for everyone', powersAll: 'Powers for everyone',
+    fxn_launch: 'Launch!', fxn_dance: 'Dance party', fxn_candy: 'Candy rain', fxn_fish: 'Fish rain', fxn_barsik: 'Giant Barsik', fxn_snow: 'Snow', fxn_meteors: 'Meteors', fxn_confetti: 'Confetti',
+    fx_launch: '🚀 Up you go!', fx_dance: '💃 Everybody dance!', fx_candy: '🍬 It is raining candy! Catch it!', fx_fish: '🐟 It is raining fish!', fx_barsik: '🐱 GIANT BARSIK is coming! Meow!', fx_snow: '❄️ Snow on the island!', fx_meteors: '☄️ Meteor shower!', fx_confetti: '🎊 Party time!',
+    giveMoney: 'Give money', byPhone: 'By phone number', everyoneOnline: 'Everyone online (all servers)', give: 'Give', badAmount: 'Amount must be $0.01 – $10,000', noSuchNumber: 'No player has that number', fromAdmin: 'a gift from the admin!',
     restaurant: 'Island Restaurant', pickUp: 'Pick up', foodComing: 'Your order is coming!', plaza: 'Plaza', carrying: 'Carrying', table: 'Table', noOrders: 'No orders ready yet', served: 'Served!',
     helperStart: '🙋 Helper: lost visitors wait on the plaza (look for ❓). Walk up to them and show the way!', waiterStart: '🍽️ Waiter: go to the kitchen pass 🛎️, take a dish and bring it to the right table.',
     cashierStart: '🏦 Cashier: go to window 4 in mBank (follow the yellow light). Customers will come to you.', cleanerStart: '🧹 Cleaner: litter is on World Tower floors (look for the yellow rings). Take the lift!',
@@ -64,6 +68,10 @@ const D = {
     craftHelp: 'Click to start · WASD move · Space jump · Left click break · Right click place · 1–9 blocks · diamond ore = star', tapToFly: 'Tap or press Space', gameOver: 'Game over', best: 'Best', tapToRetry: 'Tap to try again',
   },
   ru: {
+    me: 'я', adminAll: 'Всё здесь работает на всех серверах.', shows: 'Шоу', summonAll: 'Позвать всех ко мне', summoned2: 'Все идут к тебе!', funAll: 'Веселье для всех', powersAll: 'Силы для всех',
+    fxn_launch: 'Взлёт!', fxn_dance: 'Танцы', fxn_candy: 'Дождь из конфет', fxn_fish: 'Дождь из рыбы', fxn_barsik: 'Гигантский Барсик', fxn_snow: 'Снег', fxn_meteors: 'Метеориты', fxn_confetti: 'Конфетти',
+    fx_launch: '🚀 Полетели!', fx_dance: '💃 Все танцуют!', fx_candy: '🍬 Дождь из конфет! Лови!', fx_fish: '🐟 Дождь из рыбы!', fx_barsik: '🐱 Идёт ГИГАНТСКИЙ БАРСИК! Мяу!', fx_snow: '❄️ На острове снег!', fx_meteors: '☄️ Метеоритный дождь!', fx_confetti: '🎊 Праздник!',
+    giveMoney: 'Дать деньги', byPhone: 'По номеру телефона', everyoneOnline: 'Всем онлайн (все серверы)', give: 'Дать', badAmount: 'Сумма от $0.01 до $10 000', noSuchNumber: 'Нет игрока с таким номером', fromAdmin: 'подарок от админа!',
     restaurant: 'Ресторан Island', pickUp: 'Выдача', foodComing: 'Заказ уже несут!', plaza: 'Площадь', carrying: 'Несёшь', table: 'Стол', noOrders: 'Заказов пока нет', served: 'Подано!',
     helperStart: '🙋 Помощник: на площади ждут потерявшиеся гости (ищи ❓). Подойди и покажи дорогу!', waiterStart: '🍽️ Официант: подойди к выдаче 🛎️, возьми блюдо и отнеси к нужному столу.',
     cashierStart: '🏦 Кассир: иди к окну 4 в mBank (за жёлтым светом). Клиенты придут к тебе.', cleanerStart: '🧹 Уборщик: мусор на этажах World Tower (жёлтые кольца). Поднимайся на лифте!',

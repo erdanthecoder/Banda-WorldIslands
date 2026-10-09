@@ -62,9 +62,11 @@ class SupaNet extends Base {
     ch.on('broadcast', { event: 'pos' }, ({ payload: p }) => { if (p.id !== meta.pid && this.players[p.id]) this._player(p.id, p); });
     ch.on('broadcast', { event: 'ev' }, ({ payload }) => this._event({ ...payload, trusted: false }));
     ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banda_commands', filter: `server=eq.${server}` }, ({ new: r }) => this._command(r));
+    // admin commands go to every server
+    ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'banda_commands', filter: 'server=eq.all' }, ({ new: r }) => this._command(r));
     await new Promise(ok => ch.subscribe(s => { if (s === 'SUBSCRIBED') { ch.track(meta); ok(); } }));
     // current teacher effects for late joiners
-    const { data } = await this.c.from('banda_commands').select('*').eq('server', server).eq('kind', 'effects').order('id', { ascending: false }).limit(1);
+    const { data } = await this.c.from('banda_commands').select('*').in('server', [server, 'all']).eq('kind', 'effects').order('id', { ascending: false }).limit(1);
     if (data && data[0]) this._command(data[0], true);
     this.loadUsers(); setInterval(() => this.loadUsers(), 20000);
   }
@@ -81,6 +83,8 @@ class SupaNet extends Base {
   }
   // admin commands: the password is checked on the server; the command then reaches everyone like a teacher command
   async admin(pw, kind, data) { const { data: ok, error } = await this.c.rpc('banda_admin', { pw, srv: this.server, k: kind, d: data || {} }); if (error) throw error; return !!ok; }
+  async adminMoney(pw, cents, target, phone) { const { data, error } = await this.c.rpc('banda_admin_money', { pw, cents, target: target || null, phone: phone || null }); if (error) throw error; return data; }
+  async claimMoney(cmd) { const { data } = await this.c.rpc('banda_claim_money', { cmd }); return data || 0; }
   async loadUsers() {
     const { data } = await this.c.from('banda_players').select('id, name, stars, points, avatar').order('stars', { ascending: false }).limit(300);
     if (data) { const u = {}; data.forEach(r => u[r.id] = r); this._users(u); }
@@ -166,8 +170,16 @@ class LocalNet extends Base {
   async admin(pw, kind, data) {
     const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw || '')))].map(b => b.toString(16).padStart(2, '0')).join('');
     if (h !== 'eff3fdd3f486565f12baf0df16bd88f07f5652e3489aa047b92d78c57b9cac8c') return false;
+    if (kind === 'effects') { localStorage.setItem('banda_dev_effects_' + this.server, JSON.stringify(data)); const ev = { type: '_state', data: { key: 'effects', val: data } }; this._event(ev); this.bc.postMessage({ k: 'e', server: this.server, ev }); return true; }
     if (kind !== 'check') this.emit(kind, data, true); return true;
   }
+  async adminMoney(pw, cents, target, phone) {
+    if (!(await this.admin(pw, 'check'))) throw new Error('wrong password');
+    const u = this._load(); let who = target || this.uid; if (phone) who = Object.keys(u).find(k => u[k].phone === phone); if (!who) throw new Error('no such number');
+    const r = u[who] ||= { id: who, stars: 0, points: 0, money_cents: 10000 }; r.money_cents = (r.money_cents ?? 10000) + cents; this._save(u);
+    this.emit('money', { uid: who, cents, name: r.name }, true); return r.money_cents;
+  }
+  async claimMoney(cmd, cents) { const k = 'banda_dev_mclaim_' + cmd; if (sessionStorage.getItem(k)) return 0; sessionStorage.setItem(k, 1); const [u, r] = this._me(); r.money_cents += cents; this._save(u); return cents; }
   loadUsers() { this._users(this._load()); }
   async saveProfile(name, avatar) { const u = this._load(); u[this.uid] = { stars: 0, points: 0, ...(u[this.uid] || {}), id: this.uid, name, avatar }; this._save(u); }
   async award(n) { const u = this._load(), r = u[this.uid] ||= { id: this.uid, stars: 0, points: 0 }; r.stars += Math.min(10, n); this._save(u); return r.stars; }

@@ -63,7 +63,38 @@ export function say(text, lang = 'en') {
   } catch (e) {}
 }
 
+// a character voice: pitch/rate change who is talking (the cat squeaks, the narrator is calm). cb(true) when it starts, cb(false) at the end
+export function voice(text, lang = 'ru', { pitch = 1, rate = 1, onTalk } = {}) {
+  if (muted || !window.speechSynthesis) { if (onTalk) { onTalk(true); setTimeout(() => onTalk(false), 80 * text.length); } return; }
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang === 'ru' ? 'ru-RU' : 'en-US'; u.rate = rate; u.pitch = pitch;
+    const vs = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith(lang === 'ru' ? 'ru' : 'en'));
+    if (vs.length) u.voice = vs.find(v => /google|милена|milena|yuri|siri/i.test(v.name)) || vs[0];
+    if (onTalk) { u.onstart = () => onTalk(true); u.onend = u.onerror = () => onTalk(false); }
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
 const SFX = {
+  meow: t => { const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter(); o.type = 'sawtooth'; f.type = 'bandpass'; f.Q.value = 4;
+    o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(900, t + 0.18); o.frequency.linearRampToValueAtTime(600, t + 0.5);
+    f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(2200, t + 0.2); f.frequency.linearRampToValueAtTime(1000, t + 0.5);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    o.connect(f); f.connect(g); g.connect(sfxGain); o.start(t); o.stop(t + 0.6); },
+  slideUp: t => tone(300, t, 0.7, { type: 'sine', vol: 0.3, slide: 4 }),
+  slideDown: t => tone(1200, t, 0.8, { type: 'sine', vol: 0.3, slide: 0.2 }),
+  crash: t => { noise(t, 0.6, { vol: 0.6, type: 'highpass', freq: 3000 }); noise(t, 0.3, { vol: 0.5, type: 'lowpass', freq: 500 }); [2400, 3100, 2700].forEach((f, i) => tone(f, t + i * 0.05, 0.3, { type: 'triangle', vol: 0.08 })); },
+  pop: t => { tone(600, t, 0.08, { type: 'square', vol: 0.25, slide: 0.3 }); noise(t, 0.05, { vol: 0.3 }); },
+  bonk: t => { tone(240, t, 0.25, { type: 'square', vol: 0.2, slide: 0.5, cutoff: 1500 }); tone(160, t, 0.3, { vol: 0.4, slide: 0.6 }); },
+  zip: t => tone(500, t, 0.18, { type: 'square', vol: 0.08, slide: 3, cutoff: 3000 }),
+  vacuum: t => { const g = noise(t, 2.2, { vol: 0.35, type: 'bandpass', freq: 700, q: 2 }); tone(90, t, 2.2, { type: 'sawtooth', vol: 0.12, cutoff: 400 }); },
+  drum: t => { snare(t, sfxGain); tone(200, t + 0.25, 0.1, { type: 'triangle', vol: 0.2 }); snare(t + 0.25, sfxGain); noise(t + 0.5, 0.5, { vol: 0.3, freq: 5000 }); },
+  laugh: t => { // a little audience of kids laughing: short bright "ha" bursts with a wobble
+    for (let k = 0; k < 3; k++) for (let i = 0; i < 6; i++) { const at = t + k * 0.11 + i * 0.17 + Math.random() * 0.05, f = 380 + k * 110 + Math.random() * 60;
+      tone(f, at, 0.12, { type: 'triangle', vol: 0.09, slide: 0.85 }); noise(at, 0.08, { vol: 0.05, type: 'bandpass', freq: 1800 + k * 300, q: 2 }); }
+    crowd(t, 1.4, 0.12); },
+  aww: t => { for (let k = 0; k < 4; k++) tone(330 + k * 40, t + k * 0.03, 1.1, { type: 'triangle', vol: 0.06, slide: 0.7, attack: 0.1 }); crowd(t, 1.2, 0.1); },
   click: t => tone(880, t, 0.06, { type: 'triangle', vol: 0.2 }),
   star: t => { tone(1318, t, 0.12, { type: 'triangle' }); tone(1760, t + 0.07, 0.2, { type: 'triangle' }); },
   correct: t => { tone(660, t, 0.1, { type: 'triangle' }); tone(990, t + 0.09, 0.2, { type: 'triangle' }); },

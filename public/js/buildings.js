@@ -401,7 +401,7 @@ export class Tower extends Building {
   // 6: cinema lounge
   cinema(lv) {
     const { x, z, minX, maxX } = this, y = this.floorY(lv);
-    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 288; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const cv = document.createElement('canvas'); cv.width = 640; cv.height = 360; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
     const scr = this.add(new THREE.Mesh(new THREE.PlaneGeometry(8.4, 4.72), new THREE.MeshBasicMaterial({ map: tex })), false); scr.position.set(minX + 0.6, y + 2.6, z + 1); scr.rotation.y = Math.PI / 2;
     const backing = this.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.1, 8.8), std(0x0a0a0c)), false); backing.position.set(minX + 0.4, y + 2.6, z + 1);
     const show = new CinemaShow(cv, (txt, l) => this.h.say && this.h.say(txt, l), n => this.h.sfx && this.h.sfx(n));
@@ -409,7 +409,7 @@ export class Tower extends Building {
     this.world.updaters.push(dt => {
       const p = this.world.me?.group.position, watching = !!p && this.contains(p.x, p.z) && Math.abs(p.y - y) < 2.5;
       if (was && !watching && window.speechSynthesis) speechSynthesis.cancel(); was = watching;
-      acc += dt; if (acc < 1 / 15) return; const step = acc; acc = 0;
+      acc += dt; if (acc < 1 / 24) return; const step = acc; acc = 0;
       show.update(step, watching); if (watching) tex.needsUpdate = true;
     });
     for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const sx = minX + 9 + r * 4, sz = z - 6 + c * 3; const seat = this.add(new THREE.Mesh(new RoundedBox(1.4, 0.9, 1.2, 2, 0.15), std(0x8f1f2b, { roughness: 0.8 }))); seat.position.set(sx, y + 0.45, sz); }
