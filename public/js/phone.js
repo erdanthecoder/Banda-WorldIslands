@@ -8,7 +8,8 @@ const $ = s => document.querySelector(s);
 const el = html => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fmt = n => n ? `+0 ${n}` : '+0 ····';
-const FACE_API = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/';
+const FACE_API = '/vendor/face-api/'; // hosted with the game (face-api 1.7.15, MIT)
+const MOOD_BTNS = [['laugh', '😄'], ['excited', '🤩'], ['angry', '😠'], ['sad', '😢'], ['', '🙂']];
 const ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
 
 export class Phone {
@@ -53,6 +54,10 @@ export class Phone {
           <button data-go="contacts"><i style="background:#3498db">👥</i><span>${t('appContacts')}</span></button>
           <button data-go="messages"><i style="background:#9b59b6">💬</i>${unread ? `<em>${unread}</em>` : ''}<span>${t('appMessages')}</span></button>
           <button data-go="bank"><i class="mb"><img src="/img/mbank.svg" alt=""></i><span>mBank</span></button>
+          <button data-go="jobs"><i style="background:#e67e22">💼</i><span>${t('jobs')}</span></button>
+          <button data-go="mood"><i style="background:#f1c40f">${this.camOn ? '📷' : '🙂'}</i><span>${t('appMood')}</span></button>
+          <button data-go="help"><i style="background:#e74c3c">🙋</i><span>${t('appHelp')}</span></button>
+          <button data-go="admin"><i style="background:#2c3e50">🔐</i><span>${t('appAdmin')}</span></button>
         </div>
         <p class="ph-tip">${t('phoneTip')}</p>`;
     } else if (this.screen === 'keypad') {
@@ -101,8 +106,24 @@ export class Phone {
     } else if (this.screen === 'bank') {
       b.innerHTML = `${head('mBank')}${this.app.bankUI.appHtml()}`;
       this.app.bankUI.bindApp(b);
-    } else if (this.screen === 'call') this.renderCall();
+    } else if (this.screen === 'jobs') {
+      const J = this.app.jobs; b.innerHTML = `${head('💼 ' + t('jobs'))}<div class="ph-jobs">${J.listHtml()}</div>`; J.bindList(b, () => this.close());
+    } else if (this.screen === 'help') {
+      b.innerHTML = `${head('🙋 ' + t('appHelp'))}<p class="ph-tip">${t('helpWhat')}</p><button class="ph-wide primary" id="phHelp">🙋 ${t('askHelp')}</button><p class="ph-tip">${t('helpTalkBot')}</p>`;
+      $('#phHelp').onclick = () => { this.app.jobs.askHelp(); this.close(); };
+    } else if (this.screen === 'mood') {
+      b.innerHTML = `${head('🙂 ' + t('appMood'))}<div class="ph-mood"><canvas id="faceMood" width="160" height="160"></canvas><div id="camSpot"></div></div>
+        <p class="ph-tip">${this.camOn ? '📷 ' + t('camReading') : t('moodTip')}</p>
+        <button class="ph-wide ${this.camOn ? '' : 'primary'}" id="phCam">${this.camOn ? '⏹ ' + t('camStop') : '📷 ' + t('camStart')}</button>
+        <div class="ph-moods">${MOOD_BTNS.map(([m, e]) => `<button data-mood="${m}" class="${(this.app.mood || '') === m ? 'on' : ''}">${e}</button>`).join('')}</div>`;
+      $('#phCam').onclick = () => this.camera(!this.camOn);
+      b.querySelectorAll('[data-mood]').forEach(x => x.onclick = () => { if (this.camOn) this.camera(false); this.setMood(x.dataset.mood); this.render(); });
+      if (this.camOn && this.camVideo) $('#camSpot').appendChild(this.camVideo);
+      this.drawFaces();
+    } else if (this.screen === 'admin') this.app.admin.render(b, head);
+    else if (this.screen === 'call') this.renderCall();
     b.querySelectorAll('[data-go]').forEach(x => x.onclick = () => this.go(x.dataset.go));
+    if (this.camOn && this.camVideo && !this.camVideo.isConnected) document.body.appendChild(this.camVideo);
   }
 
   // ---------- messages ----------
@@ -206,12 +227,13 @@ export class Phone {
     };
     head($('#faceThem'), c.avatar, c.mood);
     head($('#faceMe'), this.app.me.avatar, this.app.mood);
+    head($('#faceMood'), this.app.me.avatar, this.app.mood);
   }
 
   // ---------- camera → expression → avatar face ----------
   async camera(on) {
     const t = this.t;
-    if (!on) { this.camOn = false; clearInterval(this.camT); if (this.camStream) this.camStream.getTracks().forEach(tr => tr.stop()); this.camStream = null; this.setMood(''); if (this.screen === 'call') this.render(); return; }
+    if (!on) { this.camOn = false; clearInterval(this.camT); if (this.camStream) this.camStream.getTracks().forEach(tr => tr.stop()); this.camStream = null; if (this.camVideo) this.camVideo.remove(); this.setMood(''); if (this.screen === 'call' || this.screen === 'mood') this.render(); return; }
     try {
       if (!window.faceapi) {
         this.app.toast(t('camLoading'));
@@ -221,9 +243,12 @@ export class Phone {
       }
       this.camStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' } });
     } catch (e) { this.app.toast(t('camFailed')); return; }
-    const v = this.camVideo ||= Object.assign(document.createElement('video'), { muted: true, playsInline: true });
+    // the video has to be in the page for some phones to give us frames; it is tiny unless the Mood app shows it
+    const v = this.camVideo ||= Object.assign(document.createElement('video'), { muted: true, playsInline: true, autoplay: true, className: 'cam-preview' });
+    v.setAttribute('playsinline', ''); if (!v.isConnected) document.body.appendChild(v);
     v.srcObject = this.camStream; await v.play().catch(() => {});
-    this.camOn = true; if (this.screen === 'call') this.render();
+    this.camOn = true; if (this.screen === 'call' || this.screen === 'mood') this.render();
+    this.app.toast('📷 ' + t('camReading'));
     const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
     let busy = false;
     this.camT = setInterval(async () => {
@@ -231,13 +256,14 @@ export class Phone {
       try {
         const r = await faceapi.detectSingleFace(v, opts).withFaceExpressions();
         if (r) {
-          const e = r.expressions, top = Object.entries(e).sort((a, b) => b[1] - a[1])[0];
-          const mood = top[1] < 0.5 ? '' : { happy: 'laugh', angry: 'angry', disgusted: 'angry', surprised: 'excited', sad: 'sad', fearful: 'sad' }[top[0]] || '';
-          this.setMood(mood);
+          // the strongest feeling that isn't "neutral"; small smiles count too
+          const e = r.expressions, top = Object.entries(e).filter(([k]) => k !== 'neutral').sort((a, b) => b[1] - a[1])[0];
+          const mood = !top || top[1] < 0.3 ? '' : { happy: 'laugh', angry: 'angry', disgusted: 'angry', surprised: 'excited', sad: 'sad', fearful: 'sad' }[top[0]] || '';
+          if (mood === this.lastRead) this.setMood(mood); this.lastRead = mood;
         }
       } catch (er) {}
       busy = false;
-    }, 350);
+    }, 300);
   }
   setMood(m) {
     if (this.app.mood === m) return;

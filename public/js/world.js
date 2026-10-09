@@ -33,11 +33,13 @@ export const TOWER = { x: 0, z: -66, w: 44, d: 30, R: 26, floors: 8, fh: 5.2, ba
 export const MARKET = { x: -70, z: 6, w: 32, d: 22, base: 4 };
 export const PLAYGROUND = { x: 64, z: 10, w: 36, d: 30 };
 export const BANK = { x: -62, z: -34, w: 26, d: 18, base: 4 };
+export const RESTO = { x: 62, z: -34, w: 26, d: 18, base: 4 };
 export const CAFE_SPOT = { x: -15, z: -27 };
 // paved walkways (axis-aligned rectangles); everything else is grass behind wooden fences
 export const PATHS = [
   { id: 'tower', x0: -3.5, x1: 3.5, z0: -40.3, z1: -22 },
   { id: 'bank', x0: -49, x1: -3, z0: -36.5, z1: -31.5 },
+  { id: 'resto', x0: 3, x1: 49, z0: -36.5, z1: -31.5 },
   { id: 'cafe', x0: -22, x1: -8, z0: -31.5, z1: -23 },
   { id: 'market', x0: -54, x1: -20, z0: 7.5, z1: 12.5 },
   { id: 'play', x0: 20, x1: 46, z0: 7.5, z1: 12.5 },
@@ -49,7 +51,7 @@ export const HOUSES = [];
 const rectIn = (x, z, cx, cz, hw, hd, m) => Math.abs(x - cx) < hw + m && Math.abs(z - cz) < hd + m;
 export const onPath = (x, z, m = 0) => PATHS.some(P => x > P.x0 - m && x < P.x1 + m && z > P.z0 - m && z < P.z1 + m);
 export const built = (x, z, m = 1) => Math.hypot(x - TOWER.x, z - TOWER.z) < TOWER.R + m + 4 || rectIn(x, z, MARKET.x, MARKET.z, MARKET.w / 2, MARKET.d / 2, m)
-  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
+  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || rectIn(x, z, RESTO.x, RESTO.z, RESTO.w / 2, RESTO.d / 2, m) || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
 export const ROAD = { x: 0, z: 0, r: -1000, w: 0 };
 const FLATS = [
   { x: 0, z: 0, r: 118, h: 4 },
@@ -198,9 +200,10 @@ export function labelSprite(text, height = 0.5, { color = '#fff', bg = 'rgba(14,
 export class World {
   constructor(canvas, { quality = 'high' } = {}) {
     this.hq = quality === 'high';
-    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.hq, powerPreference: 'high-performance' });
+    // phones and slow computers ('low'): no shadows, no antialiasing, less grass, and the resolution drops by itself if it gets slow
+    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio, this.hq ? 1.5 : 1));
-    r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.enabled = this.hq; r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.5;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(56, 1, 0.1, 6000);
@@ -221,6 +224,7 @@ export class World {
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
     }
+    this.pr = r.getPixelRatio(); this.ft = [];
     this._input();
     addEventListener('resize', () => this.resize()); this.resize();
   }
@@ -267,7 +271,7 @@ export class World {
     this.sunDir = new THREE.Vector3();
     this.hemi = new THREE.HemisphereLight(0xbfd6ff, 0x4a4234, 0.45); S.add(this.hemi);
     const sun = this.sun = new THREE.DirectionalLight(0xffe2bf, 3.6);
-    sun.castShadow = true; sun.shadow.mapSize.set(this.hq ? 4096 : 1024, this.hq ? 4096 : 1024);
+    sun.castShadow = this.hq; sun.shadow.mapSize.set(this.hq ? 4096 : 1024, this.hq ? 4096 : 1024);
     const sc = sun.shadow.camera; sc.left = sc.bottom = -60; sc.right = sc.top = 60; sc.near = 1; sc.far = 450;
     sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.05;
     S.add(sun, sun.target);
@@ -327,7 +331,7 @@ export class World {
   }
 
   _grass() {
-    const spots = this.grassSpots, N = this.hq ? 160000 : 40000;
+    const spots = this.grassSpots, N = this.hq ? 160000 : 14000;
     const blade = new THREE.BufferGeometry();
     blade.setAttribute('position', new THREE.Float32BufferAttribute([-0.03, 0, 0, 0.03, 0, 0, 0.0, 0.3, 0, -0.025, 0, 0.02, 0.025, 0, -0.02, 0.015, 0.26, 0.015], 3));
     blade.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0.5, 1, 0, 0, 1, 0, 0.5, 1], 2));
@@ -358,7 +362,7 @@ export class World {
   }
 
   _flowers() {
-    const spots = this.grassSpots, N = this.hq ? 9000 : 3000, g = new THREE.PlaneGeometry(0.22, 0.22); g.translate(0, 0.16, 0);
+    const spots = this.grassSpots, N = this.hq ? 9000 : 1200, g = new THREE.PlaneGeometry(0.22, 0.22); g.translate(0, 0.16, 0);
     const geo = mergeGeometries([g, g.clone().rotateY(Math.PI / 2)]);
     const tex = canvasTex(64, 64, (c) => { for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28; c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(32 + Math.cos(a) * 12, 32 + Math.sin(a) * 12, 10, 6, a, 0, 6.28); c.fill(); } c.fillStyle = '#f2c230'; c.beginPath(); c.arc(32, 32, 7, 0, 6.28); c.fill(); });
     const im = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.7 }), N);
@@ -635,6 +639,27 @@ export class World {
     const btex = new THREE.CanvasTexture(bc); btex.colorSpace = THREE.SRGBColorSpace;
     this.ball = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16), new THREE.MeshStandardMaterial({ map: btex, roughness: 0.45 }));
     this.ball.castShadow = true; this.ball.position.set(P.x, P.h + 0.3, P.z); S.add(this.ball);
+    // basketball: two hoops at the ends of the court and an orange ball
+    for (const sx of [-1, 1]) {
+      const px = C.x + sx * (C.hw + 0.7);
+      this.box(px, C.h + 1.9, C.z, 0.22, 3.8, 0.22, { color: 0x30343a, metalness: 0.6 }, { solid: true });
+      this.box(C.x + sx * (C.hw - 0.05), C.h + 3.75, C.z, 0.9, 0.12, 0.12, { color: 0x30343a, metalness: 0.6 });
+      const bb = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.1, 1.8), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, roughness: 0.2 }));
+      bb.position.set(C.x + sx * (C.hw - 0.45), C.h + 3.55, C.z); S.add(bb);
+      const sq = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.45), new THREE.MeshBasicMaterial({ color: sx < 0 ? 0x2e6fd1 : 0xc0392b })); sq.position.set(C.x + sx * (C.hw - 0.49), C.h + 3.35, C.z); sq.rotation.y = -sx * Math.PI / 2; S.add(sq);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.025, 8, 28).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xff6a1a, metalness: 0.4, roughness: 0.4 }));
+      rim.position.set(C.x + sx * (C.hw - 1.0), C.h + 3.05, C.z); S.add(rim);
+      const net = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.26, 0.5, 14, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.7 }));
+      net.position.set(C.x + sx * (C.hw - 1.0), C.h + 2.8, C.z); S.add(net);
+      const arc = new THREE.Mesh(new THREE.RingGeometry(6.9, 7.05, 48, 1, sx < 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      arc.position.set(C.x + sx * (C.hw - 1.0), C.h + 0.06, C.z); arc.rotation.y = 0; S.add(arc);
+    }
+    const oc = document.createElement('canvas'); oc.width = 128; oc.height = 64; const og = oc.getContext('2d');
+    og.fillStyle = '#e8701a'; og.fillRect(0, 0, 128, 64); og.strokeStyle = '#2a1408'; og.lineWidth = 3;
+    og.beginPath(); og.moveTo(0, 32); og.lineTo(128, 32); og.moveTo(32, 0); og.lineTo(32, 64); og.moveTo(96, 0); og.lineTo(96, 64); og.stroke();
+    const otex = new THREE.CanvasTexture(oc); otex.colorSpace = THREE.SRGBColorSpace;
+    this.bball = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 14), new THREE.MeshStandardMaterial({ map: otex, roughness: 0.6 }));
+    this.bball.position.set(C.x, C.h + 0.2, C.z); S.add(this.bball);
   }
 
   _clouds() {
@@ -810,8 +835,11 @@ export class World {
     if (r.av.setMood) r.av.setMood(d.fx || '');
   }
   _remotes(dt) {
+    const me = this.me && this.me.group.position, far = this.hq ? 160 : 90;
     for (const id in this.remotes) {
       const r = this.remotes[id], g = r.av.group, d = r.d;
+      // people far away are not drawn or animated (big saving on phones)
+      if (me && r.pos.distanceTo(me) > far) { g.position.copy(r.pos); g.visible = false; continue; }
       const before = g.position.clone();
       if (g.position.distanceTo(r.pos) > 25) g.position.copy(r.pos); else g.position.lerp(r.pos, Math.min(1, dt * 6));
       let dr = (d.ry || 0) - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); g.rotation.y += dr * Math.min(1, dt * 8);
@@ -887,7 +915,8 @@ export class World {
   start(onFrame) {
     this._onFrame = onFrame;
     const loop = () => {
-      const dt = Math.min(0.05, this.clock.getDelta()), t = this.clock.elapsedTime;
+      const raw = this.clock.getDelta(), dt = Math.min(0.05, raw), t = this.clock.elapsedTime;
+      this._watch(raw);
       if (this.me) { this._physics(dt); this._camera(dt); this._stars(dt); this._zones(); }
       this._remotes(dt);
       if (this.water.material.uniforms?.time) this.water.material.uniforms.time.value += dt * 0.5;
@@ -900,12 +929,24 @@ export class World {
     };
     loop();
   }
+  // if the game runs slowly for a few seconds, draw fewer pixels (and drop the heavy effects first)
+  _watch(raw) {
+    if (document.hidden || raw > 0.5) return;
+    this.ft.push(raw); if (this.ft.length < 150) return;
+    const fps = this.ft.length / this.ft.reduce((a, b) => a + b, 0); this.ft = [];
+    if (fps >= 32) return;
+    if (this.hq && !this.light) return this.lighten();
+    if (this.pr > 0.6) { this.pr = Math.max(0.6, this.pr - 0.15); this.renderer.setPixelRatio(this.pr); this.resize(); }
+    if (this.grassMesh && this.grassMesh.count > 6000) this.grassMesh.count = 6000;
+  }
   // lighter settings for slow computers (no reload needed)
   lighten() {
     if (this.light) return; this.light = true;
-    this.composer = null; this.renderer.setPixelRatio(1); this.resize();
+    this.composer = null; this.pr = 1; this.renderer.setPixelRatio(1); this.resize();
     this.grassMesh.count = Math.floor(this.grassMesh.count / 3);
     const sh = this.sun.shadow; sh.mapSize.set(1024, 1024); if (sh.map) { sh.map.dispose(); sh.map = null; }
   }
+  // point lights make every surface slower to draw; phones go without them
+  dropPointLights() { const out = []; this.scene.traverse(o => { if (o.isPointLight || o.isSpotLight) out.push(o); }); out.forEach(o => o.parent.remove(o)); }
   pause(p) { if (p) { cancelAnimationFrame(this.raf); this.raf = null; } else if (!this.raf) { this.clock.getDelta(); this.start(this._onFrame); } }
 }

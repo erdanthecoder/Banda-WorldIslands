@@ -3,17 +3,20 @@
 export const PRICES = {
   apple: 100, banana: 100, juice: 150, soda: 150, chips: 150, chocolate: 200, icecream: 250, pizza: 300, burger: 400, cake: 500,
   coffee: 200, latte: 300, cocoa: 250, tea: 100, croissant: 200,
+  plov: 500, lagman: 450, manty: 450, soup: 300, salad: 250, pancakes: 300, lemonade: 150,
   ball: 800, balloon: 300, teddy: 1200, crown: 5000, headphones: 2500, tophat: 2000, dog: 4000, cat: 4000, bunny: 3500, dragon: 9000,
 };
 export const ICON = {
   apple: '🍎', banana: '🍌', juice: '🧃', soda: '🥤', chips: '🍟', chocolate: '🍫', icecream: '🍦', pizza: '🍕', burger: '🍔', cake: '🎂',
   coffee: '☕', latte: '🧋', cocoa: '🍫', tea: '🍵', croissant: '🥐',
+  plov: '🍛', lagman: '🍜', manty: '🥟', soup: '🍲', salad: '🥗', pancakes: '🥞', lemonade: '🍋',
   ball: '⚽', balloon: '🎈', teddy: '🧸', crown: '👑', headphones: '🎧', tophat: '🎩', dog: '🐶', cat: '🐱', bunny: '🐰', dragon: '🐲',
 };
-export const FOOD = ['coffee', 'latte', 'cocoa', 'tea', 'croissant', 'apple', 'banana', 'juice', 'soda', 'chips', 'chocolate', 'icecream', 'pizza', 'burger', 'cake'];
+export const FOOD = ['plov', 'lagman', 'manty', 'soup', 'salad', 'pancakes', 'lemonade', 'coffee', 'latte', 'cocoa', 'tea', 'croissant', 'apple', 'banana', 'juice', 'soda', 'chips', 'chocolate', 'icecream', 'pizza', 'burger', 'cake'];
 export const HAT_ITEMS = ['crown', 'headphones', 'tophat'];
 export const PET_ITEMS = ['dog', 'cat', 'bunny', 'dragon'];
 export const CAFE = ['coffee', 'latte', 'cocoa', 'tea', 'croissant', 'juice', 'icecream', 'cake'];
+export const RESTO_MENU = ['plov', 'lagman', 'manty', 'soup', 'salad', 'pancakes', 'pizza', 'burger', 'lemonade', 'juice'];
 export const DRINKS = ['coffee', 'latte', 'cocoa', 'tea', 'croissant'];
 export const money = c => '$' + (Math.max(0, c || 0) / 100).toFixed(2);
 
@@ -69,8 +72,8 @@ export class Shop {
   }
 
   // a shelf or the café counter: tap items to put them in the basket
-  openAisle(title, items, { cafe = false } = {}) {
-    const t = this.app.t; this.lock(true); this.app.sfx('click');
+  openAisle(title, items, { cafe = false, serve = null } = {}) {
+    this.serveCb = serve; const t = this.app.t; this.lock(true); this.app.sfx('click');
     $('#shopTitle').textContent = title;
     const draw = () => {
       $('#shopList').innerHTML = items.map(k => `<button class="item" data-k="${k}"><span class="ic">${ICON[k]}</span><span>${t('it_' + k)}</span><b>${money(PRICES[k])}</b>${this.basket[k] ? `<i>${this.basket[k]}</i>` : ''}${this.owned(k) ? `<small>✓ ${t('owned')}</small>` : ''}</button>`).join('');
@@ -141,7 +144,7 @@ export class Shop {
     P.classList.add('paying'); $('#phonePay').disabled = true; $('#payMsg').textContent = t('processing');
     try {
       const bal = await this.app.net.buy(items);
-      const served = items.filter(i => DRINKS.includes(i.item));
+      const serveCb = this.serveCb, served = items.filter(i => DRINKS.includes(i.item) || (serveCb && RESTO_MENU.includes(i.item)));
       this.app.setMoney(bal); this.basket = {}; this.chip(); await this.loadInv();
       P.classList.remove('paying'); P.classList.add('done'); $('#phonePay').disabled = false; this.paying = false;
       this.app.logPay && this.app.logPay(items, this.m);
@@ -150,7 +153,7 @@ export class Shop {
       const hasWear = items.some(i => HAT_ITEMS.includes(i.item) || PET_ITEMS.includes(i.item));
       setTimeout(async () => {
         this.close();
-        if (served.length) { for (const i of served) for (let k = 0; k < i.qty; k++) await this.app.net.use(i.item).catch(() => {}); await this.loadInv(); this.app.useItem(served[0].item); }
+        if (served.length) { for (const i of served) for (let k = 0; k < i.qty; k++) await this.app.net.use(i.item).catch(() => {}); await this.loadInv(); if (serveCb) serveCb(served[0].item); else this.app.useItem(served[0].item); }
         else this.app.ui.banner(hasWear ? t('boughtWear') : t('boughtFood'), 3200);
       }, 1500);
     } catch (e) {

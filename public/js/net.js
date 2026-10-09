@@ -79,6 +79,8 @@ class SupaNet extends Base {
     const { error } = await this.c.from('banda_commands').insert({ server: this.server, kind, data: data || {} });
     if (error) throw error;
   }
+  // admin commands: the password is checked on the server; the command then reaches everyone like a teacher command
+  async admin(pw, kind, data) { const { data: ok, error } = await this.c.rpc('banda_admin', { pw, srv: this.server, k: kind, d: data || {} }); if (error) throw error; return !!ok; }
   async loadUsers() {
     const { data } = await this.c.from('banda_players').select('id, name, stars, points, avatar').order('stars', { ascending: false }).limit(300);
     if (data) { const u = {}; data.forEach(r => u[r.id] = r); this._users(u); }
@@ -160,6 +162,11 @@ class LocalNet extends Base {
       const ev = { type: '_state', data: { key: 'effects', val: data } }; this._event(ev); this.bc.postMessage({ k: 'e', server: this.server, ev }); return;
     }
     this.emit(kind, data, true);
+  }
+  async admin(pw, kind, data) {
+    const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw || '')))].map(b => b.toString(16).padStart(2, '0')).join('');
+    if (h !== 'eff3fdd3f486565f12baf0df16bd88f07f5652e3489aa047b92d78c57b9cac8c') return false;
+    if (kind !== 'check') this.emit(kind, data, true); return true;
   }
   loadUsers() { this._users(this._load()); }
   async saveProfile(name, avatar) { const u = this._load(); u[this.uid] = { stars: 0, points: 0, ...(u[this.uid] || {}), id: this.uid, name, avatar }; this._save(u); }

@@ -3,16 +3,18 @@ import { t, setLang, getLang, applyI18n, langChosen } from './i18n.js';
 import { sfx, say, playSong, stopSong, SONGS, setMuted, isMuted, unlockAudio, ambience } from './audio.js';
 import { createNet } from './net.js';
 import { currentAccount, signInWithHub, signOut } from './auth.js';
-import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, PATHS, PLAZA_R } from './world.js';
+import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, PATHS, PLAZA_R } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
-import { Tower, Market, Bank, FLOORS } from './buildings.js';
+import { Tower, Market, Bank, Restaurant, FLOORS } from './buildings.js';
 import { Playground, coffeeKiosk } from './playground.js';
 import { BankUI } from './bank.js';
 import { Phone } from './phone.js';
 import { Jobs } from './jobs.js';
-import { Shop, money, PRICES, ICON, CAFE } from './shop.js';
+import { Shop, money, PRICES, ICON, CAFE, RESTO_MENU } from './shop.js';
 import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
+import { Shows } from './shows.js';
+import { Admin } from './admin.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
 import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
 import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
@@ -40,7 +42,7 @@ const ui = app.ui = {
   floatStar(n) { const d = document.createElement('div'); d.className = 'floatStar'; d.textContent = `+${n} ★`; document.body.appendChild(d); setTimeout(() => d.remove(), 1300); },
   floatMoney(c) { const d = document.createElement('div'); d.className = 'floatMoney'; d.textContent = `+${money(c)}`; document.body.appendChild(d); setTimeout(() => d.remove(), 1300); },
   mgHud(text) { show('#mgHud', !!text); if (text && $('#mgHud').textContent !== text) $('#mgHud').textContent = text; },
-  mgButtons(type) { show('#mgBtns', type === 'football' || type === 'dodgeball'); $('#bAction').textContent = type === 'dodgeball' ? t('throw') : t('kick'); },
+  mgButtons(type) { show('#mgBtns', type === 'football' || type === 'dodgeball' || type === 'basketball'); $('#bAction').textContent = type === 'dodgeball' ? t('throw') : type === 'basketball' ? '🏀 ' + t('shoot') : t('kick'); },
   impostorButtons(s) {
     show('#impBtns', !!s); if (!s) return;
     $('#bReport').disabled = !s.report; show('#bEmergency', !!s.emergency);
@@ -122,6 +124,7 @@ async function start(serverId) {
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
   app.shop = new Shop(app); app.shop.loadInv(); app.bankUI = new BankUI(app); app.phone = new Phone(app);
   buildWorld(world);
+  if (!world.hq) world.dropPointLights();
   world.teleport(0, 15, 0);
 
   net.onPlayers((id, d) => {
@@ -140,6 +143,7 @@ async function start(serverId) {
   await net.joinServer(serverId, { pid: me.pid, uid: me.uid, name: me.name, role: me.role, avatar: me.avatar });
   app.mg = new Minigames(app); app.closeGame = closeGame; app.openGame = openGame;
   app.bots = new Bots(app);
+  app.shows = new Shows(app); app.admin = new Admin(app);
   shareElevators(world, net);
   app.phone.start();
   if (app.pending > 0) setTimeout(() => app.settle(), 4000);
@@ -182,12 +186,22 @@ function buildWorld(world) {
   app.market = new Market(world, { t, aisle: a => app.shop.openAisle(t('aisle_' + a.id), a.items), checkout: () => app.shop.checkout() });
   app.mbank = new Bank(world, { t, desk: i => app.bankUI.desk(i), someoneAt, wait: () => ui.toast(`⏳ ${t('waitInLine')}`),
     jobs: () => app.jobs.board(), cashierIn: () => app.jobs.cashierIn(), cashierOut: () => app.jobs.cashierOut() });
+  app.resto = new Restaurant(world, { t, sit: seat => restoSit(seat), pass: () => app.jobs.pass() });
   app.jobs = new Jobs(app);
+  addPad(world, COURT.x - COURT.hw - 3, COURT.z, 'basketball', COURT.h);
   if (myRoom()) app.tower.setMyRoom(myRoom());
   coffeeKiosk(world, { t, cafe: () => app.shop.openAisle('☕ Island Coffee', CAFE, { cafe: true }) });
   const pg = new Playground(world, { boing, sfx });
-  pg.post(5, -21.5, `▲ ${t('tower')} · mBank`); pg.post(-21, 5.5, `◀ ${t('market')}`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
+  pg.post(5, -21.5, `▲ ${t('tower')} · ◀ mBank · 🍽️ ▶`); pg.post(-21, 5.5, `◀ ${t('market')}`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
   [[-12, -14], [12, -14]].forEach(([x, z]) => world.trampoline(x, z, boing));
+}
+
+// sit at a restaurant table: the menu opens and the waiter brings what you order
+function restoSit(seat) {
+  const w = app.world;
+  if (app.jobs.job === 'waiter' || app.mg.active || w.inputLocked) return;
+  const p = w.me.group.position; p.x = seat.x; p.z = seat.z; w.me.group.rotation.y = seat.ry; emote('sit');
+  app.shop.openAisle('🍽️ ' + t('restaurant'), RESTO_MENU, { cafe: true, serve: item => { ui.toast(`🍽️ ${t('foodComing')}`); app.resto.serve(seat, ICON[item], () => { app.useItem(item); emote('sit'); }); } });
 }
 
 function addPad(world, x, z, type, y) {

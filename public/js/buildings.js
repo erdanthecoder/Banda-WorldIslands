@@ -1,7 +1,7 @@
 // Walk-in buildings: World Tower (8 floors, glass elevators) and the supermarket.
 import * as THREE from 'three';
 import { RoundedBoxGeometry as RoundedBox } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { TEX, canvasTex, labelSprite, TOWER, MARKET, BANK } from './world.js';
+import { TEX, canvasTex, labelSprite, TOWER, MARKET, BANK, RESTO } from './world.js';
 import { Avatar } from './avatar.js';
 import { CinemaShow } from './cinema.js';
 
@@ -630,4 +630,91 @@ export class Bank extends Building {
     });
     tex.needsUpdate = true;
   }
+}
+
+// ---------------- Island Restaurant ----------------
+// Tables with chairs: sit down and the menu opens; a waiter brings your food to the table.
+// The kitchen pass (where dishes come out) is also where the Waiter job picks up orders.
+export class Restaurant extends Building {
+  constructor(world, h) {
+    const R = RESTO;
+    super(world, { x: R.x, z: R.z, w: R.w, d: R.d, floors: 1, fh: 5.5, base: R.base, door: { side: 'w', at: R.z, width: 5 } });
+    this.h = h; this.seats = []; this.dishes = []; this.build();
+  }
+  build() {
+    const { x, z, w, d, base, minX, maxX, minZ, maxZ } = this, S = this.world.scene, H = 5.6, t = this.h.t;
+    const box = (cx, cy, cz, ww, hh, dd, m, cast = true) => { const o = new THREE.Mesh(new THREE.BoxGeometry(ww, hh, dd), m); o.position.set(cx, cy, cz); o.castShadow = cast; o.receiveShadow = true; S.add(o); return o; };
+    const wall = this.world.texMat(TEX.plaster, w, H, { color: 0xf3dcc0, roughness: 0.9 }), dark = std(0x3a2418, { roughness: 0.5 }), gold = std(0xd4af37, { metalness: 0.8, roughness: 0.25 });
+    box(x, base + H / 2, minZ, w, H, 0.4, wall); box(x, base + H / 2, maxZ, w, H, 0.4, wall); box(maxX, base + H / 2, z, 0.4, H, d, wall);
+    const g = glassMat(), da = this.door.at - 2.5, db = this.door.at + 2.5;
+    for (const [z0, z1] of [[minZ, da], [db, maxZ]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(z1 - z0, H - 1.2), g); m.position.set(minX, base + (H - 1.2) / 2, (z0 + z1) / 2); m.rotation.y = Math.PI / 2; S.add(m); }
+    box(minX, base + H - 0.6, z, 0.5, 1.2, d + 0.4, dark);
+    for (let k = 0; k <= 6; k++) box(minX, base + (H - 1.2) / 2, minZ + k * d / 6, 0.16, H - 1.2, 0.16, dark);
+    box(x, base + H + 0.2, z, w + 0.8, 0.4, d + 0.8, std(0x5a3a28));
+    box(x, base - 0.01, z, w, 0.12, d, this.world.texMat(TEX.wood, w, d, { color: 0xb07a4f, roughness: 0.45 }), false);
+    // awning + sign
+    const aw = canvasTex(256, 64, (c, W, Hh) => { for (let i = 0; i < 16; i++) { c.fillStyle = i % 2 ? '#ffffff' : '#c0392b'; c.fillRect(i * 16, 0, 16, Hh); } });
+    aw.center.set(0.5, 0.5); aw.rotation = Math.PI / 2;
+    const awn = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, 10), new THREE.MeshStandardMaterial({ map: aw })); awn.position.set(minX - 1.1, base + H - 1.5, z); awn.rotation.z = 0.38; S.add(awn);
+    // a brick base under the windows so it reads as a restaurant from outside
+    box(minX - 0.05, base + 0.45, z - 7, 0.3, 0.9, 4, this.world.texMat(TEX.brick, 4, 1, { color: 0xb5654a })); box(minX - 0.05, base + 0.45, z + 7, 0.3, 0.9, 4, this.world.texMat(TEX.brick, 4, 1, { color: 0xb5654a }));
+    const sign = canvasTex(1024, 256, (c, W, Hh) => { c.clearRect(0, 0, W, Hh); c.fillStyle = '#3a2418'; c.beginPath(); c.roundRect(10, 20, W - 20, Hh - 40, 40); c.fill(); c.strokeStyle = '#d4af37'; c.lineWidth = 8; c.stroke(); c.fillStyle = '#ffd98a'; c.font = '800 84px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t('restaurant'), W / 2, Hh / 2 + 6, W - 80); });
+    const sm = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), new THREE.MeshBasicMaterial({ map: sign, transparent: true })); sm.position.set(minX - 0.3, base + H + 1.7, z); sm.rotation.y = -Math.PI / 2; S.add(sm);
+    // hanging lamps (glowing, no real lights so phones stay fast)
+    for (let i = 0; i < 3; i++) for (const k of [-1, 1]) { const lx = minX + 5 + i * 5.5, lz = z + k * 4.5; const l = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 10), std(0xffffff, { emissive: 0xffc070, emissiveIntensity: 2 })); l.position.set(lx, base + 3.6, lz); S.add(l); box(lx, base + 4.6, lz, 0.03, 2, 0.03, dark, false); }
+    // kitchen counter along the east wall, chef, and the pass where dishes come out
+    const kx = maxX - 4.5;
+    box(kx, base + 0.55, z, 1.2, 1.1, d - 6, std(0xf4efe6, { roughness: 0.35 })); box(kx, base + 1.13, z, 1.4, 0.06, d - 5.8, std(0x23272d, { metalness: 0.6, roughness: 0.25 }));
+    this.block(0, kx, z, 0.7, (d - 6) / 2);
+    box(maxX - 1.2, base + 0.5, z, 1.4, 1, d - 4, std(0x9aa3ad, { metalness: 0.7, roughness: 0.3 })); // stoves
+    for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 16), std(0x111111, { emissive: 0xff4a1a, emissiveIntensity: 0.9 })); f.position.set(maxX - 1.2, base + 1.03, minZ + 4 + i * 3.3); S.add(f); }
+    this.chef = new Avatar({ skin: '#f2c49b', face: 'smile', hair: 'short', hairColor: '#1c1410', top: 'plain', shirt: '#ffffff', pants: '#22293a', shoes: '#1b1b1b', hat: 'none', pet: 'none', height: 1.05 }, '', 'bot');
+    this.chef.group.position.set(maxX - 2.6, base, z); this.chef.group.rotation.y = -Math.PI / 2; S.add(this.chef.group);
+    const toque = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.45, 14), std(0xffffff)); toque.position.y = 2.15; this.chef.group.add(toque);
+    this.pass = { x: kx - 1.4, z };
+    const pl = labelSprite('🛎️ ' + t('pickUp'), 0.4, { bg: 'rgba(58,36,24,0.92)' }); pl.position.set(kx, base + 2.7, z); S.add(pl);
+    this.world.zone({ test: (px, py, pz) => px > kx - 2.4 && px < kx - 0.6 && Math.abs(pz - z) < 1.6 && Math.abs(py - base) < 1.5, onEnter: () => this.h.pass && this.h.pass() });
+    // tables: three in each row, a chair on each side; aisle down the middle from the door to the kitchen
+    const wood = std(0x6b4226, { roughness: 0.5 }), cloth = std(0xfff8ec, { roughness: 0.8 });
+    let n = 0;
+    for (const tz of [minZ + 4.5, maxZ - 4.5]) for (let i = 0; i < 3; i++) {
+      const tx = minX + 5 + i * 5.5, table = n++;
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.08, 24), cloth); top.position.set(tx, base + 0.78, tz); S.add(top);
+      box(tx, base + 0.39, tz, 0.12, 0.78, 0.12, wood);
+      const vase = labelSprite('🌷', 0.35, { bg: null }); vase.position.set(tx, base + 1.05, tz); S.add(vase);
+      this.block(0, tx, tz, 0.6, 0.6);
+      for (const sx of [-1, 1]) {
+        const cx = tx + sx * 1.3;
+        box(cx, base + 0.45, tz, 0.5, 0.08, 0.5, wood); box(cx + sx * 0.23, base + 0.8, tz, 0.06, 0.7, 0.5, wood);
+        const seat = { i: this.seats.length, table, x: cx, z: tz, ry: sx < 0 ? Math.PI / 2 : -Math.PI / 2, dish: { x: tx + sx * 0.45, z: tz }, taken: null };
+        this.seats.push(seat);
+        this.world.zone({ test: (px, py, pz) => Math.hypot(px - cx, pz - tz) < 0.55 && Math.abs(py - base) < 1.2, onEnter: () => this.h.sit && this.h.sit(seat) });
+      }
+    }
+    // the waiter who brings your food
+    this.waiter = new Avatar({ skin: '#d9a066', face: 'smile', hair: 'bun', hairColor: '#4a2c17', top: 'plain', shirt: '#1f1f1f', pants: '#1f1f1f', shoes: '#111111', hat: 'none', pet: 'none', height: 1 }, '', 'bot');
+    const home = { x: this.pass.x - 0.4, z: z + 2 }; this.waiter.group.position.set(home.x, base, home.z); S.add(this.waiter.group);
+    this.wq = [];
+    this.world.updaters.push(dt => {
+      const wv = this.waiter, p = wv.group.position, job = this.wq[0];
+      const go = (tx, tz) => { const dx = tx - p.x, dz = tz - p.z, dd = Math.hypot(dx, dz); if (dd < 0.1) { wv.animate(0, dt, false); return true; } const st = Math.min(dd, 2.6 * dt); p.x += dx / dd * st; p.z += dz / dd * st; wv.group.rotation.y = Math.atan2(dx, dz); wv.animate(2.6, dt, false); return false; };
+      if (!job) { go(home.x, home.z); this.chef.animate(0, dt, false); return; }
+      if (job.stage === 0 && go(this.pass.x, this.pass.z)) { job.stage = 1; job.t = 0; this.chef.play('wave'); }
+      else if (job.stage === 1 && (job.t += dt) > 1.2) job.stage = 2;
+      else if (job.stage === 2) { const s = job.seat; if (go(s.x + (s.ry > 0 ? -0.2 : 0.2), s.z + 0.9)) { this.putDish(s, job.icon); wv.play('wave'); this.wq.shift(); job.done && job.done(); } }
+      this.chef.animate(0, dt, false);
+    });
+    for (const [px, pz] of [[minX + 1.2, minZ + 1.2], [minX + 1.2, maxZ - 1.2]]) {
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.35, 0.8, 16), std(0xe8e4dc)); pot.position.set(px, base + 0.4, pz); S.add(pot);
+      for (let i = 0; i < 6; i++) { const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.45, 10, 8), std(new THREE.Color().setHSL(0.3, 0.5, 0.25 + i * 0.02))); leaf.position.set(px + Math.cos(i) * 0.3, base + 1.1 + (i % 3) * 0.35, pz + Math.sin(i) * 0.3); leaf.scale.set(1, 1.4, 1); S.add(leaf); }
+      this.block(0, px, pz, 0.45, 0.45);
+    }
+  }
+  serve(seat, icon, done) { this.wq.push({ seat, icon, stage: 0, done }); }
+  putDish(seat, icon) {
+    this.clearDish(seat);
+    const m = labelSprite(icon, 0.5, { bg: null }); m.position.set(seat.dish.x, this.base + 1.0, seat.dish.z); this.world.scene.add(m);
+    seat.dishMesh = m; setTimeout(() => this.clearDish(seat, m), 40000);
+  }
+  clearDish(seat, only) { if (seat.dishMesh && (!only || seat.dishMesh === only)) { this.world.scene.remove(seat.dishMesh); seat.dishMesh = null; } }
 }

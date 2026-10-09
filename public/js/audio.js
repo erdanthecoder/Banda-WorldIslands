@@ -124,6 +124,9 @@ export const SONGS = [
   { name: 'Island Party', bpm: 116, root: 62, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 3, 4, 3], drums: 'party', lead: 'triangle', seed: 11 },
   { name: 'Victory March', bpm: 140, root: 58, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 3, 0, 4], drums: 'march', lead: 'square', seed: 19 },
   { name: 'Chill Waves', bpm: 84, root: 64, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 5, 1, 4], drums: 'chill', lead: 'sine', seed: 23 },
+  { name: 'Disco Fever', bpm: 120, root: 57, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 3, 4, 3], drums: 'disco', lead: 'square', seed: 31 },
+  { name: 'Crab Party', bpm: 125, root: 55, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 5, 3, 6], drums: 'four', lead: 'sawtooth', seed: 42 },
+  { name: 'Live Concert', bpm: 112, root: 59, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 4, 5, 3], drums: 'anthem', lead: 'sawtooth', seed: 57 },
 ];
 
 let musicTimer = null, current = -1;
@@ -158,12 +161,13 @@ export function playSong(i) {
       const t = next, bar = Math.floor(n / 16) % 4, s = n % 16, chordDeg = song.prog[bar];
       if (!muted) {
         const d = song.drums;
-        if (d === 'four' || d === 'party') { if (s % 4 === 0) kick(t, musicGain); if (s % 8 === 4) snare(t, musicGain); if (s % 2 === 0) hat(t, musicGain, s % 4 === 2 ? 0.15 : 0.07); }
+        if (d === 'disco') { if (s % 4 === 0) kick(t, musicGain); if (s % 8 === 4) snare(t, musicGain); if (s % 4 === 2) noise(t, 0.12, { vol: 0.12, out: musicGain }); else if (s % 2 === 0) hat(t, musicGain, 0.06); }
+        else if (d === 'four' || d === 'party') { if (s % 4 === 0) kick(t, musicGain); if (s % 8 === 4) snare(t, musicGain); if (s % 2 === 0) hat(t, musicGain, s % 4 === 2 ? 0.15 : 0.07); }
         else if (d === 'anthem') { if (s === 0 || s === 8) kick(t, musicGain); if (s === 4 || s === 12) { snare(t, musicGain); } }
         else if (d === 'march') { if (s % 4 === 0) kick(t, musicGain); if (s % 2 === 1 || s === 14) snare(t, musicGain); }
         else if (d === 'chill') { if (s === 0 || s === 10) kick(t, musicGain); if (s === 8) snare(t, musicGain); if (s % 4 === 2) hat(t, musicGain, 0.05); }
         // bass
-        if (s % 4 === 0 || (song.drums === 'four' && s % 4 === 2))
+        if (s % 4 === 0 || ((song.drums === 'four' || song.drums === 'disco') && s % 4 === 2))
           tone(mtof(degToMidi(song, chordDeg, -2)), t, step * 3.5, { type: 'triangle', vol: 0.35, out: musicGain });
         // chord pad
         if (s === 0) [0, 2, 4].forEach(k => tone(mtof(degToMidi(song, chordDeg + k, 0)), t, step * 15, { type: 'sawtooth', vol: 0.035, out: musicGain, attack: 0.15, cutoff: 1400 }));
