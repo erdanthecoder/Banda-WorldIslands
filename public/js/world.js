@@ -22,30 +22,21 @@ const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1
 const rnd = (() => { let s = 12345; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
 
 export const ISLANDS = [
-  { id: 'hub', x: 0, z: 0, r: 90, h: 6, peak: 12 },
-  { id: 'math', x: 240, z: -40, r: 70, h: 8, peak: 30 },
-  { id: 'lang', x: -240, z: -20, r: 70, h: 8, peak: 26 },
-  { id: 'arcade', x: 20, z: 245, r: 70, h: 7, peak: 22 },
-  { id: 'sports', x: 0, z: -260, r: 95, h: 3, peak: 8 },
-  { id: 'teacher', x: 225, z: 225, r: 62, h: 8, peak: 22 },
+  { id: 'hub', x: 0, z: 0, r: 165, h: 4, peak: 16 },   // Banda Island: tower, plaza, supermarket, playground, pitch
+  { id: 'east', x: 470, z: 90, r: 110, h: 6, peak: 34 }, // the second island: nature only
 ];
 export const isl = id => ISLANDS.find(i => i.id === id);
 
-export const PITCH = { x: 0, z: -238, hw: 30, hd: 18, h: 3 };
-export const COURT = { x: 0, z: -292, hw: 16, hd: 10, h: 3 };
-// houses around the central square: [x, z, rot]
-export const HOUSES = [[-46, -30, 0.9], [-50, 24, 1.9], [-44, 42, 2.3], [52, 26, -2.0], [54, 14, -1.8], [48, -34, -0.8], [-14, 56, 3.0], [22, 58, 3.4]].map(h => [...h, 6]);
-// small villages on the other islands
-for (const I of ISLANDS.filter(I => ['math', 'lang', 'arcade', 'teacher'].includes(I.id))) {
-  const ang = Math.atan2(I.z, I.x);
-  for (const a of [ang + 1.35, ang - 1.35, ang + Math.PI + 1.05]) HOUSES.push([I.x + Math.cos(a) * 45, I.z + Math.sin(a) * 45, Math.atan2(-Math.cos(a), -Math.sin(a)), I.h]);
-}
-export const ROAD = { x: 0, z: 0, r: 41, w: 6 };
+export const PITCH = { x: 0, z: 86, hw: 30, hd: 18, h: 4 };
+export const COURT = { x: 78, z: 82, hw: 16, hd: 10, h: 4 };
+export const TOWER = { x: 0, z: -58, w: 44, d: 30, floors: 8, fh: 5.2, base: 4 };
+export const MARKET = { x: -70, z: 6, w: 32, d: 22, base: 4 };
+export const PLAYGROUND = { x: 64, z: 10, w: 36, d: 30 };
+export const HOUSES = [];
+export const ROAD = { x: 0, z: 0, r: -1000, w: 0 };
 const FLATS = [
-  ...ISLANDS.filter(I => I.id !== 'sports').map(I => ({ x: I.x, z: I.z, r: I.id === 'hub' ? 42 : 32, h: I.h })),
-  { ...PITCH, hw: PITCH.hw + 9, hd: PITCH.hd + 7 }, { ...COURT, hw: COURT.hw + 6, hd: COURT.hd + 5 }, { x: 0, z: -268, r: 16, h: 3 },
-  ...HOUSES.map(([x, z, , h]) => ({ x, z, r: 7, h })),
-  { x: 42, z: 207, r: 12, h: 7 }, // obby tower
+  { x: 0, z: 0, r: 118, h: 4 },
+  { x: 470, z: 90, r: 18, h: 6 },
 ];
 
 export function heightAt(x, z) {
@@ -198,7 +189,7 @@ export class World {
     this.camera = new THREE.PerspectiveCamera(56, 1, 0.1, 6000);
     this.clock = new THREE.Clock();
     this.updaters = []; this.portals = []; this.remotes = {}; this.effects = {}; this.keys = {}; this.joy = { x: 0, y: 0 };
-    this.timeU = { value: 0 };
+    this.timeU = { value: 0 }; this.buildings = []; this.carrier = null;
     this.solids = []; this.interiors = []; this.zones = []; this.grounds = []; this.holes = []; this.holeMats = [];
     this.yaw = Math.PI; this.pitch = 0.28; this.dist = 6.5;
     this.vel = new THREE.Vector3(); this.onGround = false;
@@ -295,7 +286,7 @@ export class World {
       g.setAttribute('splat', new THREE.BufferAttribute(sp, 4)); g.computeVertexNormals();
       const m = new THREE.Mesh(g, this.terrainMaterial());
       m.position.set(I.x, 0, I.z); m.receiveShadow = true; S.add(m); this.islandMeshes.push(m);
-      if (I.id !== 'sports') {
+      if (I.id === 'hub') {
         const ct = TEX.cobble.clone(); ct.repeat.set(12, 12); ct.needsUpdate = true;
         const plaza = new THREE.Mesh(new THREE.CircleGeometry(25, 64).rotateX(-Math.PI / 2), this.terrainMaterial({ map: ct, roughness: 0.85 }));
         plaza.geometry.setAttribute('splat', new THREE.BufferAttribute(new Float32Array(plaza.geometry.attributes.position.count * 4).fill(0), 4));
@@ -303,7 +294,7 @@ export class World {
         plaza.position.set(I.x, I.h + 0.04, I.z); plaza.receiveShadow = true; S.add(plaza);
       }
     }
-    this._grass(); this._flowers(); this._trees(); this._town(); this._roads(); this._coast(); this._sportsArena(); this._clouds(); this._nightStars(); this._wildlife(); this._horizon();
+    this._grass(); this._flowers(); this._trees(); this._town(); this._coast(); this._sportsArena(); this._clouds(); this._nightStars(); this._wildlife(); this._horizon();
   }
 
   _setSun(elev, azim) {
@@ -452,7 +443,7 @@ export class World {
         const a = hash(tries, I.r) * Math.PI * 2, d = Math.sqrt(hash(I.x + tries, 7)) * I.r * 1.05;
         const x = I.x + Math.cos(a) * d, z = I.z + Math.sin(a) * d, h = heightAt(x, z);
         if (h < 0.6 || h > 20 || slopeAt(x, z) > 0.8 || inFlat(x, z, 6)) continue;
-        if (I.id === 'hub' && d < I.r * 0.72 && h > 1.8) continue; // keep the town open
+        if (I.id === 'hub' && d < I.r * 0.74 && h > 1.8) continue; // keep the town open
         // clusters: skip some spots based on forest noise
         if (h > 1.8 && vnoise(x * 0.03 + 3, z * 0.03) < 0.35) continue;
         spots.push([x, h, z, hash(x, z)]); i++;
@@ -662,7 +653,7 @@ export class World {
     this.bulbM = new THREE.MeshStandardMaterial({ color: 0xfff1cf, emissive: 0xffd28a, emissiveIntensity: 0 });
     const wood = new THREE.MeshStandardMaterial({ map: TEX.wood, roughness: 0.8 });
     for (const I of ISLANDS) {
-      if (I.id === 'sports') continue;
+      if (I.id !== 'hub') continue;
       for (let k = 0; k < 12; k++) {
         const a = k / 12 * Math.PI * 2 + 0.26, x = I.x + Math.cos(a) * 22.5, z = I.z + Math.sin(a) * 22.5, y = I.h;
         const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 4.2, 8), lampM); pole.position.set(x, y + 2.1, z); pole.castShadow = true; S.add(pole);
@@ -677,7 +668,7 @@ export class World {
     }
     HOUSES.forEach((hs, i) => this._house(hs, i));
     // lighthouse on the hub's south-west point
-    const lx = -66, lz = -52, lh = heightAt(lx, lz);
+    const lx = 470 + 70, lz = 90 + 60, lh = heightAt(lx, lz);
     const stripes = canvasTex(64, 256, (g, w, h) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#b8241c' : '#f2efe8'; g.fillRect(0, i * h / 8, w, h / 8); } });
     const tower = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.2, 16, 24), new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.6 })); tower.position.set(lx, lh + 8, lz); tower.castShadow = true; S.add(tower);
     const lamp = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 1.6, 16), new THREE.MeshStandardMaterial({ color: 0xfff6d0, emissive: 0xffe9a0, emissiveIntensity: 1.5, transparent: true, opacity: 0.9 })); lamp.position.set(lx, lh + 16.8, lz); S.add(lamp);
@@ -859,7 +850,7 @@ export class World {
 
   // ---------- interiors (metro platform, research station) ----------
   addInterior(def) { this.interiors.push(def); return def; }
-  interiorAt(x, y, z) { return this.interiors.find(I => y < I.floor + 8 && y > I.floor - 3 && x >= I.minX && x <= I.maxX && z >= I.minZ && z <= I.maxZ); }
+  interiorAt(x, y, z) { for (const b of this.buildings) { const I = b.interior(x, y, z); if (I) return I; } return this.interiors.find(I => y < I.floor + 8 && y > I.floor - 3 && x >= I.minX && x <= I.maxX && z >= I.minZ && z <= I.maxZ); }
 
   // ---------- player ----------
   setPlayer(avatar) { this.me = avatar; this.scene.add(avatar.group); this.teleport(-13, 4, -Math.PI / 2 + 0.3); }
@@ -887,8 +878,9 @@ export class World {
     c.addEventListener('wheel', e => { this.dist = Math.min(18, Math.max(2.5, this.dist + e.deltaY * 0.008)); }, { passive: true });
   }
 
-  _collide(nx, nz) {
+  _collide(nx, nz, py = 0) {
     for (const s of this.solids) {
+      if (s.y0 !== undefined && (py < s.y0 || py > s.y1)) continue;
       if (s.r) { const dx = nx - s.x, dz = nz - s.z; if (Math.abs(dx) > s.r + 1 || Math.abs(dz) > s.r + 1) continue; const d = Math.hypot(dx, dz), r = s.r + 0.3; if (d < r && d > 0.0001) { nx = s.x + dx / d * r; nz = s.z + dz / d * r; } continue; }
       if (Math.abs(nx - s.x) > s.hw + s.hd + 2 || Math.abs(nz - s.z) > s.hw + s.hd + 2) continue;
       const c = Math.cos(s.rot || 0), sn = Math.sin(s.rot || 0), dx = nx - s.x, dz = nz - s.z;
@@ -910,8 +902,9 @@ export class World {
       ix = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + this.joy.x;
     }
     const len = Math.hypot(ix, iz); if (len > 1) { ix /= len; iz /= len; }
+    if (this.carrier) { const c = this.carrier; if (c.update(dt, p, me) === true) { this.carrier = null; c.onEnd && c.onEnd(); } this.vel.set(0, 0, 0); this.inside = this.interiorAt(p.x, p.y, p.z); this.speedNow = 0; return; }
     const inside = this.interiorAt(p.x, p.y, p.z);
-    const ground0 = inside ? inside.floor : this.groundAt(p.x, p.z, p.y), swim = !inside && ground0 < -1.2;
+    const ground0 = inside ? (inside.floorAt ? inside.floorAt(p.x, p.z) : inside.floor) : this.groundAt(p.x, p.z, p.y), swim = !inside && ground0 < -1.2;
     const speed = (this.keys.ShiftLeft || this.keys.ShiftRight || this.joyRun ? 7.5 : 4.2) * (E.speed ? 1.9 : 1) * (swim ? 0.55 : 1);
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     const mx = (fx * iz - fz * ix) * speed, mz = (fz * iz + fx * ix) * speed;
@@ -922,16 +915,16 @@ export class World {
     this.vel.y -= (E.lowGravity ? 5 : 22) * dt;
     let nx = p.x + this.vel.x * dt, nz = p.z + this.vel.z * dt;
     if (inside) {
-      nx = Math.min(inside.maxX - 0.4, Math.max(inside.minX + 0.4, nx)); nz = Math.min(inside.maxZ - 0.4, Math.max(inside.minZ + 0.4, nz));
+      if (!inside.noClamp) { nx = Math.min(inside.maxX - 0.4, Math.max(inside.minX + 0.4, nx)); nz = Math.min(inside.maxZ - 0.4, Math.max(inside.minZ + 0.4, nz)); }
       for (const w of inside.walls || []) { const ex = w.hw + 0.3, ez = w.hd + 0.3, dx = nx - w.x, dz = nz - w.z; if (Math.abs(dx) < ex && Math.abs(dz) < ez) { if (ex - Math.abs(dx) < ez - Math.abs(dz)) nx = w.x + Math.sign(dx) * ex; else nz = w.z + Math.sign(dz) * ez; } }
     } else {
-      [nx, nz] = this._collide(nx, nz);
+      [nx, nz] = this._collide(nx, nz, p.y);
       const R = 1400, dc = Math.hypot(nx, nz); if (dc > R) { nx *= R / dc; nz *= R / dc; }
       if (this.groundAt(nx, nz, p.y) - ground0 > 0.6 && this.onGround) { nx = p.x; nz = p.z; }
     }
     if (this.constrain) [nx, nz] = this.constrain(nx, nz);
     p.x = nx; p.z = nz; p.y += this.vel.y * dt;
-    const floor = inside ? inside.floor : Math.max(this.groundAt(p.x, p.z, p.y + 0.05), swim ? -1.45 + Math.sin(now / 500) * 0.06 : -99);
+    const floor = inside ? (inside.floorAt ? inside.floorAt(p.x, p.z) : inside.floor) : Math.max(this.groundAt(p.x, p.z, p.y + 0.05), swim ? -1.45 + Math.sin(now / 500) * 0.06 : -99);
     if (p.y <= floor) { p.y = floor; this.vel.y = Math.max(0, this.vel.y); this.onGround = true; }
     else if (p.y > floor + 0.35) this.onGround = false; else if (this.vel.y <= 0) { p.y = floor; this.onGround = true; }
     const hs = Math.hypot(this.vel.x, this.vel.z);
