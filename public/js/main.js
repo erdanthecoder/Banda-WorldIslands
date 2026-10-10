@@ -19,6 +19,7 @@ import { Admin } from './admin.js';
 import { Fishing } from './fishing.js';
 import { whatsNew } from './whatsnew.js';
 import { isV2, LAUNCH_2 } from './launch.js';
+import { titleScreen, howToHtml } from './title.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
 import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
 import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
@@ -69,6 +70,7 @@ const ui = app.ui = {
   },
 };
 app.toast = m => ui.toast(m);
+app.afterPlay = fn => { if (app.played) fn(); else (app.playQ ||= []).push(fn); };
 
 // ---------------- Boot ----------------
 function langMenu(next) {
@@ -155,7 +157,7 @@ async function start(serverId) {
   app.phone.start();
   if (app.pending > 0) setTimeout(() => app.settle(), 4000);
   // World Islands 2.0: on now, or switched on live at 10:00 Amman time for everyone who is playing
-  const go2 = live => { $$('.v2').forEach(e => e.classList.remove('hidden')); show('#bNew'); document.title = 'World Islands 2.0 — 3D learning world for kids'; if (live) { sfx('champions'); app.world.fireworks(12); ui.banner('🎉 World Islands 2.0!', 5000); } setTimeout(() => whatsNew(app), live ? 1500 : 2500); };
+  const go2 = live => { $$('.v2').forEach(e => e.classList.remove('hidden')); show('#bNew'); document.title = 'World Islands 2.0 — 3D learning world for kids'; if (live) { sfx('champions'); app.world.fireworks(12); ui.banner('🎉 World Islands 2.0!', 5000); } if (live) setTimeout(() => whatsNew(app), 1500); else app.afterPlay(() => setTimeout(() => whatsNew(app), 900)); };
   if (isV2()) go2(false); else setTimeout(() => go2(true), LAUNCH_2 - Date.now() + 500);
 
   let last = '', lastSent = 0;
@@ -168,7 +170,14 @@ async function start(serverId) {
   addEventListener('beforeunload', () => net.leave());
 
   hudSetup();
-  show('#loading', false); show('#hud');
+  // the start screen: Play, How to play, settings — the live island glides by behind it
+  show('#loading', false);
+  titleScreen(app, {
+    lang: getLang, setLang: () => { setLang(getLang() === 'en' ? 'ru' : 'en'); applyI18n(); app.pads.forEach(p => world.setLabel(p, t('mg_' + p.type))); renderMe(); },
+    quality: () => world.hq, toggleQuality: () => { try { localStorage.setItem('banda_quality', world.hq ? 'low' : 'high'); } catch (e) {} location.reload(); },
+    muted: isMuted, toggleMute: () => setMuted(!isMuted()),
+    onPlay: () => { show('#hud'); app.played = true; (app.playQ || []).forEach(f => f()); app.playQ = []; },
+  });
   $('#online').textContent = `${app.server.name} · 1 ${t('online')}`;
   if (!localStorage.getItem('banda_tip')) { ui.chat(t('howToPlay'), 'sys'); try { localStorage.setItem('banda_tip', '1'); } catch (e) {} }
   sfx('chime'); ambience(true);
@@ -515,6 +524,7 @@ function hudSetup() {
   $('#bBag').onclick = () => app.shop.openBag();
   $('#bPhone').onclick = () => app.phone.open();
   $('#bNew').onclick = () => whatsNew(app, true);
+  $('#bHow').onclick = () => { $('#bldTitle').textContent = '📖 ' + t('howBtn'); $('#bldList').className = 'how-wrap'; $('#bldList').innerHTML = howToHtml(getLang()); show('#bldBox'); w.inputLocked = true; };
   // inside the Windows / Microsoft Store app: no "download the app" links
   if (/WorldIslandsApp/.test(navigator.userAgent)) { document.body.classList.add('in-app'); show('#bWin', false); }
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };

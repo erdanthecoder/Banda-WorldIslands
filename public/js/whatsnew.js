@@ -1,6 +1,7 @@
 // World Islands 2.0 — everything that is new, shown once after an update (and from Menu → What's new).
 export const VERSION = '2.0';
 const NEW = [
+  ['▶️', 'New start screen with Play, How to play (controls, money, places, phone) and quick settings. Find How to play in the menu too.', 'Новый стартовый экран: Играть, Как играть (управление, деньги, места, телефон) и быстрые настройки. «Как играть» есть и в меню.'],
   ['🛍️', 'Pentagon Mall: a five-sided mall with a supermarket, Pentagon Café, toys & fashion, sweets & ice cream and a Job Center. New job: Barista!', 'Пентагон Молл: пятиугольный торговый центр с супермаркетом, Кафе Пентагон, игрушками и модой, сладостями и Центром занятости. Новая работа: Бариста!'],
   ['⚡', 'Smoother and faster: the island is drawn in far fewer pieces, far labels hide, and soft shadows under everyone on phones.', 'Плавнее и быстрее: остров рисуется гораздо меньшим числом частей, дальние надписи скрываются, на телефонах — мягкие тени под всеми.'],
   ['🎪', 'Up to 3 admin shows at the same time, plus 2 new shows: 👽 UFO invasion (its beam lifts you!) and 🫧 Foam party on the stadium.', 'До 3 шоу одновременно и 2 новых шоу: 👽 Нашествие НЛО (луч поднимает тебя!) и 🫧 Пенная вечеринка на стадионе.'],
