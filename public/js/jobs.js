@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { Avatar } from './avatar.js';
 import { botAvatar } from './bots.js';
+import { PIER } from './fishing.js';
 import { labelSprite, CAFE_SPOT, BANK, RESTO, TOWER, MARKET, COURT, PITCH, PLAYGROUND } from './world.js';
 import { money, ICON } from './shop.js';
 
@@ -14,8 +15,8 @@ const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = a => a[rnd(0, a.length - 1)];
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const cents = c => '$' + (c / 100).toFixed(2);
-export const JOBS = ['cashier', 'cleaner', 'helper', 'waiter'];
-const JOB_ICON = { cashier: '🏦', cleaner: '🧹', helper: '🙋', waiter: '🍽️' };
+export const JOBS = ['cashier', 'cleaner', 'helper', 'waiter', 'fisher'];
+const JOB_ICON = { cashier: '🏦', cleaner: '🧹', helper: '🙋', waiter: '🍽️', fisher: '🎣' };
 
 // places on the island, for the helper job and for bots that show you the way
 export const PLACES = {
@@ -27,8 +28,9 @@ export const PLACES = {
   court: { icon: '🏀', x: COURT.x - COURT.hw - 4, z: COURT.z },
   stadium: { icon: '⚽', x: PITCH.x, z: PITCH.z - PITCH.hd - 4 },
   playground: { icon: '🎠', x: PLAYGROUND.x - PLAYGROUND.w / 2 - 3, z: 10 },
+  pier: { icon: '🎣', x: PIER.x0 - 3, z: PIER.z },
 };
-const ASKS = { coffee: 'ask_coffee', bank: 'ask_bank', resto: 'ask_resto', tower: 'ask_tower', market: 'ask_market', court: 'ask_court', stadium: 'ask_stadium', playground: 'ask_playground' };
+const ASKS = { coffee: 'ask_coffee', bank: 'ask_bank', resto: 'ask_resto', tower: 'ask_tower', market: 'ask_market', court: 'ask_court', stadium: 'ask_stadium', playground: 'ask_playground', pier: 'ask_pier' };
 
 // a money question a customer asks the cashier
 function moneyQ(t) {
@@ -77,6 +79,7 @@ export class Jobs {
     if (kind === 'cashier') { const C = this.app.mbank.cashier; this.customers = []; this.spawnT = 1; this.beacon(C.x, C.standZ, this.app.mbank.base, '🏦 ' + t('cashierWindow')); this.app.ui.banner(t('cashierStart'), 5000); }
     if (kind === 'cleaner') { this.spawnLitter(8); this.app.ui.banner(t('cleanerStart'), 5000); }
     if (kind === 'helper') { this.lost = []; this.spawnT = 1; this.beacon(0, 8, null, '🙋 ' + t('plaza')); this.app.ui.banner(t('helperStart'), 5000); }
+    if (kind === 'fisher') { this.beacon(PIER.x1 + 2, PIER.z, PIER.y, '🎣 ' + t('fishPier')); this.app.ui.banner(t('fisherStart'), 5000); }
     if (kind === 'waiter') { const R = this.app.resto; this.guests = []; this.carry = null; this.spawnT = 1; this.beacon(R.pass.x, R.pass.z, R.base, '🛎️ ' + t('pickUp')); this.app.ui.banner(t('waiterStart'), 5000); }
     this.draw();
   }

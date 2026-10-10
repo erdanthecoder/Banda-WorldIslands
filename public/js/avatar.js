@@ -12,7 +12,7 @@ export const HAIRSTYLES = ['short', 'spiky', 'long', 'bun', 'curly', 'none'];
 export const TOPS = ['plain', 'stripes', 'star', 'hoodie', 'jersey'];
 export const HATS = ['none', 'cap', 'beanie', 'crown', 'headphones', 'tophat'];
 export const PETS = ['none', 'dog', 'cat', 'bunny', 'dragon'];
-export const EMOTES = ['wave', 'dance', 'cheer', 'sit'];
+export const EMOTES = ['wave', 'dance', 'cheer', 'sit', 'backflip', 'floss', 'laugh', 'spin', 'sleep'];
 
 export function randomAvatar() {
   const p = a => a[Math.floor(Math.random() * a.length)];
@@ -46,6 +46,8 @@ const faceCache = {};
 function faceTexture(face) { return faceCache[face] ||= canvas(128, 128, g => drawFace(g, face)); }
 // faces the camera can switch to during a video call
 export const MOODS = ['laugh', 'angry', 'excited', 'sad'];
+const MOOD_EMOJI = { laugh: '😂', angry: '😡', excited: '🤩', sad: '😢' }, moodCache = {};
+function moodTex(e) { return moodCache[e] ||= canvas(128, 128, g => { g.font = '96px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, 64, 70); }); }
 function shirtTexture(top, color) {
   return canvas(128, 128, (g, w, h) => {
     if (top === 'stripes') { for (let y = 0; y < h; y += 24) { g.fillStyle = 'rgba(255,255,255,0.75)'; g.fillRect(0, y, w, 10); } }
@@ -123,13 +125,30 @@ export class Avatar {
     this.phase = 0; this.emote = null; this.emoteT = 0;
   }
   play(emote) { this.emote = emote; this.emoteT = 0; }
+  // 🛹 a glowing hoverboard under the feet
+  setBoard(on) {
+    if (!!this.board === !!on) return;
+    if (!on) { this.group.remove(this.board); this.board = null; this.body.position.y = 0; return; }
+    const b = this.board = new THREE.Group();
+    const deck = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.08, 1.5, 2, 0.04), new THREE.MeshStandardMaterial({ color: 0x1b1f2a, metalness: 0.6, roughness: 0.3 })); b.add(deck);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.085, 1.3), new THREE.MeshBasicMaterial({ color: 0x3ac3ff })); b.add(stripe);
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.75, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3ac3ff, transparent: true, opacity: 0.35, depthWrite: false })); glow.position.y = -0.18; glow.scale.z = 1.6; b.add(glow);
+    b.position.y = 0.12; this.group.add(b);
+  }
   // mood from the camera during a call ('' = back to the chosen face)
-  setMood(m) { const f = m && (MOODS.includes(m) || FACES.includes(m)) ? m : this.cfg.face; if (this.mood === f) return; this.mood = f; this.faceMesh.material.map = faceTexture(f); this.faceMesh.material.needsUpdate = true; }
+  // a big emoji over the head too, so everyone (including you, seeing your back) notices the mood
+  setMood(m) {
+    const f = m && (MOODS.includes(m) || FACES.includes(m)) ? m : this.cfg.face; if (this.mood === f) return; this.mood = f; this.faceMesh.material.map = faceTexture(f); this.faceMesh.material.needsUpdate = true;
+    if (this.moodSp) { this.group.remove(this.moodSp); this.moodSp = null; }
+    const e = MOOD_EMOJI[m]; if (!e) return;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: moodTex(e), transparent: true, depthWrite: false })); sp.scale.set(0.9, 0.9, 1); sp.position.y = 2.9 * (this.cfg.height || 1); this.group.add(sp); this.moodSp = sp;
+  }
   animate(speed, dt, air) {
     const k = Math.min(1, speed / 6), run = speed > 6.5;
     this.phase += dt * (4 + speed * 1.3);
     const s = Math.sin(this.phase), amp = air ? 0.5 : (run ? 1.0 : 0.75) * k;
     const reset = () => { this.body.rotation.set(0, 0, 0); this.head.rotation.set(0, 0, 0); this.armL.rotation.set(0, 0, 0); this.armR.rotation.set(0, 0, 0); this.legL.rotation.set(0, 0, 0); this.legR.rotation.set(0, 0, 0); };
+    if (this.board) { this.board.position.y = 0.12 + Math.sin(performance.now() / 300) * 0.04; this.board.rotation.z = Math.sin(performance.now() / 500) * 0.05; }
     if (this.emote && (speed > 0.5 || air)) this.emote = null;
     if (this.emote) {
       this.emoteT += dt; const t = this.emoteT; reset(); this.body.position.y = 0;
@@ -137,6 +156,11 @@ export class Avatar {
       if (this.emote === 'dance') { const b = Math.sin(t * 8); this.armL.rotation.z = -1.2 - b * 0.9; this.armR.rotation.z = 1.2 - b * 0.9; this.legL.rotation.z = Math.max(0, b) * 0.35; this.legR.rotation.z = Math.min(0, b) * 0.35; this.body.position.y = Math.abs(b) * 0.08; this.body.rotation.y = Math.sin(t * 2) * 0.6; this.head.rotation.x = Math.sin(t * 16) * 0.12; }
       if (this.emote === 'cheer') { this.armL.rotation.z = -2.8; this.armR.rotation.z = 2.8; this.body.position.y = Math.abs(Math.sin(t * 7)) * 0.35; if (t > 3) this.emote = null; }
       if (this.emote === 'sit') { this.legL.rotation.x = this.legR.rotation.x = -1.5; this.body.position.y = -0.62; this.armL.rotation.x = this.armR.rotation.x = -0.4; }
+      if (this.emote === 'backflip') { const k = Math.min(1, t / 0.9); this.body.position.y = Math.sin(k * Math.PI) * 1.4; this.body.rotation.x = -k * Math.PI * 2; this.legL.rotation.x = this.legR.rotation.x = -Math.sin(k * Math.PI) * 1.2; this.armL.rotation.z = -2.5; this.armR.rotation.z = 2.5; if (t > 1.3) this.emote = null; }
+      if (this.emote === 'floss') { const b = Math.sin(t * 9); this.body.rotation.y = b * 0.25; this.armL.rotation.set(0, 0, -0.5 + b * 0.5); this.armR.rotation.set(0, 0, 0.5 + b * 0.5); this.armL.rotation.x = b > 0 ? 0.5 : -0.5; this.armR.rotation.x = b > 0 ? 0.5 : -0.5; this.body.position.y = Math.abs(Math.cos(t * 9)) * 0.05; }
+      if (this.emote === 'laugh') { this.body.rotation.x = -0.25 + Math.sin(t * 18) * 0.06; this.head.rotation.x = -0.3; this.armL.rotation.set(-0.6, 0, -0.4); this.armR.rotation.set(-0.6, 0, 0.4); this.body.position.y = Math.abs(Math.sin(t * 18)) * 0.06; if (t > 3) this.emote = null; }
+      if (this.emote === 'spin') { this.body.rotation.y = t * 14; this.armL.rotation.z = -1.5; this.armR.rotation.z = 1.5; this.body.position.y = 0.1; if (t > 2) this.emote = null; }
+      if (this.emote === 'sleep') { this.body.rotation.x = -Math.PI / 2; this.body.position.y = 0.25; this.head.rotation.z = Math.sin(t) * 0.05; this.armL.rotation.x = this.armR.rotation.x = 0.2; }
       return;
     }
     reset();

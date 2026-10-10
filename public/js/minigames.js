@@ -64,6 +64,7 @@ export class Minigames {
   enter() {
     const { app } = this, w = app.world, mg = this.mg, team = this.myTeam();
     this.active = mg.id; this.sentFound = {}; this.shCount = 0;
+    if (app.hover && app.setHover) app.setHover(false);
     app.bots && app.bots.startGame(mg);
     app.closeGame && app.closeGame();
     if (mg.type !== 'quiz') { const p = w.me.group.position; this.back = { x: p.x, z: p.z, y: p.y }; app.sfx('teleport'); app.sfx('whistle'); }

@@ -1,5 +1,12 @@
 const D = {
   en: {
+    em_backflip: '🤸 Backflip', em_floss: '🕺 Floss', em_laugh: '😂 Laugh', em_spin: '🌀 Spin', em_sleep: '😴 Sleep', hoverboard: 'Hoverboard', hoverOn: 'Hoverboard on — zoom!', hoverOff: 'Hoverboard off',
+    fishPier: 'Fishing pier', fishing: 'Fishing', cast: 'Cast', waiting: 'Wait…', reel: 'REEL!', stop: 'STOP!', castAgain: 'Cast again',
+    fishWait: 'Shh… wait for a bite…', fishReel: 'Stop the white line in the GREEN zone!', fishLost: 'It got away! Try again.', fishBite: 'A bite! Press REEL!', fishSlow: 'Too slow — the fish swam away.',
+    fishBoot: 'Barsik would not eat that 😹', fishJobTip: 'take the 🎣 Fisher job to get paid for fish',
+    fish_sardine: 'Sardine', fish_clown: 'Clownfish', fish_puffer: 'Pufferfish', fish_squid: 'Squid', fish_octopus: 'Octopus', fish_shark: 'SHARK', fish_boot: 'Old boot',
+    job_fisher: 'Fisher', job_fisher_d: 'Catch fish at the pier · $0.25–$3 each', fisherStart: '🎣 Fisher: go to the end of the pier on the east beach (follow the yellow light) and catch fish!',
+    place_pier: 'Fishing pier', ask_pier: 'Where can I go fishing?',
     me: 'me', adminAll: 'Everything here works on every server.', shows: 'Shows', summonAll: 'Bring everyone to me', summoned2: 'Everyone is coming to you!', funAll: 'Fun for everyone', powersAll: 'Powers for everyone',
     fxn_launch: 'Launch!', fxn_dance: 'Dance party', fxn_candy: 'Candy rain', fxn_fish: 'Fish rain', fxn_barsik: 'Giant Barsik', fxn_snow: 'Snow', fxn_meteors: 'Meteors', fxn_confetti: 'Confetti',
     fx_launch: '🚀 Up you go!', fx_dance: '💃 Everybody dance!', fx_candy: '🍬 It is raining candy! Catch it!', fx_fish: '🐟 It is raining fish!', fx_barsik: '🐱 GIANT BARSIK is coming! Meow!', fx_snow: '❄️ Snow on the island!', fx_meteors: '☄️ Meteor shower!', fx_confetti: '🎊 Party time!',
@@ -68,6 +75,13 @@ const D = {
     craftHelp: 'Click to start · WASD move · Space jump · Left click break · Right click place · 1–9 blocks · diamond ore = star', tapToFly: 'Tap or press Space', gameOver: 'Game over', best: 'Best', tapToRetry: 'Tap to try again',
   },
   ru: {
+    em_backflip: '🤸 Сальто', em_floss: '🕺 Флосс', em_laugh: '😂 Смех', em_spin: '🌀 Кружиться', em_sleep: '😴 Спать', hoverboard: 'Ховерборд', hoverOn: 'Ховерборд включён — вжух!', hoverOff: 'Ховерборд выключен',
+    fishPier: 'Рыбацкий пирс', fishing: 'Рыбалка', cast: 'Закинуть', waiting: 'Ждём…', reel: 'ТЯНИ!', stop: 'СТОП!', castAgain: 'Ещё раз',
+    fishWait: 'Тихо… ждём поклёвку…', fishReel: 'Останови белую линию в ЗЕЛЁНОЙ зоне!', fishLost: 'Сорвалась! Попробуй ещё.', fishBite: 'Клюёт! Жми ТЯНИ!', fishSlow: 'Не успел — рыба уплыла.',
+    fishBoot: 'Барсик такое не ест 😹', fishJobTip: 'возьми работу 🎣 Рыбак, чтобы получать деньги',
+    fish_sardine: 'Сардина', fish_clown: 'Рыба-клоун', fish_puffer: 'Рыба-шар', fish_squid: 'Кальмар', fish_octopus: 'Осьминог', fish_shark: 'АКУЛА', fish_boot: 'Старый ботинок',
+    job_fisher: 'Рыбак', job_fisher_d: 'Лови рыбу на пирсе · $0.25–$3', fisherStart: '🎣 Рыбак: иди в конец пирса на восточном пляже (за жёлтым светом) и лови рыбу!',
+    place_pier: 'Рыбацкий пирс', ask_pier: 'Где можно порыбачить?',
     me: 'я', adminAll: 'Всё здесь работает на всех серверах.', shows: 'Шоу', summonAll: 'Позвать всех ко мне', summoned2: 'Все идут к тебе!', funAll: 'Веселье для всех', powersAll: 'Силы для всех',
     fxn_launch: 'Взлёт!', fxn_dance: 'Танцы', fxn_candy: 'Дождь из конфет', fxn_fish: 'Дождь из рыбы', fxn_barsik: 'Гигантский Барсик', fxn_snow: 'Снег', fxn_meteors: 'Метеориты', fxn_confetti: 'Конфетти',
     fx_launch: '🚀 Полетели!', fx_dance: '💃 Все танцуют!', fx_candy: '🍬 Дождь из конфет! Лови!', fx_fish: '🐟 Дождь из рыбы!', fx_barsik: '🐱 Идёт ГИГАНТСКИЙ БАРСИК! Мяу!', fx_snow: '❄️ На острове снег!', fx_meteors: '☄️ Метеоритный дождь!', fx_confetti: '🎊 Праздник!',

@@ -384,3 +384,11 @@ body:not(.teacher) .teacher-only { display: none; }
 .adm-money select { background: #1c2533; color: #eaf3ff; border: 1px solid #2c3a4f; border-radius: 10px; padding: 8px; font: inherit; }
 .adm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .adm-chips button { background: #1c2533; border: 1px solid #2c3a4f; color: #9fe8c9; border-radius: 999px; padding: 4px 10px; font-weight: 800; font-size: 12px; }
+/* fishing */
+.fish-sheet canvas { width: 100%; border-radius: 14px; display: block; touch-action: none; }
+.fish-msg { min-height: 1.4em; text-align: center; font-weight: 700; margin: 8px 0; }
+.fish-dex { display: flex; justify-content: center; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.fish-dex span { width: 46px; height: 52px; border-radius: 12px; background: var(--chip); display: grid; place-items: center; font-size: 22px; opacity: 0.55; }
+.fish-dex span.got { opacity: 1; }
+.fish-dex small { font-size: 11px; font-weight: 800; color: var(--sheet-ink); }
+#fishBtn { min-width: 200px; font-size: 20px; }

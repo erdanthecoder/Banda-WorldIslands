@@ -15,6 +15,7 @@ import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
 import { Shows } from './shows.js';
 import { Admin } from './admin.js';
+import { Fishing } from './fishing.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
 import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
 import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
@@ -124,6 +125,7 @@ async function start(serverId) {
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
   app.shop = new Shop(app); app.shop.loadInv(); app.bankUI = new BankUI(app); app.phone = new Phone(app);
   buildWorld(world);
+  app.fishing = new Fishing(app);
   if (!world.hq) world.dropPointLights();
   world.teleport(0, 15, 0);
 
@@ -151,7 +153,7 @@ async function start(serverId) {
   let last = '', lastSent = 0;
   setInterval(() => {
     const g = world.me.group, p = g.position;
-    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0, em: world.me.emote ? app.emoteSig : '', fx: app.mood || '' };
+    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0, em: world.me.emote ? app.emoteSig : '', fx: app.mood || '', hb: app.hover ? 1 : 0 };
     const sig = JSON.stringify(pos);
     if (sig !== last || Date.now() - lastSent > 3000) { last = sig; lastSent = Date.now(); net.sendPos(pos); }
   }, 200);
@@ -238,6 +240,13 @@ function stepOut(elev) { const p = app.world.me.group.position; p.z = elev.cz + 
 function closeBuilding() { show('#bldBox', false); app.world.inputLocked = false; if (app.closePanel) { app.closePanel(); app.closePanel = null; } else stepBack(); }
 // after closing a menu, step back so it doesn't reopen at once
 function stepBack() { const w = app.world, g = w.me.group; g.position.x -= Math.sin(g.rotation.y) * 1.6; g.position.z -= Math.cos(g.rotation.y) * 1.6; }
+// 🛹 hoverboard: faster, and everyone sees your board (not in matches)
+function setHover(on) {
+  if (on && app.mg.active) return ui.toast(t('mgRunning'));
+  app.hover = on; app.world.speedMul = on ? 1.7 : 1; app.world.me.setBoard(on); sfx(on ? 'zip' : 'click');
+  ui.toast(on ? '🛹 ' + t('hoverOn') : '🛹 ' + t('hoverOff'));
+}
+app.setHover = setHover;
 function emote(name) { const w = app.world; if (w.speedNow > 0.5) return; w.me.play(name); app.emoteSig = name + ':' + Date.now(); }
 
 // Shared elevators: the host (the same player who runs the bots) moves them and tells everyone;
@@ -541,7 +550,7 @@ function hudSetup() {
     if (e.code === 'KeyQ' && app.mg.active) app.mg.impostor.kill(app.mg.mg);
     if (e.code === 'KeyT' && app.me.role === 'teacher') show('#panel');
     if (e.code === 'KeyM') $('#minimap').classList.toggle('big');
-    const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code); if (n >= 0) emote(EMOTES[n]);
+    const n = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'].indexOf(e.code); if (n >= 0) emote(EMOTES[n]);
   });
   $('#bAction').onpointerdown = e => { e.preventDefault(); app.mg.action(); };
   $('#bJump').onpointerdown = e => { e.preventDefault(); w.joyJump = true; };
@@ -556,8 +565,9 @@ function hudSetup() {
   const jend = () => { jid = null; w.joy.x = w.joy.y = 0; w.joyRun = false; knob.style.transform = ''; };
   joy.addEventListener('pointerup', jend); joy.addEventListener('pointercancel', jend);
   $('#minimap').onclick = () => $('#minimap').classList.toggle('big');
-  $('#emotes').innerHTML = EMOTES.map((e, i) => `<button class="chip dark" data-e="${e}" title="${i + 1}">${t('em_' + e)}</button>`).join('');
-  $$('#emotes button').forEach(b => b.onclick = () => { emote(b.dataset.e); $('#emotes').classList.add('hidden'); });
+  $('#emotes').innerHTML = EMOTES.map((e, i) => `<button class="chip dark" data-e="${e}" title="${i + 1}">${t('em_' + e)}</button>`).join('') + `<button class="chip dark" id="bHover">🛹 ${t('hoverboard')}</button>`;
+  $$('#emotes button[data-e]').forEach(b => b.onclick = () => { emote(b.dataset.e); $('#emotes').classList.add('hidden'); });
+  $('#bHover').onclick = () => { setHover(!app.hover); $('#emotes').classList.add('hidden'); };
   renderMe(); app.setMoney(app.money);
 }
 

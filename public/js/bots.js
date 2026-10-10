@@ -5,12 +5,13 @@ import { Avatar, SKINS, HAIR_COLORS, CLOTH, PANTS, SHOES, HAIRSTYLES, TOPS, FACE
 import { heightAt, isl, PITCH, COURT, RESTO, CAFE_SPOT, labelSprite } from './world.js';
 import { freshBall, step as bbStep, brain as bbBrain, shot as bbShot, attackSide } from './basket.js';
 import { PLACES } from './jobs.js';
+import { PIER } from './fishing.js';
 
 const NAMES = ['Aru', 'Timur', 'Dana', 'Max', 'Lina', 'Emir', 'Sofia', 'Nurlan', 'Ali', 'Mira', 'Adel', 'Zara', 'Bek', 'Aya', 'Kanat', 'Saule', 'Erlan', 'Aidana', 'Daniyar', 'Malika', 'Ruslan', 'Asel', 'Islam', 'Kamila', 'Arman', 'Dilnaz', 'Murat', 'Ayim', 'Nursultan', 'Tomiris'];
 // the way from the plaza to a place, along the paved paths
 function routeTo(b, P) {
   const via = { coffee: [[0, -24], [0, -33.5], [-12, -33.5]], bank: [[0, -24], [0, -33.5]], resto: [[0, -24], [0, -33.5]], tower: [[0, -24]],
-    market: [[-22, 10]], playground: [[22, 10]], stadium: [[0, 24]], court: [[0, 24], [0, 58]] };
+    market: [[-22, 10]], playground: [[22, 10]], stadium: [[0, 24]], court: [[0, 24], [0, 58]], pier: [[22, 10], [40, 30], [92, 30]] };
   const k = Object.keys(PLACES).find(n => PLACES[n] === P);
   return [...(via[k] || []).map(([x, z]) => [x + (Math.random() - 0.5), z]), [P.x, P.z]];
 }
@@ -135,7 +136,7 @@ export class Bots {
     if (!b.act) {
       if ((b.next -= dt) > 0) return this.wander(b, dt, HUB.x, HUB.z, 8, 21);
       const hoopers = Object.values(this.b).filter(o => o.act === 'hoops').length;
-      const opts = ['tower', 'tower', 'bank', 'coffee', 'resto', 'resto', 'plaza'];
+      const opts = ['tower', 'tower', 'bank', 'coffee', 'resto', 'resto', 'plaza', 'fish'];
       if (hoopers < 4) opts.push('hoops', 'hoops', 'hoops');
       b.act = pick(opts); b.route = null; b.step = 0; b.em = '';
       if (b.act === 'plaza') { b.act = null; b.next = rand(10, 25); return; }
@@ -188,6 +189,14 @@ export class Bots {
     return this.path(b, dt);
   }
 
+  // a little fishing at the end of the pier
+  _fish(b, dt) {
+    const P = PIER;
+    if (!b.step) { b.route = [[22, 10], [40, 30], [92, 30], [P.x0 - 2, P.z], [P.x0 + 1, P.z, P.y], [P.x1 + rand(0, 3), P.z + rand(-2.5, 2.5), P.y]]; b.step = 1; }
+    if (b.step === 1) { if (this.path(b, dt)) { b.step = 2; b.t = rand(20, 45); b.ry = Math.PI / 2; this.emote(b, 'sit'); } return false; }
+    if (b.step === 2) { b.speed = 0; b.y = P.y; b.ry = Math.PI / 2; if ((b.t -= dt) < 0) { b.em = ''; b.step = 3; b.route = [[P.x0 + 1, P.z, P.y], [P.x0 - 2, P.z], [92, 30], [40, 30], [22, 10]]; } return false; }
+    return this.path(b, dt);
+  }
   // ---- World Tower: walk in, take the lift to a floor, look around, take it back down ----
   _tower(b, dt) {
     const T = this.app.tower; if (!T) return true;

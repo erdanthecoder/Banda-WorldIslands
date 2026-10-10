@@ -249,7 +249,7 @@ export class Phone {
     v.srcObject = this.camStream; await v.play().catch(() => {});
     this.camOn = true; if (this.screen === 'call' || this.screen === 'mood') this.render();
     this.app.toast('📷 ' + t('camReading'));
-    const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+    const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.35 });
     let busy = false;
     this.camT = setInterval(async () => {
       if (busy || !this.camOn) return; busy = true;

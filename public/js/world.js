@@ -778,7 +778,7 @@ export class World {
     if (this.carrier) { const c = this.carrier; if (c.update(dt, p, me) === true) { this.carrier = null; c.onEnd && c.onEnd(); } this.vel.set(0, 0, 0); this.inside = this.interiorAt(p.x, p.y, p.z); this.speedNow = 0; return; }
     const inside = this.interiorAt(p.x, p.y, p.z);
     const ground0 = inside ? (inside.floorAt ? inside.floorAt(p.x, p.z) : inside.floor) : this.groundAt(p.x, p.z, p.y), swim = !inside && ground0 < -1.2;
-    const speed = (this.keys.ShiftLeft || this.keys.ShiftRight || this.joyRun ? 7.5 : 4.2) * (E.speed ? 1.9 : 1) * (swim ? 0.55 : 1);
+    const speed = (this.keys.ShiftLeft || this.keys.ShiftRight || this.joyRun ? 7.5 : 4.2) * (E.speed ? 1.9 : 1) * (this.speedMul || 1) * (swim ? 0.55 : 1);
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
     const mx = (fx * iz - fz * ix) * speed, mz = (fz * iz + fx * ix) * speed;
     const acc = this.onGround || swim ? 12 : 3;
@@ -844,6 +844,7 @@ export class World {
       if (g.position.distanceTo(r.pos) > 25) g.position.copy(r.pos); else g.position.lerp(r.pos, Math.min(1, dt * 6));
       let dr = (d.ry || 0) - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); g.rotation.y += dr * Math.min(1, dt * 8);
       if (d.em && d.em !== r.em) { r.em = d.em; r.av.play(d.em.split(':')[0]); }
+      if (r.av.setBoard) r.av.setBoard(!!d.hb);
       r.av.animate(before.distanceTo(g.position) / Math.max(dt, 0.001), dt, false); r.av.updatePet(this.scene, dt);
       const sc = d.giant ? 2.2 : 1; g.scale.setScalar(g.scale.x + (sc - g.scale.x) * Math.min(1, dt * 4));
       g.visible = !r.hidden;
