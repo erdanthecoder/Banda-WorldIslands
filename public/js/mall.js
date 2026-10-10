@@ -8,7 +8,7 @@ import { Building } from './buildings.js';
 import { MALL, TEX, labelSprite, canvasTex } from './world.js';
 import { Avatar } from './avatar.js';
 import { CAFE } from './shop.js';
-import { Crowd } from './crowd.js';
+import { MallCrowd } from './crowd.js';
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
 const glass = () => new THREE.MeshStandardMaterial({ color: 0x9cc3d6, metalness: 0.9, roughness: 0.05, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
@@ -33,7 +33,7 @@ export class Mall extends Building {
     this.rb = ap - 2.4; this.rc = this.rb - 3.3; this.front = this.rc - 1.7; this.ring = [9.6, this.front - 1.2]; this.court = 6.8;
     this.build();
     this.fronts = Object.values(SHOPS).map(sh => ({ a: sh.a * D, r: this.front })).concat([{ a: -24 * D, r: this.front }, { a: 24 * D, r: this.front }]);
-    this.crowd = new Crowd(world, { x: this.x, z: this.z, base: this.base, ring: this.ring, fronts: this.fronts, seats: this.seats, doorR: ap - 1.6 }, world.hq ? 140 : 112);
+    this.crowd = new MallCrowd(world, { x: this.x, z: this.z, base: this.base, ring: this.ring, fronts: this.fronts, seats: this.seats, doorR: ap - 1.6 }, world.hq ? 140 : 112);
   }
   // a point at angle a (degrees, 0 = towards the door / south) and distance r from the centre
   at(a, r) { return [this.x + Math.sin(a * D) * r, this.z + Math.cos(a * D) * r]; }

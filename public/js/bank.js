@@ -69,10 +69,11 @@ export class BankUI {
     return `${b.card ? this.card(true) : `<div class="nocard">🏦<b>${t('needCard')}</b><span>${t('needCardHow')}</span></div>`}
       <div class="app-bal"><small>${t('balance')}</small><b>${money(this.app.money)}</b></div>
       ${pend ? `<button class="ph-wide primary" id="bkClaim">💵 ${t('claimMoney')} ${money(pend)}</button>` : ''}
+      ${this.app.mpay ? this.app.mpay.html() : ''}
       <div class="app-row"><span>✋ Hand Pay</span><b class="${b.hand ? 'ok' : 'off'}">${b.hand ? t('on') : t('off')}</b></div>
       <h4>${t('recent')}</h4>
       <div class="app-log">${log.length ? log.map(l => `<div><span>${l.items ? l.items.map(i => ICON[i.item] || '').join(' ') : '💵'} ${l.how === 'hand' ? '✋' : '📱'}</span><b>${l.items ? '−' : '+'}${money(l.total)}</b></div>`).join('') : `<p class="muted">${t('noPayments')}</p>`}</div>
       <p class="app-tip">${t('earnTip')}</p>`;
   }
-  bindApp(root) { const c = root.querySelector('#bkClaim'); if (c) c.onclick = () => { this.app.phone.close(); this.app.payout(); }; }
+  bindApp(root) { const c = root.querySelector('#bkClaim'); if (c) c.onclick = () => { this.app.phone.close(); this.app.payout(); }; this.app.mpay && this.app.mpay.bind(root, () => this.app.phone.close()); }
 }

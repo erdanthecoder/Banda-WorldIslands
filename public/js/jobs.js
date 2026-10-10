@@ -8,7 +8,7 @@ import { Avatar } from './avatar.js';
 import { botAvatar } from './bots.js';
 import { PIER } from './fishing.js';
 import { RECIPES, INGREDIENTS, DRINK_ICON } from './mall.js';
-import { labelSprite, MALL, MALL_DOOR, CAFE_SPOT, BANK, RESTO, TOWER, MARKET, COURT, PITCH, PLAYGROUND } from './world.js';
+import { labelSprite, MALL, MALL_DOOR, HOTEL, FERRIS, CAFE_SPOT, BANK, RESTO, TOWER, MARKET, COURT, PITCH, PLAYGROUND } from './world.js';
 import { money, ICON } from './shop.js';
 
 const $ = s => document.querySelector(s);
@@ -31,8 +31,10 @@ export const PLACES = {
   playground: { icon: '🎠', x: PLAYGROUND.x - PLAYGROUND.w / 2 - 3, z: 10 },
   pier: { icon: '🎣', x: PIER.x0 - 3, z: PIER.z },
   mall: { icon: '🛍️', x: MALL.x, z: MALL_DOOR + 3 },
+  hotel: { icon: '🏨', x: HOTEL.x - HOTEL.w / 2 - 4, z: HOTEL.door },
+  ferris: { icon: '🎡', x: FERRIS.x - 8, z: FERRIS.z },
 };
-const ASKS = { coffee: 'ask_coffee', bank: 'ask_bank', resto: 'ask_resto', tower: 'ask_tower', market: 'ask_market', court: 'ask_court', stadium: 'ask_stadium', playground: 'ask_playground', pier: 'ask_pier', mall: 'ask_mall' };
+const ASKS = { coffee: 'ask_coffee', bank: 'ask_bank', resto: 'ask_resto', tower: 'ask_tower', market: 'ask_market', court: 'ask_court', stadium: 'ask_stadium', playground: 'ask_playground', pier: 'ask_pier', mall: 'ask_mall', hotel: 'ask_hotel', ferris: 'ask_ferris' };
 
 // a money question a customer asks the cashier
 function moneyQ(t) {

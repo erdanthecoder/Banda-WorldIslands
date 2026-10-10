@@ -3,10 +3,14 @@ import { t, setLang, getLang, applyI18n, langChosen } from './i18n.js';
 import { sfx, say, playSong, stopSong, SONGS, setMuted, isMuted, unlockAudio, ambience } from './audio.js';
 import { createNet } from './net.js';
 import { currentAccount, signInWithHub, signOut } from './auth.js';
-import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, MALL, PATHS, PLAZA_R } from './world.js';
+import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, MALL, HOTEL, FERRIS, PATHS, PLAZA_R } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
 import { Tower, Market, Bank, Restaurant, FLOORS } from './buildings.js';
 import { Mall } from './mall.js';
+import { MPay } from './mpay.js';
+import { StreetCrowd } from './crowd.js';
+import { Hotel } from './hotel.js';
+import { Ferris } from './ferris.js';
 import { Playground, coffeeKiosk } from './playground.js';
 import { BankUI } from './bank.js';
 import { Phone } from './phone.js';
@@ -129,7 +133,7 @@ async function start(serverId) {
   Avatar.blobShadows = !world.hq;
   world.setPlayer(new Avatar(me.avatar, me.name, me.role));
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
-  app.shop = new Shop(app); app.shop.loadInv(); app.bankUI = new BankUI(app); app.phone = new Phone(app);
+  app.shop = new Shop(app); app.shop.loadInv(); app.mpay = new MPay(app); app.bankUI = new BankUI(app); app.phone = new Phone(app);
   buildWorld(world);
   app.fishing = new Fishing(app);
   if (!world.hq) world.dropPointLights();
@@ -214,6 +218,16 @@ function buildWorld(world) {
   const pg = new Playground(world, { boing, sfx });
   pg.post(5, -21.5, `▲ ${t('tower')} · ◀ mBank · 🍽️ ▶`); pg.post(-21, 5.5, `◀ ${t('market')} · 🛍️ Pentagon Mall`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
   [[-12, -14], [12, -14]].forEach(([x, z]) => world.trampoline(x, z, boing));
+  pg.post(19, -19.6, `🎡 ${t('ferris')} ▶ · 🏨 Hotel ↗`);
+  // 🏨 the hotel, 🎡 the Ferris wheel and lots of people everywhere
+  const buy = (k, cb) => app.shop.buyService(k, cb);
+  app.hotel = new Hotel(world, { t, sfx, buy, uid: () => app.me.uid, banner: (m, ms) => ui.banner(m, ms), fireworks: n => world.fireworks(n),
+    minibar: () => { ui.toast('🧃 ' + t('hotelMinibar')); app.useItem('juice'); },
+    roomService: () => app.shop.openAisle('🛎️ ' + t('hotelRoomService'), RESTO_MENU, { cafe: true, serve: item => { ui.toast(`🛎️ ${t('foodComing')}`); setTimeout(() => { sfx('ding'); app.useItem(item); }, 2500); } }),
+    bar: () => app.shop.openAisle('🍹 ' + t('hotelBar'), ['lemonade', 'juice', 'soda', 'icecream', 'latte', 'cocoa'], { cafe: true, serve: item => app.useItem(item) }) });
+  app.hotel.guests();
+  app.ferris = new Ferris(world, { t, sfx, buy, banner: (m, ms) => ui.banner(m, ms) });
+  app.street = new StreetCrowd(world, world.hq ? { walkers: 120, chatters: 36, fans: 90 } : { walkers: 80, chatters: 24, fans: 60 });
 }
 
 // sit at a restaurant table: the menu opens and the waiter brings what you order
@@ -622,6 +636,8 @@ function drawMinimap() {
   rect(PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w, PLAYGROUND.d, '#d9533f', t('playground'));
   rect(PITCH.x, PITCH.z, PITCH.hw * 2, PITCH.hd * 2, '#3e7c30', t('stadium'));
   rect(COURT.x, COURT.z, COURT.hw * 2, COURT.hd * 2, '#b07a46', '');
+  rect(HOTEL.x, HOTEL.z, HOTEL.w, HOTEL.d, '#8c1d3a', '🏨 Hotel');
+  g.strokeStyle = '#ff3fa4'; g.lineWidth = 3; g.beginPath(); g.arc(X(FERRIS.x), Z(FERRIS.z), 4, 0, 7); g.stroke();
   const myY = p.y;
   for (const id in w.remotes) { const q = w.remotes[id].av.group.position; if (q.y < -20 || Math.abs(q.y - myY) > 4) continue; g.fillStyle = id.startsWith('bot-') ? '#cfd8e2' : '#4aa8ff'; g.beginPath(); g.arc(X(q.x), Z(q.z), 3.5, 0, 7); g.fill(); }
   if (p.y > -20) { g.save(); g.translate(X(p.x), Z(p.z)); g.rotate(-w.me.group.rotation.y + Math.PI); g.fillStyle = '#ffc94d'; g.beginPath(); g.moveTo(0, -8); g.lineTo(5.5, 6); g.lineTo(0, 3); g.lineTo(-5.5, 6); g.fill(); g.restore(); }

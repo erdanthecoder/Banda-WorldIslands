@@ -1,6 +1,10 @@
 // World Islands 2.0 — everything that is new, shown once after an update (and from Menu → What's new).
 export const VERSION = '2.0';
 const NEW = [
+  ['🏨', 'Island Grand Hotel: book a room or a Sky Suite with mPAY. Your key opens only your room: bounce on the bed, watch TV, free mini-bar, room service. Roof pool, water slide, DJ and Roof Bar!', 'Island Grand Hotel: сними номер или Небесный люкс через mPAY. Ключ открывает только твой номер: прыгай на кровати, смотри ТВ, бесплатный мини-бар, еда в номер. На крыше бассейн, водная горка, DJ и бар!'],
+  ['💳', 'mPAY is more fun: cashback on every payment (Blue 3% → Silver 5% → Gold 7% → Diamond 10%), coin rain, and a scratch card for every payment of $1+ to win up to $10!', 'mPAY веселее: кэшбэк с каждой оплаты (Синий 3% → Серебро 5% → Золото 7% → Бриллиант 10%), дождь из монет и скретч-карта за каждую оплату от $1 — выиграй до $10!'],
+  ['🎡', 'A giant Ferris wheel next to the playground: $2 a ride with a view over the whole island.', 'Огромное колесо обозрения возле площадки: $2 за круг и вид на весь остров.'],
+  ['👥', 'The island is busy now: hundreds of people walk the paths, chat on the plaza and do the Mexican wave in the stadium.', 'На острове теперь людно: сотни людей гуляют по дорожкам, болтают на площади и делают «волну» на стадионе.'],
   ['🛍️', 'The Pentagon Mall is now the biggest building on the island, full of 100+ shoppers! 8 shops: café, supermarket, toys, hats & fashion, pet shop, sweets, pizza & burgers and Kyrgyz kitchen, plus a food court.', 'Пентагон Молл теперь самое большое здание на острове, и в нём больше 100 покупателей! 8 магазинов: кафе, супермаркет, игрушки, шляпы и мода, зоомагазин, сладости, пицца и бургеры, кыргызская кухня и фуд-корт.'],
   ['🚧', 'Fences fixed: no more gaps, and you can no longer slip through them, even on a hoverboard.', 'Заборы исправлены: без дыр, и сквозь них больше не пройти, даже на ховерборде.'],
   ['📲', 'World Islands apps: download for Windows and Android right from the website (Menu → Apps).', 'Приложения World Islands: скачай для Windows и Android прямо с сайта (Меню → Приложения).'],

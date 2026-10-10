@@ -429,3 +429,45 @@ a.tile { text-decoration: none; }
 .how h3 { margin: 0 0 4px; display: flex; gap: 8px; align-items: center; font-size: 16px; } .how h3 span { font-size: 22px; }
 .how ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; } .how li { margin: 2px 0; }
 #bldList.how-wrap { display: block; max-height: 65vh; overflow: auto; }
+
+/* ---- mPAY rewards: cashback, coin rain, levels, scratch cards ---- */
+.palm.scanning .ring { filter: hue-rotate(0deg) drop-shadow(0 0 10px #5ff); animation: mpHue 1.2s linear infinite; }
+@keyframes mpHue { to { filter: hue-rotate(360deg) drop-shadow(0 0 14px #f5f); } }
+.mp-party { position: relative; margin-top: 10px; display: grid; gap: 8px; text-align: center; }
+.mp-rain { position: absolute; left: -22px; right: -22px; top: -320px; height: 420px; pointer-events: none; overflow: hidden; }
+.mp-rain i { position: absolute; top: -40px; font-style: normal; animation: mpFall 1.6s cubic-bezier(.3,.1,.6,1) forwards; }
+@keyframes mpFall { 0% { transform: translateY(0) rotate(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateY(440px) rotate(540deg); opacity: 0; } }
+.mp-back { font-size: 18px; font-weight: 800; color: #7dffc6; animation: mpPop .5s cubic-bezier(.2,1.6,.4,1); }
+.mp-back b { font-size: 24px; } .mp-back small { opacity: .7; font-weight: 700; }
+.mp-up { font-weight: 800; padding: 8px 12px; border-radius: 14px; background: color-mix(in srgb, var(--lv) 30%, transparent); border: 1px solid var(--lv); animation: mpPop .6s .2s both cubic-bezier(.2,1.6,.4,1); }
+.mp-ticket { border: 0; border-radius: 14px; padding: 10px 14px; font: inherit; font-weight: 700; color: #3b2400; background: linear-gradient(90deg, #ffd34d, #ff9f1c, #ffd34d); background-size: 200% 100%; animation: mpPop .5s .35s both cubic-bezier(.2,1.6,.4,1), mpShine 1.6s linear infinite; cursor: pointer; }
+.mp-ticket b { margin-left: 6px; }
+@keyframes mpPop { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes mpShine { to { background-position: -200% 0; } }
+.mp-level { display: flex; gap: 12px; align-items: center; margin: 10px 0; padding: 10px 12px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--lv) 35%, #0d2a6b), #0d2a6b); color: #eef6ff; border: 1px solid color-mix(in srgb, var(--lv) 60%, transparent); }
+.mp-badge { font-size: 34px; filter: drop-shadow(0 0 8px var(--lv)); }
+.mp-info { flex: 1; display: grid; gap: 3px; min-width: 0; } .mp-info small { opacity: .85; font-size: 12px; }
+.mp-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.18); overflow: hidden; } .mp-bar i { display: block; height: 100%; background: var(--lv); border-radius: 99px; }
+.scratch-sheet { width: min(420px, 100%); text-align: center; } .sc-t { font-size: 16px; opacity: .85; margin-left: 6px; }
+.sc-left { margin: 0 0 8px; font-weight: 700; }
+.sc-card { position: relative; width: 100%; aspect-ratio: 560 / 300; border-radius: 18px; overflow: hidden; background: linear-gradient(135deg, #fff6c8, #ffd34d 60%, #ff9f1c); box-shadow: 0 10px 30px rgba(0,0,0,.4); touch-action: none; user-select: none; }
+.sc-prize { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 2px; color: #3b2400; }
+.sc-prize span { font-size: 54px; } .sc-prize b { font-size: 40px; font-weight: 900; } .sc-prize.big b { font-size: 52px; color: #b5179e; }
+#scCanvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; transition: opacity .5s; touch-action: none; }
+.sc-how .mp-level { text-align: left; }
+
+/* ---- Island Grand Hotel ---- */
+.hotel-sheet { width: min(520px, 100%); }
+.lift-grid { display: grid; gap: 8px; }
+.lift-btn { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; border: 2px solid #e3e7ee; background: #fff; font: inherit; text-align: left; cursor: pointer; }
+.lift-btn b { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #23324a; color: #ffd34d; font-size: 18px; }
+.lift-btn:hover { border-color: var(--accent); } .lift-btn.here { border-color: #d4af37; background: #fff9e6; }
+.hotel-offers { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 10px 0; }
+.hotel-offer { display: grid; gap: 4px; justify-items: center; padding: 14px; border-radius: 16px; border: 2px solid #e3e7ee; background: #fff; font: inherit; cursor: pointer; }
+.hotel-offer span { font-size: 38px; } .hotel-offer small { color: #667; text-align: center; } .hotel-offer em { font-style: normal; font-weight: 900; font-size: 20px; color: #8c1d3a; }
+.hotel-offer:hover { border-color: var(--accent); transform: translateY(-2px); } .hotel-offer.gold { border-color: #d4af37; background: linear-gradient(180deg, #fffaf0, #fff); }
+.hotel-key { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.key-card { width: 240px; aspect-ratio: 1.6; border-radius: 16px; padding: 14px; display: grid; align-content: space-between; color: #ffd34d; background: linear-gradient(135deg, #23324a, #8c1d3a); box-shadow: 0 12px 30px rgba(0,0,0,.35); animation: mpPop .5s cubic-bezier(.2,1.6,.4,1); }
+.key-card b { letter-spacing: .2em; font-size: 13px; } .key-card span { font-size: 44px; font-weight: 900; color: #fff; } .key-card small { color: #ffe9a8; }
+#hotelFade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 60; transition: opacity .3s; }
+#hotelFade.on { opacity: 1; }

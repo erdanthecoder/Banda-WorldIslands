@@ -11,7 +11,8 @@ const NAMES = ['Aru', 'Timur', 'Dana', 'Max', 'Lina', 'Emir', 'Sofia', 'Nurlan',
 // the way from the plaza to a place, along the paved paths
 function routeTo(b, P) {
   const via = { coffee: [[0, -24], [0, -33.5], [-12, -33.5]], bank: [[0, -24], [0, -33.5]], resto: [[0, -24], [0, -33.5]], tower: [[0, -24]],
-    market: [[-22, 10]], playground: [[22, 10]], stadium: [[0, 24]], court: [[0, 24], [0, 58]], pier: [[22, 10], [40, 30], [92, 30]], mall: [[-22, 10], [-42.5, 10], [-42.5, MALL_DOOR + 6.5], [MALL.x, MALL_DOOR + 6.5]] };
+    market: [[-22, 10]], playground: [[22, 10]], stadium: [[0, 24]], court: [[0, 24], [0, 58]], pier: [[22, 10], [40, 30], [92, 30]], mall: [[-22, 10], [-42.5, 10], [-42.5, MALL_DOOR + 6.5], [MALL.x, MALL_DOOR + 6.5]],
+    hotel: [[0, -24], [0, -33.5], [46.5, -33.5], [46.5, -64]], ferris: [[21, -15]] };
   const k = Object.keys(PLACES).find(n => PLACES[n] === P);
   return [...(via[k] || []).map(([x, z]) => [x + (Math.random() - 0.5), z]), [P.x, P.z]];
 }

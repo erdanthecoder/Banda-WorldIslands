@@ -39,6 +39,10 @@ export const RESTO = { x: 62, z: -34, w: 26, d: 18, base: 4 };
 export const MALL = { x: -80, z: 50, R: 30, base: 4 };
 export const MALL_DOOR = MALL.z + MALL.R * Math.cos(Math.PI / 5); // z of the south wall (the entrance)
 export const CAFE_SPOT = { x: -15, z: -27 };
+// 🏨 Island Grand Hotel (north-east): lobby, two floors of rooms, sky suites and a rooftop pool; door on the west side
+export const HOTEL = { x: 70, z: -70, w: 30, d: 22, floors: 5, fh: 4.4, base: 4, door: -64 };
+// 🎡 the Ferris wheel between the plaza and the playground
+export const FERRIS = { x: 62, z: -15, R: 13, hub: 15.5 };
 // paved walkways (axis-aligned rectangles); everything else is grass behind wooden fences
 export const PATHS = [
   { id: 'tower', x0: -3.5, x1: 3.5, z0: -40.3, z1: -22 },
@@ -48,6 +52,9 @@ export const PATHS = [
   { id: 'mallB', x0: MALL.x - 4.5, x1: -40, z0: MALL_DOOR + 4, z1: MALL_DOOR + 9 },
   { id: 'mallDoor', x0: MALL.x - 3, x1: MALL.x + 3, z0: MALL_DOOR - 0.5, z1: MALL_DOOR + 4.2 },
   { id: 'cafe', x0: -22, x1: -8, z0: -31.5, z1: -23 },
+  { id: 'hotelA', x0: 44, x1: 49, z0: HOTEL.door - 2.5, z1: -36.4 },
+  { id: 'hotelB', x0: 44, x1: HOTEL.x - HOTEL.w / 2 + 0.6, z0: HOTEL.door - 2.5, z1: HOTEL.door + 2.5 },
+  { id: 'ferris', x0: 18, x1: FERRIS.x - 4, z0: FERRIS.z - 2.5, z1: FERRIS.z + 2.5 },
   { id: 'market', x0: -54, x1: -20, z0: 7.5, z1: 12.5 },
   { id: 'play', x0: 20, x1: 46, z0: 7.5, z1: 12.5 },
   { id: 'stadium', x0: -2.5, x1: 2.5, z0: 22, z1: 58.2 },
@@ -59,11 +66,12 @@ export const HOUSES = [];
 const rectIn = (x, z, cx, cz, hw, hd, m) => Math.abs(x - cx) < hw + m && Math.abs(z - cz) < hd + m;
 export const onPath = (x, z, m = 0) => PATHS.some(P => x > P.x0 - m && x < P.x1 + m && z > P.z0 - m && z < P.z1 + m);
 export const built = (x, z, m = 1) => Math.hypot(x - TOWER.x, z - TOWER.z) < TOWER.R + m + 4 || rectIn(x, z, MARKET.x, MARKET.z, MARKET.w / 2, MARKET.d / 2, m)
-  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || rectIn(x, z, RESTO.x, RESTO.z, RESTO.w / 2, RESTO.d / 2, m) || Math.hypot(x - MALL.x, z - MALL.z) < MALL.R + m || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
+  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || rectIn(x, z, RESTO.x, RESTO.z, RESTO.w / 2, RESTO.d / 2, m) || Math.hypot(x - MALL.x, z - MALL.z) < MALL.R + m || rectIn(x, z, HOTEL.x, HOTEL.z, HOTEL.w / 2, HOTEL.d / 2, m + 2) || rectIn(x, z, FERRIS.x, FERRIS.z, FERRIS.R + 2, 4, m) || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
 export const ROAD = { x: 0, z: 0, r: -1000, w: 0 };
 const FLATS = [
   { x: 0, z: 0, r: 118, h: 4 },
   { x: MALL.x, z: MALL.z, r: MALL.R + 3, h: 4 },
+  { x: HOTEL.x, z: HOTEL.z, hw: HOTEL.w / 2 + 2, hd: HOTEL.d / 2 + 2, h: 4 },
   { x: 470, z: 90, r: 18, h: 6 },
 ];
 

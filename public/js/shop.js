@@ -5,13 +5,17 @@ export const PRICES = {
   coffee: 200, latte: 300, cocoa: 250, tea: 100, croissant: 200,
   plov: 500, lagman: 450, manty: 450, soup: 300, salad: 250, pancakes: 300, lemonade: 150,
   ball: 800, balloon: 300, teddy: 1200, crown: 5000, headphones: 2500, tophat: 2000, dog: 4000, cat: 4000, bunny: 3500, dragon: 9000,
+  hotelroom: 1500, suite: 4000, ferris: 200,
 };
 export const ICON = {
   apple: '🍎', banana: '🍌', juice: '🧃', soda: '🥤', chips: '🍟', chocolate: '🍫', icecream: '🍦', pizza: '🍕', burger: '🍔', cake: '🎂',
   coffee: '☕', latte: '🧋', cocoa: '🍫', tea: '🍵', croissant: '🥐',
   plov: '🍛', lagman: '🍜', manty: '🥟', soup: '🍲', salad: '🥗', pancakes: '🥞', lemonade: '🍋',
   ball: '⚽', balloon: '🎈', teddy: '🧸', crown: '👑', headphones: '🎧', tophat: '🎩', dog: '🐶', cat: '🐱', bunny: '🐰', dragon: '🐲',
+  hotelroom: '🏨', suite: '🌟', ferris: '🎡',
 };
+// paid services (hotel, rides): bought with mPAY but never kept in your bag
+export const SERVICES = ['hotelroom', 'suite', 'ferris'];
 export const FOOD = ['plov', 'lagman', 'manty', 'soup', 'salad', 'pancakes', 'lemonade', 'coffee', 'latte', 'cocoa', 'tea', 'croissant', 'apple', 'banana', 'juice', 'soda', 'chips', 'chocolate', 'icecream', 'pizza', 'burger', 'cake'];
 export const HAT_ITEMS = ['crown', 'headphones', 'tophat'];
 export const PET_ITEMS = ['dog', 'cat', 'bunny', 'dragon'];
@@ -63,7 +67,15 @@ export class Shop {
   }
   get w() { return this.app.world; }
   lock(on) { this.w.inputLocked = on; this.w.keys = {}; }
-  close() { ['#shopBox', '#payBox', '#bagBox'].forEach(s => $(s).classList.add('hidden')); this.lock(false); this.scanning = false; }
+  close() {
+    ['#shopBox', '#payBox', '#bagBox'].forEach(s => $(s).classList.add('hidden')); this.lock(false); this.scanning = false;
+    if (this.saved) { this.basket = this.saved; this.saved = null; this.serviceCb = null; this.chip(); }
+  }
+  // pay for a service (hotel room, ride ticket) with mPAY; your shopping basket waits until you're done
+  buyService(item, onPaid) {
+    if (!this.saved) this.saved = this.basket;
+    this.basket = { [item]: 1 }; this.serviceCb = onPaid; this.serveCb = null; this.checkout();
+  }
   count() { return Object.values(this.basket).reduce((a, b) => a + b, 0); }
   total() { return Object.entries(this.basket).reduce((a, [k, n]) => a + PRICES[k] * n, 0); }
   chip() {
@@ -110,7 +122,7 @@ export class Shop {
   checkout() {
     const t = this.app.t, bank = this.app.bank || {};
     if (!this.count()) { this.app.ui.banner(t('basketEmpty'), 2200); return; }
-    this.lock(true); this.app.sfx('click'); this.paying = false;
+    this.lock(true); this.app.sfx('click'); this.paying = false; $('#payBox .mp-party')?.remove();
     $('#payLines').innerHTML = Object.entries(this.basket).map(([k, n]) => `<div><span>${ICON[k]} ${t('it_' + k)} × ${n}</span><b>${money(PRICES[k] * n)}</b></div>`).join('');
     $('#payTotal').textContent = money(this.total()); $('#payBal').textContent = money(this.app.money);
     $('#palm').className = 'palm hidden'; $('#payPhone').classList.add('hidden'); $('#payMsg').textContent = '';
@@ -143,7 +155,7 @@ export class Shop {
     if (this.paying) return; this.paying = true;
     P.classList.add('paying'); $('#phonePay').disabled = true; $('#payMsg').textContent = t('processing');
     try {
-      const bal = await this.app.net.buy(items);
+      const total = this.total(), bal = await this.app.net.buy(items), service = this.serviceCb; this.serviceCb = null;
       const serveCb = this.serveCb, served = items.filter(i => DRINKS.includes(i.item) || (serveCb && RESTO_MENU.includes(i.item)));
       this.app.setMoney(bal); this.basket = {}; this.chip(); await this.loadInv();
       P.classList.remove('paying'); P.classList.add('done'); $('#phonePay').disabled = false; this.paying = false;
@@ -151,11 +163,18 @@ export class Shop {
       $('#payMsg').textContent = `✓ ${t('approved')} · ${t('balance')} ${money(bal)}`; $('#payMsg').className = 'mpay-msg ok';
       $('#payBal').textContent = money(bal); this.app.sfx('paid');
       const hasWear = items.some(i => HAT_ITEMS.includes(i.item) || PET_ITEMS.includes(i.item));
-      setTimeout(async () => {
+      let scratch = false, finished = false;
+      const finish = async () => {
+        if (finished) return; finished = true;
         this.close();
+        if (service) { service(); if (scratch) this.app.mpay.scratch(); return; }
+        if (scratch) this.app.mpay.scratch();
         if (served.length) { for (const i of served) for (let k = 0; k < i.qty; k++) await this.app.net.use(i.item).catch(() => {}); await this.loadInv(); if (serveCb) serveCb(served[0].item); else this.app.useItem(served[0].item); }
-        else this.app.ui.banner(hasWear ? t('boughtWear') : t('boughtFood'), 3200);
-      }, 1500);
+        else if (!scratch) this.app.ui.banner(hasWear ? t('boughtWear') : t('boughtFood'), 3200);
+      };
+      // mPAY rewards: cashback, coins and maybe a scratch card
+      if (this.app.mpay) this.app.mpay.celebrate(total, $('#payBox .mpay'), () => { scratch = true; finish(); }).then(() => setTimeout(finish, 2600)).catch(() => setTimeout(finish, 1500));
+      else setTimeout(finish, 1500);
     } catch (e) {
       P.classList.remove('paying'); P.classList.add('fail'); this.app.sfx('wrong'); $('#phonePay').disabled = false; this.paying = false;
       $('#payMsg').textContent = /money/i.test(e.message || '') ? t('notEnough') : t('payFailed'); $('#payMsg').className = 'mpay-msg bad';
@@ -172,7 +191,7 @@ export class Shop {
     await this.loadInv();
     const draw = () => {
       $('#bagMoney').textContent = `mPAY · ${money(this.app.money)}`;
-      const ks = Object.keys(this.inv);
+      const ks = Object.keys(this.inv).filter(k => !SERVICES.includes(k));
       const cfg = this.app.me.avatar || {};
       $('#bagList').innerHTML = ks.map(k => {
         const wear = HAT_ITEMS.includes(k), pet = PET_ITEMS.includes(k), on = (wear && cfg.hat === k) || (pet && cfg.pet === k);

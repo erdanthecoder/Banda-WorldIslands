@@ -100,6 +100,8 @@ class SupaNet extends Base {
   // mPAY money (cents) and the supermarket; prices are checked on the server
   async earn(cents) { const { data, error } = await this.c.rpc('banda_earn', { cents: Math.round(cents) }); if (error) throw error; return data; }
   async buy(items) { const { data, error } = await this.c.rpc('banda_buy', { items }); if (error) throw error; return data; }
+  async mpayStatus() { const { data, error } = await this.c.rpc('banda_mpay_status'); if (error) throw error; return data; }
+  async mpayScratch() { const { data, error } = await this.c.rpc('banda_mpay_scratch'); if (error) throw error; return data; }
   async use(item) { const { data, error } = await this.c.rpc('banda_use', { what: item }); if (error) throw error; return data; }
   async bankOpen() { const { data, error } = await this.c.rpc('banda_bank_open'); if (error) throw error; return data; }
   async handSetup() { const { data, error } = await this.c.rpc('banda_hand_setup'); if (error) throw error; return data; }
@@ -191,7 +193,15 @@ class LocalNet extends Base {
     const [u, r] = this._me(); let total = 0;
     for (const { item, qty } of items) { if (!(item in PRICES)) throw new Error('unknown item'); total += PRICES[item] * qty; }
     if (total > r.money_cents) throw new Error('not enough money');
-    r.money_cents -= total; for (const { item, qty } of items) r.inv[item] = (r.inv[item] || 0) + qty; this._save(u); return r.money_cents;
+    const pct = r.mpay_spent >= 100000 ? 10 : r.mpay_spent >= 20000 ? 7 : r.mpay_spent >= 5000 ? 5 : 3;
+    r.money_cents -= total - Math.floor(total * pct / 100); r.mpay_spent = (r.mpay_spent || 0) + total; if (total >= 100) r.mpay_tickets = Math.min(5, (r.mpay_tickets || 0) + 1);
+    for (const { item, qty } of items) r.inv[item] = (r.inv[item] || 0) + qty; this._save(u); return r.money_cents;
+  }
+  async mpayStatus() { const [, r] = this._me(); const s = r.mpay_spent || 0; return { spent: s, tickets: r.mpay_tickets || 0, pct: s >= 100000 ? 10 : s >= 20000 ? 7 : s >= 5000 ? 5 : 3 }; }
+  async mpayScratch() {
+    const [u, r] = this._me(); if (!(r.mpay_tickets > 0)) throw new Error('no ticket');
+    const x = Math.random(), prize = x < 0.3 ? 25 : x < 0.62 ? 50 : x < 0.84 ? 100 : x < 0.95 ? 200 : x < 0.99 ? 500 : 1000;
+    r.mpay_tickets--; r.money_cents += prize; this._save(u); return { prize, balance: r.money_cents, tickets: r.mpay_tickets };
   }
   async use(item) { const [u, r] = this._me(); if (!r.inv[item] || ['crown', 'headphones', 'tophat', 'dog', 'cat', 'bunny', 'dragon'].includes(item)) return -1; r.inv[item]--; this._save(u); return r.inv[item]; }
   async inventory() { const [, r] = this._me(); const o = {}; for (const k in r.inv) if (r.inv[k] > 0) o[k] = r.inv[k]; return o; }
