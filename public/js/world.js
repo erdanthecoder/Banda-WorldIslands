@@ -36,16 +36,17 @@ export const PLAYGROUND = { x: 64, z: 10, w: 36, d: 30 };
 export const BANK = { x: -62, z: -34, w: 26, d: 18, base: 4 };
 export const RESTO = { x: 62, z: -34, w: 26, d: 18, base: 4 };
 // Pentagon Mall: five sides, door on the south side (facing the new path)
-export const MALL = { x: -70, z: 40, R: 20, base: 4 };
+export const MALL = { x: -80, z: 50, R: 30, base: 4 };
+export const MALL_DOOR = MALL.z + MALL.R * Math.cos(Math.PI / 5); // z of the south wall (the entrance)
 export const CAFE_SPOT = { x: -15, z: -27 };
 // paved walkways (axis-aligned rectangles); everything else is grass behind wooden fences
 export const PATHS = [
   { id: 'tower', x0: -3.5, x1: 3.5, z0: -40.3, z1: -22 },
   { id: 'bank', x0: -49, x1: -3, z0: -36.5, z1: -31.5 },
   { id: 'resto', x0: 3, x1: 49, z0: -36.5, z1: -31.5 },
-  { id: 'mallA', x0: -45, x1: -40, z0: 12.5, z1: 61.4 },
-  { id: 'mallB', x0: -74.5, x1: -40, z0: 56.4, z1: 61.4 },
-  { id: 'mallDoor', x0: -73, x1: -67, z0: 52, z1: 56.6 },
+  { id: 'mallA', x0: -45, x1: -40, z0: 12.5, z1: MALL_DOOR + 9 },
+  { id: 'mallB', x0: MALL.x - 4.5, x1: -40, z0: MALL_DOOR + 4, z1: MALL_DOOR + 9 },
+  { id: 'mallDoor', x0: MALL.x - 3, x1: MALL.x + 3, z0: MALL_DOOR - 0.5, z1: MALL_DOOR + 4.2 },
   { id: 'cafe', x0: -22, x1: -8, z0: -31.5, z1: -23 },
   { id: 'market', x0: -54, x1: -20, z0: 7.5, z1: 12.5 },
   { id: 'play', x0: 20, x1: 46, z0: 7.5, z1: 12.5 },
@@ -62,6 +63,7 @@ export const built = (x, z, m = 1) => Math.hypot(x - TOWER.x, z - TOWER.z) < TOW
 export const ROAD = { x: 0, z: 0, r: -1000, w: 0 };
 const FLATS = [
   { x: 0, z: 0, r: 118, h: 4 },
+  { x: MALL.x, z: MALL.z, r: MALL.R + 3, h: 4 },
   { x: 470, z: 90, r: 18, h: 6 },
 ];
 
@@ -799,7 +801,11 @@ export class World {
       if (inside.round) { const R = inside.round, dx = nx - R.x, dz = nz - R.z, d = Math.hypot(dx, dz); if (d > R.r && !(R.door && Math.abs(dx) < R.door && dz > 0)) { nx = R.x + dx / d * R.r; nz = R.z + dz / d * R.r; } }
       for (const w of inside.walls || []) { const ex = w.hw + 0.3, ez = w.hd + 0.3, dx = nx - w.x, dz = nz - w.z; if (Math.abs(dx) < ex && Math.abs(dz) < ez) { if (ex - Math.abs(dx) < ez - Math.abs(dz)) nx = w.x + Math.sign(dx) * ex; else nz = w.z + Math.sign(dz) * ez; } }
     } else {
-      [nx, nz] = this._collide(nx, nz, p.y);
+      // small steps so fast movement (hoverboard, speed boost, low FPS) can't slip through thin fences
+      const sx = nx - p.x, sz = nz - p.z, n = Math.min(12, Math.ceil(Math.hypot(sx, sz) / 0.15) || 1);
+      let cx = p.x, cz = p.z;
+      for (let i = 0; i < n; i++) [cx, cz] = this._collide(cx + sx / n, cz + sz / n, p.y);
+      nx = cx; nz = cz;
       const R = 1400, dc = Math.hypot(nx, nz); if (dc > R) { nx *= R / dc; nz *= R / dc; }
       if (this.groundAt(nx, nz, p.y) - ground0 > 0.6 && this.onGround) { nx = p.x; nz = p.z; }
     }

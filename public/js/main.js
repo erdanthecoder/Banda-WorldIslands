@@ -3,7 +3,7 @@ import { t, setLang, getLang, applyI18n, langChosen } from './i18n.js';
 import { sfx, say, playSong, stopSong, SONGS, setMuted, isMuted, unlockAudio, ambience } from './audio.js';
 import { createNet } from './net.js';
 import { currentAccount, signInWithHub, signOut } from './auth.js';
-import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, PATHS, PLAZA_R } from './world.js';
+import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, MALL, PATHS, PLAZA_R } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
 import { Tower, Market, Bank, Restaurant, FLOORS } from './buildings.js';
 import { Mall } from './mall.js';
@@ -617,6 +617,8 @@ function drawMinimap() {
   if (big || scale > 1) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t('tower'), X(TOWER.x), Z(TOWER.z)); g.textBaseline = 'alphabetic'; }
   rect(MARKET.x, MARKET.z, MARKET.w, MARKET.d, '#2e8b57', t('market'));
   rect(BANK.x, BANK.z, BANK.w, BANK.d, '#14629e', 'mBank');
+  g.fillStyle = '#7b2cbf'; g.beginPath(); for (let i = 0; i < 5; i++) { const an = (36 + i * 72) * Math.PI / 180; g.lineTo(X(MALL.x + Math.sin(an) * MALL.R), Z(MALL.z + Math.cos(an) * MALL.R)); } g.fill();
+  if (big || scale > 1) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Pentagon Mall', X(MALL.x), Z(MALL.z)); g.textBaseline = 'alphabetic'; }
   rect(PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w, PLAYGROUND.d, '#d9533f', t('playground'));
   rect(PITCH.x, PITCH.z, PITCH.hw * 2, PITCH.hd * 2, '#3e7c30', t('stadium'));
   rect(COURT.x, COURT.z, COURT.hw * 2, COURT.hd * 2, '#b07a46', '');

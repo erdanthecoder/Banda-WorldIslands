@@ -1,7 +1,7 @@
 const D = {
   en: {
     titleSub: 'A 3D island world to learn, work, play and hang out with friends.', play: 'Play', howBtn: 'How to play', hello: 'Hi', privacy: 'Privacy',
-    mall_cafe: 'Pentagon Café', mall_market: 'Supermarket', mall_toys: 'Toys & Fashion', mall_sweets: 'Sweets & Ice Cream', jobCenter: 'Job Center',
+    mall_cafe: 'Pentagon Café', mall_market: 'Supermarket', mall_toys: 'Toys & Fashion', mall_sweets: 'Sweets & Ice Cream', mall_fashion: 'Hats & Fashion', mall_pets: 'Pet Shop', mall_pizza: 'Pizza & Burgers', mall_kitchen: 'Kyrgyz Kitchen', jobCenter: 'Job Center',
     job_barista: 'Barista', job_barista_d: 'Make drinks at Pentagon Café · $1 each', baristaStart: '☕ Barista: go behind the counter of Pentagon Café in the Pentagon Mall. Make each drink from the right ingredients!', baristaHint: 'Take the Barista job at the Job Center to work here.',
     wantDrink: 'One {d}, please!', drink_coffee: 'coffee', drink_latte: 'latte', drink_cocoa: 'hot cocoa', drink_tea: 'tea', drink_icedlatte: 'iced latte', drink_honeytea: 'honey tea', drink_mocha: 'mocha',
     ing_espresso: 'Espresso', ing_milk: 'Milk', ing_choco: 'Chocolate', ing_leaves: 'Tea leaves', ing_ice: 'Ice', ing_honey: 'Honey', again: 'Start again', serve: 'Serve', wrongDrink: 'Not quite! It needs',
@@ -88,7 +88,7 @@ const D = {
   },
   ru: {
     titleSub: '3D-мир островов: учись, работай, играй и общайся с друзьями.', play: 'Играть', howBtn: 'Как играть', hello: 'Привет', privacy: 'Конфиденциальность',
-    mall_cafe: 'Кафе Пентагон', mall_market: 'Супермаркет', mall_toys: 'Игрушки и мода', mall_sweets: 'Сладости и мороженое', jobCenter: 'Центр занятости',
+    mall_cafe: 'Кафе Пентагон', mall_market: 'Супермаркет', mall_toys: 'Игрушки и мода', mall_sweets: 'Сладости и мороженое', mall_fashion: 'Шляпы и мода', mall_pets: 'Зоомагазин', mall_pizza: 'Пицца и бургеры', mall_kitchen: 'Кыргызская кухня', jobCenter: 'Центр занятости',
     job_barista: 'Бариста', job_barista_d: 'Готовь напитки в Кафе Пентагон · $1', baristaStart: '☕ Бариста: встань за стойку Кафе Пентагон в Пентагон Молле. Готовь каждый напиток из правильных ингредиентов!', baristaHint: 'Возьми работу Бариста в Центре занятости.',
     wantDrink: 'Один {d}, пожалуйста!', drink_coffee: 'кофе', drink_latte: 'латте', drink_cocoa: 'какао', drink_tea: 'чай', drink_icedlatte: 'айс-латте', drink_honeytea: 'чай с мёдом', drink_mocha: 'мокко',
     ing_espresso: 'Эспрессо', ing_milk: 'Молоко', ing_choco: 'Шоколад', ing_leaves: 'Чайные листья', ing_ice: 'Лёд', ing_honey: 'Мёд', again: 'Заново', serve: 'Подать', wrongDrink: 'Не совсем! Нужно',

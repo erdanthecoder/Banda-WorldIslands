@@ -177,18 +177,37 @@ export function paths(world) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
     m.position.set((P.x0 + P.x1) / 2, y0 + 0.04, (P.z0 + P.z1) / 2); m.receiveShadow = true; S.add(m);
   }
-  // fences: posts + two rails, built from short segments; skip any segment that lies on another path or the plaza
+  // fences: posts + two rails. Each fence line is cut precisely (every 10 cm) where it meets the plaza, another path,
+  // a building door, the playground or the stadium, so there are no holes to slip through and no fences across openings.
   const wood = new THREE.MeshStandardMaterial({ map: TEX.wood, color: 0xb0835a, roughness: 0.85 });
-  const PG = PLAYGROUND, posts = [], rails = [], inside = (x, z) => Math.hypot(x, z) < PLAZA_R - 0.3 || onPath(x, z, -0.05) || world.buildings.some(b => b.contains(x, z)) || (Math.abs(x - PG.x) < PG.w / 2 + 0.3 && Math.abs(z - PG.z) < PG.d / 2);
-  const seg = (ax, az, bx, bz) => {
-    const mx = (ax + bx) / 2, mz = (az + bz) / 2; if (inside(mx, mz)) return;
-    const L = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bx - ax, bz - az);
-    posts.push([ax, az]); rails.push([mx, mz, L, ang]);
-    world.solids.push({ x: mx, z: mz, hw: 0.08, hd: L / 2 + 0.05, rot: ang, fence: true });
+  const PG = PLAYGROUND, posts = [], rails = [];
+  const open = (x, z) => Math.hypot(x, z) < PLAZA_R - 0.05 || onPath(x, z, -0.02) || world.buildings.some(b => b.contains(x, z))
+    || (Math.abs(x - PG.x) < PG.w / 2 + 0.3 && Math.abs(z - PG.z) < PG.d / 2 + 0.3) || (Math.abs(x) < 40 && z > 58 && z < 116);
+  const STEP = 0.1;
+  // build a fence along a run of points (posts every ~2 m, both ends included)
+  const run = pts => {
+    if (pts.length < 3) return;
+    let acc = 0, last = pts[0]; posts.push(last);
+    const total = pts.reduce((t, p, i) => i ? t + Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0, 0), n = Math.max(1, Math.round(total / 2)), each = total / n;
+    for (let i = 1; i < pts.length; i++) {
+      acc += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      if (acc >= each - 1e-6 || i === pts.length - 1) {
+        const p = pts[i], mx = (last[0] + p[0]) / 2, mz = (last[1] + p[1]) / 2, L = Math.hypot(p[0] - last[0], p[1] - last[1]), ang = Math.atan2(p[0] - last[0], p[1] - last[1]);
+        if (L > 0.05) { posts.push(p); rails.push([mx, mz, L, ang]); world.solids.push({ x: mx, z: mz, hw: 0.08, hd: L / 2 + 0.08, rot: ang, fence: true }); }
+        last = p; acc = 0;
+      }
+    }
   };
-  const line = (ax, az, bx, bz) => { const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 2)); for (let i = 0; i < n; i++) seg(ax + (bx - ax) * i / n, az + (bz - az) * i / n, ax + (bx - ax) * (i + 1) / n, az + (bz - az) * (i + 1) / n); };
+  // sample a path of points, split into the parts that are not open
+  const fenceAlong = sample => { let cur = []; for (const p of sample) { if (open(p[0], p[1])) { run(cur); cur = []; } else cur.push(p); } run(cur); };
+  const line = (ax, az, bx, bz) => { const L = Math.hypot(bx - ax, bz - az), n = Math.max(2, Math.ceil(L / STEP)), pts = []; for (let i = 0; i <= n; i++) pts.push([ax + (bx - ax) * i / n, az + (bz - az) * i / n]); fenceAlong(pts); };
   for (const P of PATHS) { const o = 0.15; line(P.x0 - o, P.z0 - o, P.x1 + o, P.z0 - o); line(P.x0 - o, P.z1 + o, P.x1 + o, P.z1 + o); line(P.x0 - o, P.z0 - o, P.x0 - o, P.z1 + o); line(P.x1 + o, P.z0 - o, P.x1 + o, P.z1 + o); }
-  const R = PLAZA_R + 0.3, N = 80; for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2, b = (i + 1) / N * Math.PI * 2; seg(Math.cos(a) * R, Math.sin(a) * R, Math.cos(b) * R, Math.sin(b) * R); }
+  { // the plaza ring, starting from an angle that isn't open so a run never wraps around
+    const R = PLAZA_R + 0.3, n = Math.ceil(2 * Math.PI * R / STEP); let a0 = 0;
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; if (open(Math.cos(a) * R, Math.sin(a) * R)) { a0 = a; break; } }
+    const pts = []; for (let i = 0; i <= n; i++) { const a = a0 + i / n * Math.PI * 2; pts.push([Math.cos(a) * R, Math.sin(a) * R]); }
+    fenceAlong(pts);
+  }
   // instanced meshes keep this cheap
   const pg = new THREE.BoxGeometry(0.16, 1.1, 0.16), im = new THREE.InstancedMesh(pg, wood, posts.length), q = new THREE.Object3D();
   posts.forEach(([x, z], i) => { q.position.set(x, y0 + 0.55, z); q.rotation.set(0, 0, 0); q.updateMatrix(); im.setMatrixAt(i, q.matrix); });

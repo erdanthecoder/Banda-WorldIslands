@@ -8,7 +8,7 @@ import { Avatar } from './avatar.js';
 import { botAvatar } from './bots.js';
 import { PIER } from './fishing.js';
 import { RECIPES, INGREDIENTS, DRINK_ICON } from './mall.js';
-import { labelSprite, MALL, CAFE_SPOT, BANK, RESTO, TOWER, MARKET, COURT, PITCH, PLAYGROUND } from './world.js';
+import { labelSprite, MALL, MALL_DOOR, CAFE_SPOT, BANK, RESTO, TOWER, MARKET, COURT, PITCH, PLAYGROUND } from './world.js';
 import { money, ICON } from './shop.js';
 
 const $ = s => document.querySelector(s);
@@ -30,7 +30,7 @@ export const PLACES = {
   stadium: { icon: '⚽', x: PITCH.x, z: PITCH.z - PITCH.hd - 4 },
   playground: { icon: '🎠', x: PLAYGROUND.x - PLAYGROUND.w / 2 - 3, z: 10 },
   pier: { icon: '🎣', x: PIER.x0 - 3, z: PIER.z },
-  mall: { icon: '🛍️', x: MALL.x, z: MALL.z + 21 },
+  mall: { icon: '🛍️', x: MALL.x, z: MALL_DOOR + 3 },
 };
 const ASKS = { coffee: 'ask_coffee', bank: 'ask_bank', resto: 'ask_resto', tower: 'ask_tower', market: 'ask_market', court: 'ask_court', stadium: 'ask_stadium', playground: 'ask_playground', pier: 'ask_pier', mall: 'ask_mall' };
 
@@ -183,13 +183,13 @@ export class Jobs {
     this.spawnT -= dt;
     if (this.spawnT <= 0 && this.customers.filter(c => c.state !== 'leave').length < 3) {
       this.spawnT = 7 + Math.random() * 5;
-      const [x, z] = M.at(0, 17), av = new Avatar(botAvatar(Math.floor(Math.random() * 1e6)), '', 'bot'); av.group.position.set(x, M.base, z); w.scene.add(av.group);
+      const [x, z] = M.at(0, M.ap - 2), av = new Avatar(botAvatar(Math.floor(Math.random() * 1e6)), '', 'bot'); av.group.position.set(x, M.base, z); w.scene.add(av.group);
       const drink = pick(Object.keys(RECIPES)), bub = labelSprite(DRINK_ICON[drink], 0.5, { bg: 'rgba(255,255,255,0.95)' }); bub.position.y = 2.3; bub.visible = false; av.group.add(bub);
       this.customers.push({ av, x, z, drink, bub, state: 'walk' });
     }
     let qi = 0;
     this.customers.forEach(c => {
-      const i = c.state === 'leave' ? -1 : qi++, [tx, tz] = c.state === 'leave' ? M.at(0, 18) : M.at(B.a + (i ? (i % 2 ? 9 : -9) * Math.ceil(i / 2) : 0), 9.2 - (i ? 0.8 : 0));
+      const i = c.state === 'leave' ? -1 : qi++, [tx, tz] = c.state === 'leave' ? M.at(0, M.ap - 1) : M.at(B.a + (i ? (i % 2 ? 6 : -6) * Math.ceil(i / 2) : 0), M.front - (i ? 0.8 : 0));
       const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
       if (d > 0.1) { const sp = Math.min(d, 2.3 * dt); c.x += dx / d * sp; c.z += dz / d * sp; c.av.group.rotation.y = Math.atan2(dx, dz); c.av.animate(2.3, dt, false); }
       else { if (c.state === 'leave') { w.scene.remove(c.av.group); c.gone = true; return; } c.av.group.rotation.y = Math.atan2(B.x - c.x, B.z - c.z); c.av.animate(0, dt, false); if (i === 0 && c.state === 'walk') { c.state = 'ready'; c.bub.visible = true; } }
