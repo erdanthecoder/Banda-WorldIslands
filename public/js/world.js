@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Water } from 'three/addons/objects/Water.js';
+import { mergeGeometries as mergeGeos } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -34,12 +35,17 @@ export const MARKET = { x: -70, z: 6, w: 32, d: 22, base: 4 };
 export const PLAYGROUND = { x: 64, z: 10, w: 36, d: 30 };
 export const BANK = { x: -62, z: -34, w: 26, d: 18, base: 4 };
 export const RESTO = { x: 62, z: -34, w: 26, d: 18, base: 4 };
+// Pentagon Mall: five sides, door on the south side (facing the new path)
+export const MALL = { x: -70, z: 40, R: 20, base: 4 };
 export const CAFE_SPOT = { x: -15, z: -27 };
 // paved walkways (axis-aligned rectangles); everything else is grass behind wooden fences
 export const PATHS = [
   { id: 'tower', x0: -3.5, x1: 3.5, z0: -40.3, z1: -22 },
   { id: 'bank', x0: -49, x1: -3, z0: -36.5, z1: -31.5 },
   { id: 'resto', x0: 3, x1: 49, z0: -36.5, z1: -31.5 },
+  { id: 'mallA', x0: -45, x1: -40, z0: 12.5, z1: 61.4 },
+  { id: 'mallB', x0: -74.5, x1: -40, z0: 56.4, z1: 61.4 },
+  { id: 'mallDoor', x0: -73, x1: -67, z0: 52, z1: 56.6 },
   { id: 'cafe', x0: -22, x1: -8, z0: -31.5, z1: -23 },
   { id: 'market', x0: -54, x1: -20, z0: 7.5, z1: 12.5 },
   { id: 'play', x0: 20, x1: 46, z0: 7.5, z1: 12.5 },
@@ -52,7 +58,7 @@ export const HOUSES = [];
 const rectIn = (x, z, cx, cz, hw, hd, m) => Math.abs(x - cx) < hw + m && Math.abs(z - cz) < hd + m;
 export const onPath = (x, z, m = 0) => PATHS.some(P => x > P.x0 - m && x < P.x1 + m && z > P.z0 - m && z < P.z1 + m);
 export const built = (x, z, m = 1) => Math.hypot(x - TOWER.x, z - TOWER.z) < TOWER.R + m + 4 || rectIn(x, z, MARKET.x, MARKET.z, MARKET.w / 2, MARKET.d / 2, m)
-  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || rectIn(x, z, RESTO.x, RESTO.z, RESTO.w / 2, RESTO.d / 2, m) || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
+  || rectIn(x, z, PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w / 2, PLAYGROUND.d / 2, m) || rectIn(x, z, PITCH.x, PITCH.z, PITCH.hw + 1, PITCH.hd + 1, m) || rectIn(x, z, COURT.x, COURT.z, COURT.hw, COURT.hd, m) || rectIn(x, z, BANK.x, BANK.z, BANK.w / 2, BANK.d / 2, m) || rectIn(x, z, RESTO.x, RESTO.z, RESTO.w / 2, RESTO.d / 2, m) || Math.hypot(x - MALL.x, z - MALL.z) < MALL.R + m || onPath(x, z, m + 0.5) || Math.hypot(x - CAFE_SPOT.x, z - CAFE_SPOT.z) < 7;
 export const ROAD = { x: 0, z: 0, r: -1000, w: 0 };
 const FLATS = [
   { x: 0, z: 0, r: 118, h: 4 },
@@ -204,7 +210,7 @@ export class World {
     // phones and slow computers ('low'): no shadows, no antialiasing, less grass, and the resolution drops by itself if it gets slow
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio, this.hq ? 1.5 : 1));
-    r.shadowMap.enabled = this.hq; r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.enabled = this.hq; r.shadowMap.autoUpdate = false; r.shadowMap.needsUpdate = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.5;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(56, 1, 0.1, 6000);
@@ -639,7 +645,7 @@ export class World {
     for (let i = 0; i < 12; i++) { bg.beginPath(); const x = (i % 6) * 46 + (i > 5 ? 23 : 0), y = i > 5 ? 90 : 38; for (let k = 0; k < 5; k++) { const a = k / 5 * 6.28; bg.lineTo(x + Math.cos(a) * 13, y + Math.sin(a) * 13); } bg.fill(); }
     const btex = new THREE.CanvasTexture(bc); btex.colorSpace = THREE.SRGBColorSpace;
     this.ball = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16), new THREE.MeshStandardMaterial({ map: btex, roughness: 0.45 }));
-    this.ball.castShadow = true; this.ball.position.set(P.x, P.h + 0.3, P.z); S.add(this.ball);
+    this.ball.castShadow = true; this.ball.userData.dynamic = true; this.ball.position.set(P.x, P.h + 0.3, P.z); S.add(this.ball);
     // basketball: two hoops at the ends of the court and an orange ball
     for (const sx of [-1, 1]) {
       const px = C.x + sx * (C.hw + 0.7);
@@ -660,7 +666,7 @@ export class World {
     og.beginPath(); og.moveTo(0, 32); og.lineTo(128, 32); og.moveTo(32, 0); og.lineTo(32, 64); og.moveTo(96, 0); og.lineTo(96, 64); og.stroke();
     const otex = new THREE.CanvasTexture(oc); otex.colorSpace = THREE.SRGBColorSpace;
     this.bball = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 14), new THREE.MeshStandardMaterial({ map: otex, roughness: 0.6 }));
-    this.bball.position.set(C.x, C.h + 0.2, C.z); S.add(this.bball);
+    this.bball.userData.dynamic = true; this.bball.position.set(C.x, C.h + 0.2, C.z); S.add(this.bball);
   }
 
   _clouds() {
@@ -928,6 +934,7 @@ export class World {
       this.updaters = this.updaters.filter(u => !u(dt, t));
       if (this.effects.disco) { this.hemi.color.setHSL((t * 0.25) % 1, 0.9, 0.55); this.hemi.intensity = 1.2; } else this.hemi.color.set(0xbfd6ff);
       onFrame && onFrame(dt, t);
+      if (this.hq) { this._sf = (this._sf || 0) + 1; this.renderer.shadowMap.needsUpdate = this._sf % 2 === 0; }
       if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
       this.raf = requestAnimationFrame(loop);
     };
@@ -949,6 +956,52 @@ export class World {
     this.composer = null; this.pr = 1; this.renderer.setPixelRatio(1); this.resize();
     this.grassMesh.count = Math.floor(this.grassMesh.count / 3);
     const sh = this.sun.shadow; sh.mapSize.set(1024, 1024); if (sh.map) { sh.map.dispose(); sh.map = null; }
+  }
+  // Static batching: thousands of separate still objects (walls, floors, tables…) are merged into a few big meshes,
+  // one per look, so the graphics card draws far fewer pieces each frame. Things that move or change are left alone:
+  // anything flagged dynamic, transparent things, and anything that changed since snapshotStatic() was called.
+  snapshotStatic() {
+    this._snap = new Map();
+    for (const o of this.scene.children) if (o.isMesh && !o.isInstancedMesh) { o.updateMatrixWorld(); const m = o.material; this._snap.set(o, [...o.matrixWorld.elements, o.visible, m && m.emissiveIntensity, m && m.opacity, m && m.color && m.color.getHex(), m && m.emissive && m.emissive.getHex()].join(',')); }
+  }
+  batchStatic() {
+    if (!this._snap) return 0;
+    const keyOf = m => [m.type, m.color && m.color.getHex(), m.roughness, m.metalness, m.emissive && m.emissive.getHex(), m.emissiveIntensity, m.map && m.map.uuid, m.side, m.flatShading, m.envMapIntensity, m.alphaTest].join('|');
+    const groups = new Map(), mats = new Map();
+    for (const o of this.scene.children.slice()) {
+      const was = this._snap.get(o); if (!was || !o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.userData.dynamic || !o.visible) continue;
+      const m = o.material; if (!m || Array.isArray(m) || m.transparent || m.isShaderMaterial || o.children.length) continue;
+      o.updateMatrixWorld();
+      const now = [...o.matrixWorld.elements, o.visible, m.emissiveIntensity, m.opacity, m.color && m.color.getHex(), m.emissive && m.emissive.getHex()].join(',');
+      if (now !== was) continue; // it moved or changed: keep it separate
+      // only plain pieces (position, normal, uv); things with extra data (like the blended ground) stay as they are
+      const a = o.geometry.attributes; if (!a.position || !a.normal || !a.uv || Object.keys(a).length !== 3 || o.geometry.morphAttributes.position || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) continue;
+      const mk = keyOf(m), k = mk + '|' + o.castShadow + '|' + o.receiveShadow;
+      if (!mats.has(mk)) mats.set(mk, m);
+      let g = groups.get(k); if (!g) groups.set(k, g = { mat: mats.get(mk), cast: o.castShadow, recv: o.receiveShadow, list: [] });
+      g.list.push(o);
+    }
+    let removed = 0;
+    for (const g of groups.values()) {
+      if (g.list.length < 2) continue;
+      const geos = g.list.map(o => { let ge = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); for (const n of Object.keys(ge.attributes)) if (!['position', 'normal', 'uv'].includes(n)) ge.deleteAttribute(n); ge.applyMatrix4(o.matrixWorld); return ge; });
+      let merged; try { merged = mergeGeos(geos, false); } catch (e) { merged = null; }
+      geos.forEach(ge => ge.dispose());
+      if (!merged) continue;
+      merged.computeBoundingSphere();
+      const mesh = new THREE.Mesh(merged, g.mat); mesh.castShadow = g.cast; mesh.receiveShadow = g.recv; mesh.matrixAutoUpdate = false; mesh.updateMatrix(); mesh.userData.batched = true;
+      this.scene.add(mesh); g.list.forEach(o => { this.scene.remove(o); removed++; });
+    }
+    this._snap = null;
+    // far-away labels are not drawn (each one costs a draw call); only labels the game itself isn't hiding
+    const labels = this.scene.children.filter(o => o.isSprite && o.visible && !o.userData.dynamic);
+    let acc = 0;
+    this.updaters.push(dt => {
+      if ((acc += dt) < 0.3) return; acc = 0;
+      const c = this.camera.position, far = this.hq ? 110 : 70;
+      for (const o of labels) { if (!o.parent) continue; const near = o.position.distanceToSquared(c) < far * far; if (near && o.userData.cullHidden) { o.visible = true; o.userData.cullHidden = false; } else if (!near && o.visible) { o.visible = false; o.userData.cullHidden = true; } }
+    });
+    return removed;
   }
   // point lights make every surface slower to draw; phones go without them
   dropPointLights() { const out = []; this.scene.traverse(o => { if (o.isPointLight || o.isSpotLight) out.push(o); }); out.forEach(o => o.parent.remove(o)); }

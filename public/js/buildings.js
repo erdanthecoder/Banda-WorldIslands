@@ -102,9 +102,9 @@ class Elevator {
     for (let lv = 0; lv < b.floors; lv++) {
       const y = b.floorY(lv), L = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.9, 0.08), steel), R = L.clone();
       L.position.set(cx - 0.75, y + 1.45, cz + 1.62); R.position.set(cx + 0.75, y + 1.45, cz + 1.62);
-      S.add(L, R); this.doors.push({ L, R, lv });
+      L.userData.dynamic = R.userData.dynamic = true; S.add(L, R); this.doors.push({ L, R, lv });
       const plate = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.6, 0.06), std(0x1c1f24, { metalness: 0.7 })); plate.position.set(cx + 2.05, y + 1.25, cz + 1.72); S.add(plate);
-      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 20).rotateX(Math.PI / 2), std(0xdddddd, { emissive: 0x3ac3ff, emissiveIntensity: 0.2 })); btn.position.set(cx + 2.05, y + 1.25, cz + 1.77); S.add(btn); this.btns[lv] = btn;
+      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 20).rotateX(Math.PI / 2), std(0xdddddd, { emissive: 0x3ac3ff, emissiveIntensity: 0.2 })); btn.position.set(cx + 2.05, y + 1.25, cz + 1.77); btn.userData.dynamic = true; S.add(btn); this.btns[lv] = btn;
       const frame = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.3, 0.2), std(0x1c1f24, { metalness: 0.6 })); frame.position.set(cx, y + 3.05, cz + 1.66); S.add(frame);
       const ind = labelSprite(String(lv + 1), 0.32, { bg: 'rgba(10,14,20,0.85)', color: '#5fd0ff' }); ind.position.set(cx, y + 3.45, cz + 1.7); S.add(ind);
       b.dynamicWalls.push({ lv, x: cx, z: cz + 1.62, hw: 1.6, hd: 0.12, on: () => !(this.level === lv && this.state === 'idle' && this.open > 0.6) });
@@ -377,6 +377,7 @@ export class Tower extends Building {
       this.world.updaters.push((dt, t) => { if (zzz.visible) zzz.position.y = y + 1.7 + Math.sin(t * 2) * 0.15; });
       this.world.zone({ test: (px, py, pz) => Math.abs(px - bx) < 1.6 && Math.abs(pz - bz) < 2.0 && Math.abs(py - y) < 1, onEnter: () => { zzz.visible = true; this.h.rest && this.h.rest('hotel', num); }, onLeave: () => { zzz.visible = false; } });
     });
+    rooms.forEach(r => { if (r.lock) r.lock.userData.dynamic = true; });
     this.hotelRooms = (this.hotelRooms || []).concat(rooms.map(r => ({ ...r, lv })));
     // wall sconces along the corridor
     for (let i = 0; i < 6; i++) { const sc = this.add(new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), std(0xfff1cf, { emissive: 0xffd28a, emissiveIntensity: 2 })), false); sc.position.set(minX + 4 + i * 7.2, y + 2.6, maxZ - 8.75); }

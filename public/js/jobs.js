@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import { Avatar } from './avatar.js';
 import { botAvatar } from './bots.js';
 import { PIER } from './fishing.js';
-import { labelSprite, CAFE_SPOT, BANK, RESTO, TOWER, MARKET, COURT, PITCH, PLAYGROUND } from './world.js';
+import { RECIPES, INGREDIENTS, DRINK_ICON } from './mall.js';
+import { labelSprite, MALL, CAFE_SPOT, BANK, RESTO, TOWER, MARKET, COURT, PITCH, PLAYGROUND } from './world.js';
 import { money, ICON } from './shop.js';
 
 const $ = s => document.querySelector(s);
@@ -15,8 +16,8 @@ const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = a => a[rnd(0, a.length - 1)];
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const cents = c => '$' + (c / 100).toFixed(2);
-export const JOBS = ['cashier', 'cleaner', 'helper', 'waiter', 'fisher'];
-const JOB_ICON = { cashier: '🏦', cleaner: '🧹', helper: '🙋', waiter: '🍽️', fisher: '🎣' };
+export const JOBS = ['cashier', 'cleaner', 'helper', 'waiter', 'fisher', 'barista'];
+const JOB_ICON = { cashier: '🏦', cleaner: '🧹', helper: '🙋', waiter: '🍽️', fisher: '🎣', barista: '☕' };
 
 // places on the island, for the helper job and for bots that show you the way
 export const PLACES = {
@@ -29,8 +30,9 @@ export const PLACES = {
   stadium: { icon: '⚽', x: PITCH.x, z: PITCH.z - PITCH.hd - 4 },
   playground: { icon: '🎠', x: PLAYGROUND.x - PLAYGROUND.w / 2 - 3, z: 10 },
   pier: { icon: '🎣', x: PIER.x0 - 3, z: PIER.z },
+  mall: { icon: '🛍️', x: MALL.x, z: MALL.z + 21 },
 };
-const ASKS = { coffee: 'ask_coffee', bank: 'ask_bank', resto: 'ask_resto', tower: 'ask_tower', market: 'ask_market', court: 'ask_court', stadium: 'ask_stadium', playground: 'ask_playground', pier: 'ask_pier' };
+const ASKS = { coffee: 'ask_coffee', bank: 'ask_bank', resto: 'ask_resto', tower: 'ask_tower', market: 'ask_market', court: 'ask_court', stadium: 'ask_stadium', playground: 'ask_playground', pier: 'ask_pier', mall: 'ask_mall' };
 
 // a money question a customer asks the cashier
 function moneyQ(t) {
@@ -79,6 +81,7 @@ export class Jobs {
     if (kind === 'cashier') { const C = this.app.mbank.cashier; this.customers = []; this.spawnT = 1; this.beacon(C.x, C.standZ, this.app.mbank.base, '🏦 ' + t('cashierWindow')); this.app.ui.banner(t('cashierStart'), 5000); }
     if (kind === 'cleaner') { this.spawnLitter(8); this.app.ui.banner(t('cleanerStart'), 5000); }
     if (kind === 'helper') { this.lost = []; this.spawnT = 1; this.beacon(0, 8, null, '🙋 ' + t('plaza')); this.app.ui.banner(t('helperStart'), 5000); }
+    if (kind === 'barista') { const B = this.app.mall.baristaSpot; this.customers = []; this.spawnT = 1; this.beacon(B.x, B.z, MALL.base, '☕ ' + t('mall_cafe')); this.app.ui.banner(t('baristaStart'), 5000); }
     if (kind === 'fisher') { this.beacon(PIER.x1 + 2, PIER.z, PIER.y, '🎣 ' + t('fishPier')); this.app.ui.banner(t('fisherStart'), 5000); }
     if (kind === 'waiter') { const R = this.app.resto; this.guests = []; this.carry = null; this.spawnT = 1; this.beacon(R.pass.x, R.pass.z, R.base, '🛎️ ' + t('pickUp')); this.app.ui.banner(t('waiterStart'), 5000); }
     this.draw();
@@ -123,6 +126,7 @@ export class Jobs {
     if (this.job === 'cashier') this.cashierTick(dt);
     if (this.job === 'helper') this.helperTick(dt);
     if (this.job === 'waiter') this.waiterTick(dt);
+    if (this.job === 'barista') this.baristaTick(dt);
   }
 
   // ---------- cashier ----------
@@ -171,6 +175,50 @@ export class Jobs {
     });
   }
   closeQ() { if (this.qOpen) { $('#qModal').classList.add('hidden'); this.qOpen = null; } }
+
+  // ---------- barista (Pentagon Café) ----------
+  baristaAt(on) { this.atBar = on; if (on && this.job !== 'barista') this.app.toast('☕ ' + this.t('baristaHint')); if (!on) this.closeQ(); }
+  baristaTick(dt) {
+    const M = this.app.mall, B = M.baristaSpot, w = this.w;
+    this.spawnT -= dt;
+    if (this.spawnT <= 0 && this.customers.filter(c => c.state !== 'leave').length < 3) {
+      this.spawnT = 7 + Math.random() * 5;
+      const [x, z] = M.at(0, 17), av = new Avatar(botAvatar(Math.floor(Math.random() * 1e6)), '', 'bot'); av.group.position.set(x, M.base, z); w.scene.add(av.group);
+      const drink = pick(Object.keys(RECIPES)), bub = labelSprite(DRINK_ICON[drink], 0.5, { bg: 'rgba(255,255,255,0.95)' }); bub.position.y = 2.3; bub.visible = false; av.group.add(bub);
+      this.customers.push({ av, x, z, drink, bub, state: 'walk' });
+    }
+    let qi = 0;
+    this.customers.forEach(c => {
+      const i = c.state === 'leave' ? -1 : qi++, [tx, tz] = c.state === 'leave' ? M.at(0, 18) : M.at(B.a + (i ? (i % 2 ? 9 : -9) * Math.ceil(i / 2) : 0), 9.2 - (i ? 0.8 : 0));
+      const dx = tx - c.x, dz = tz - c.z, d = Math.hypot(dx, dz);
+      if (d > 0.1) { const sp = Math.min(d, 2.3 * dt); c.x += dx / d * sp; c.z += dz / d * sp; c.av.group.rotation.y = Math.atan2(dx, dz); c.av.animate(2.3, dt, false); }
+      else { if (c.state === 'leave') { w.scene.remove(c.av.group); c.gone = true; return; } c.av.group.rotation.y = Math.atan2(B.x - c.x, B.z - c.z); c.av.animate(0, dt, false); if (i === 0 && c.state === 'walk') { c.state = 'ready'; c.bub.visible = true; } }
+      c.av.group.position.set(c.x, M.base, c.z);
+    });
+    this.customers = this.customers.filter(c => !c.gone);
+    const first = this.customers.find(c => c.state !== 'leave');
+    if (first && first.state === 'ready' && this.atBar && !this.qOpen && !w.inputLocked) this.makeDrink(first);
+  }
+  makeDrink(c) {
+    const t = this.t, box = $('#qModal'), want = RECIPES[c.drink], picked = new Set(); this.qOpen = c; c.av.play('wave');
+    $('#qTitle').textContent = '☕ ' + t('job_barista');
+    const draw = () => {
+      $('#qBody').innerHTML = `<div class="q-text"><div class="emoji">${DRINK_ICON[c.drink]}</div><div class="sentence">${t('wantDrink').replace('{d}', t('drink_' + c.drink))}</div></div>
+        <div class="bar-cup">🥤 ${[...picked].map(k => INGREDIENTS[k]).join(' ') || '…'}</div>
+        <div class="q-grid">${Object.entries(INGREDIENTS).map(([k, e]) => `<button class="q-opt${picked.has(k) ? ' ok' : ''}" data-k="${k}">${e} ${t('ing_' + k)}</button>`).join('')}</div>
+        <div class="row"><button class="btn" id="barReset">↺ ${t('again')}</button><button class="btn primary" id="barServe">✅ ${t('serve')}</button></div>`;
+      document.querySelectorAll('#qBody [data-k]').forEach(b => b.onclick = () => { const k = b.dataset.k; picked.has(k) ? picked.delete(k) : picked.add(k); this.app.sfx('beep'); draw(); });
+      $('#barReset').onclick = () => { picked.clear(); draw(); };
+      $('#barServe').onclick = () => {
+        const ok = picked.size === want.length && want.every(k => picked.has(k));
+        this.app.sfx(ok ? 'paid' : 'wrong'); box.classList.add('hidden'); this.qOpen = null;
+        c.state = 'leave'; c.bub.visible = false; c.av.setMood(ok ? 'laugh' : 'sad');
+        if (ok) { this.served++; this.pay(100); this.app.ui.banner(`${DRINK_ICON[c.drink]} ${t('served')} +$1`, 1600); }
+        else { this.app.ui.banner(`😕 ${t('wrongDrink')}: ${want.map(k => INGREDIENTS[k]).join(' + ')}`, 3000); this.draw(); }
+      };
+    };
+    draw(); box.classList.remove('hidden');
+  }
 
   // ---------- cleaner ----------
   spawnLitter(n) {

@@ -11,7 +11,7 @@ const NAMES = ['Aru', 'Timur', 'Dana', 'Max', 'Lina', 'Emir', 'Sofia', 'Nurlan',
 // the way from the plaza to a place, along the paved paths
 function routeTo(b, P) {
   const via = { coffee: [[0, -24], [0, -33.5], [-12, -33.5]], bank: [[0, -24], [0, -33.5]], resto: [[0, -24], [0, -33.5]], tower: [[0, -24]],
-    market: [[-22, 10]], playground: [[22, 10]], stadium: [[0, 24]], court: [[0, 24], [0, 58]], pier: [[22, 10], [40, 30], [92, 30]] };
+    market: [[-22, 10]], playground: [[22, 10]], stadium: [[0, 24]], court: [[0, 24], [0, 58]], pier: [[22, 10], [40, 30], [92, 30]], mall: [[-22, 10], [-42.5, 10], [-42.5, 58.9]] };
   const k = Object.keys(PLACES).find(n => PLACES[n] === P);
   return [...(via[k] || []).map(([x, z]) => [x + (Math.random() - 0.5), z]), [P.x, P.z]];
 }
@@ -141,7 +141,7 @@ export class Bots {
     if (!b.act) {
       if ((b.next -= dt) > 0) return this.wander(b, dt, HUB.x, HUB.z, 8, 21);
       const hoopers = Object.values(this.b).filter(o => o.act === 'hoops').length;
-      const opts = ['tower', 'tower', 'bank', 'coffee', 'resto', 'resto', 'plaza', 'fish'];
+      const opts = ['tower', 'tower', 'bank', 'coffee', 'resto', 'resto', 'plaza', 'fish', 'mall', 'mall'];
       if (hoopers < 4) opts.push('hoops', 'hoops', 'hoops');
       b.act = pick(opts); b.route = null; b.step = 0; b.em = '';
       if (b.act === 'plaza') { b.act = null; b.next = rand(10, 25); return; }
@@ -194,6 +194,17 @@ export class Bots {
     return this.path(b, dt);
   }
 
+  // shopping at the Pentagon Mall: a shop counter, then a rest on a bench in the atrium
+  _mall(b, dt) {
+    const M = this.app.mall; if (!M) return true;
+    const out = [[-22, 10], [-42.5, 10], [-42.5, 58.9], [M.x, 58.9], [M.x, 52]];
+    if (!b.step) { const shop = pick([72, 144, 216, 288]), [sx, sz] = M.at(shop + rand(-12, 12), 8.6), [bx, bz] = M.at(36 + 72 * Math.floor(rand(0, 5)), 5.6); b.route = [...out, [sx, sz]]; b.bench = [bx, bz]; b.step = 1; }
+    if (b.step === 1) { if (this.path(b, dt)) { b.step = 2; b.t = rand(6, 14); this.emote(b, 'wave'); } return false; }
+    if (b.step === 2) { b.speed = 0; if ((b.t -= dt) < 0) { b.step = 3; b.route = [b.bench]; b.em = ''; } return false; }
+    if (b.step === 3) { if (this.path(b, dt)) { b.step = 4; b.t = rand(8, 18); this.emote(b, 'sit'); } return false; }
+    if (b.step === 4) { b.speed = 0; if ((b.t -= dt) < 0) { b.step = 5; b.em = ''; b.route = out.slice().reverse(); } return false; }
+    return this.path(b, dt);
+  }
   // a little fishing at the end of the pier
   _fish(b, dt) {
     const P = PIER;

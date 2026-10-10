@@ -6,6 +6,7 @@ import { currentAccount, signInWithHub, signOut } from './auth.js';
 import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, PATHS, PLAZA_R } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
 import { Tower, Market, Bank, Restaurant, FLOORS } from './buildings.js';
+import { Mall } from './mall.js';
 import { Playground, coffeeKiosk } from './playground.js';
 import { BankUI } from './bank.js';
 import { Phone } from './phone.js';
@@ -123,6 +124,7 @@ async function start(serverId) {
   await new Promise(r => setTimeout(r, 30));
   let quality = 'high'; try { quality = localStorage.getItem('banda_quality') || (matchMedia('(pointer: coarse)').matches ? 'low' : 'high'); } catch (e) {}
   const world = app.world = new World($('#scene'), { quality });
+  Avatar.blobShadows = !world.hq;
   world.setPlayer(new Avatar(me.avatar, me.name, me.role));
   world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
   app.shop = new Shop(app); app.shop.loadInv(); app.bankUI = new BankUI(app); app.phone = new Phone(app);
@@ -130,6 +132,7 @@ async function start(serverId) {
   app.fishing = new Fishing(app);
   if (!world.hq) world.dropPointLights();
   world.teleport(0, 15, 0);
+  world.snapshotStatic(); setTimeout(() => { const n = world.batchStatic(); if (DEV) console.log('batched', n); }, 4000);
 
   net.onPlayers((id, d) => {
     const was = app.players[id];
@@ -194,12 +197,13 @@ function buildWorld(world) {
   app.mbank = new Bank(world, { t, desk: i => app.bankUI.desk(i), someoneAt, wait: () => ui.toast(`⏳ ${t('waitInLine')}`),
     jobs: () => app.jobs.board(), cashierIn: () => app.jobs.cashierIn(), cashierOut: () => app.jobs.cashierOut() });
   app.resto = new Restaurant(world, { t, sit: seat => restoSit(seat), pass: () => app.jobs.pass() });
+  app.mall = new Mall(world, { t, shop: (id, sh) => app.shop.openAisle(`${sh.icon} ${t('mall_' + id)}`, sh.items, { cafe: true }), jobs: () => app.jobs.board(), barista: on => app.jobs && app.jobs.baristaAt(on) });
   app.jobs = new Jobs(app);
   addPad(world, COURT.x - COURT.hw - 3, COURT.z, 'basketball', COURT.h);
   if (myRoom()) app.tower.setMyRoom(myRoom());
   coffeeKiosk(world, { t, cafe: () => app.shop.openAisle('☕ Island Coffee', CAFE, { cafe: true }) });
   const pg = new Playground(world, { boing, sfx });
-  pg.post(5, -21.5, `▲ ${t('tower')} · ◀ mBank · 🍽️ ▶`); pg.post(-21, 5.5, `◀ ${t('market')}`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
+  pg.post(5, -21.5, `▲ ${t('tower')} · ◀ mBank · 🍽️ ▶`); pg.post(-21, 5.5, `◀ ${t('market')} · 🛍️ Pentagon Mall`); pg.post(21, 5.5, `${t('playground')} ▶`); pg.post(4, 21.5, `▼ ${t('stadium')}`); pg.post(-7, -21, `☕ ${t('coffeeHere')}`);
   [[-12, -14], [12, -14]].forEach(([x, z]) => world.trampoline(x, z, boing));
 }
 
@@ -511,6 +515,8 @@ function hudSetup() {
   $('#bBag').onclick = () => app.shop.openBag();
   $('#bPhone').onclick = () => app.phone.open();
   $('#bNew').onclick = () => whatsNew(app, true);
+  // inside the Windows / Microsoft Store app: no "download the app" links
+  if (/WorldIslandsApp/.test(navigator.userAgent)) { document.body.classList.add('in-app'); show('#bWin', false); }
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
   $('#bAvatar').onclick = () => {
     w.pause(true); show('#creator');

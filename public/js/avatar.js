@@ -46,6 +46,8 @@ const faceCache = {};
 function faceTexture(face) { return faceCache[face] ||= canvas(128, 128, g => drawFace(g, face)); }
 // faces the camera can switch to during a video call
 export const MOODS = ['laugh', 'angry', 'excited', 'sad'];
+const BLOB_GEO = new THREE.CircleGeometry(0.55, 20).rotateX(-Math.PI / 2);
+const BLOB_MAT = new THREE.MeshBasicMaterial({ map: canvas(64, 64, g => { const gr = g.createRadialGradient(32, 32, 4, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,0.45)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }), transparent: true, depthWrite: false });
 const MOOD_EMOJI = { laugh: '😂', angry: '😡', excited: '🤩', sad: '😢' }, moodCache = {};
 function moodTex(e) { return moodCache[e] ||= canvas(128, 128, g => { g.font = '96px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, 64, 70); }); }
 function shirtTexture(top, color) {
@@ -123,6 +125,8 @@ export class Avatar {
     if (role !== 'bot') { this.label = nameSprite(name, role); this.label.position.y = 2.25 * k; this.group.add(this.label); }
     if (cfg.pet && cfg.pet !== 'none') this.pet = makePet(cfg.pet);
     this.phase = 0; this.emote = null; this.emoteT = 0;
+    // a soft round shadow under the feet (used when real shadows are off, e.g. on phones)
+    if (Avatar.blobShadows) { const b = new THREE.Mesh(BLOB_GEO, BLOB_MAT); b.position.y = 0.03; b.renderOrder = -1; this.group.add(b); this.blob = b; }
   }
   play(emote) { this.emote = emote; this.emoteT = 0; }
   // 🛹 a glowing hoverboard under the feet

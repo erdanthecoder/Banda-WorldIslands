@@ -1,5 +1,10 @@
 const D = {
   en: {
+    mall_cafe: 'Pentagon Café', mall_market: 'Supermarket', mall_toys: 'Toys & Fashion', mall_sweets: 'Sweets & Ice Cream', jobCenter: 'Job Center',
+    job_barista: 'Barista', job_barista_d: 'Make drinks at Pentagon Café · $1 each', baristaStart: '☕ Barista: go behind the counter of Pentagon Café in the Pentagon Mall. Make each drink from the right ingredients!', baristaHint: 'Take the Barista job at the Job Center to work here.',
+    wantDrink: 'One {d}, please!', drink_coffee: 'coffee', drink_latte: 'latte', drink_cocoa: 'hot cocoa', drink_tea: 'tea', drink_icedlatte: 'iced latte', drink_honeytea: 'honey tea', drink_mocha: 'mocha',
+    ing_espresso: 'Espresso', ing_milk: 'Milk', ing_choco: 'Chocolate', ing_leaves: 'Tea leaves', ing_ice: 'Ice', ing_honey: 'Honey', again: 'Start again', serve: 'Serve', wrongDrink: 'Not quite! It needs',
+    place_mall: 'Pentagon Mall', ask_mall: 'Where can I shop for toys and clothes?',
     showComeStadium: 'come to the stadium!',
     show_ufo: 'UFO INVASION', show_foam: 'FOAM PARTY', showsTogether: '{n} shows at the same time!', showsHint: 'Up to 3 shows run at the same time.', megaParty: 'MEGA party (3 shows)',
     fxn_chickens: 'Chicken rain', fxn_tornado: 'Tornado', fxn_quake: 'Earthquake', fxn_rainbow: 'Rainbow', fxn_bubbles: 'Bubbles', fxn_tiny: 'Everyone tiny', fxn_freeze: 'Freeze all', fxn_shuffle: 'Shuffle',
@@ -81,6 +86,11 @@ const D = {
     craftHelp: 'Click to start · WASD move · Space jump · Left click break · Right click place · 1–9 blocks · diamond ore = star', tapToFly: 'Tap or press Space', gameOver: 'Game over', best: 'Best', tapToRetry: 'Tap to try again',
   },
   ru: {
+    mall_cafe: 'Кафе Пентагон', mall_market: 'Супермаркет', mall_toys: 'Игрушки и мода', mall_sweets: 'Сладости и мороженое', jobCenter: 'Центр занятости',
+    job_barista: 'Бариста', job_barista_d: 'Готовь напитки в Кафе Пентагон · $1', baristaStart: '☕ Бариста: встань за стойку Кафе Пентагон в Пентагон Молле. Готовь каждый напиток из правильных ингредиентов!', baristaHint: 'Возьми работу Бариста в Центре занятости.',
+    wantDrink: 'Один {d}, пожалуйста!', drink_coffee: 'кофе', drink_latte: 'латте', drink_cocoa: 'какао', drink_tea: 'чай', drink_icedlatte: 'айс-латте', drink_honeytea: 'чай с мёдом', drink_mocha: 'мокко',
+    ing_espresso: 'Эспрессо', ing_milk: 'Молоко', ing_choco: 'Шоколад', ing_leaves: 'Чайные листья', ing_ice: 'Лёд', ing_honey: 'Мёд', again: 'Заново', serve: 'Подать', wrongDrink: 'Не совсем! Нужно',
+    place_mall: 'Пентагон Молл', ask_mall: 'Где купить игрушки и одежду?',
     showComeStadium: 'все на стадион!',
     show_ufo: 'НАШЕСТВИЕ НЛО', show_foam: 'ПЕННАЯ ВЕЧЕРИНКА', showsTogether: '{n} шоу одновременно!', showsHint: 'До 3 шоу одновременно.', megaParty: 'МЕГА-вечеринка (3 шоу)',
     fxn_chickens: 'Дождь из кур', fxn_tornado: 'Торнадо', fxn_quake: 'Землетрясение', fxn_rainbow: 'Радуга', fxn_bubbles: 'Пузыри', fxn_tiny: 'Все маленькие', fxn_freeze: 'Заморозить всех', fxn_shuffle: 'Перемешать',

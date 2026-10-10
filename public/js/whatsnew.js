@@ -1,6 +1,8 @@
 // World Islands 2.0 — everything that is new, shown once after an update (and from Menu → What's new).
 export const VERSION = '2.0';
 const NEW = [
+  ['🛍️', 'Pentagon Mall: a five-sided mall with a supermarket, Pentagon Café, toys & fashion, sweets & ice cream and a Job Center. New job: Barista!', 'Пентагон Молл: пятиугольный торговый центр с супермаркетом, Кафе Пентагон, игрушками и модой, сладостями и Центром занятости. Новая работа: Бариста!'],
+  ['⚡', 'Smoother and faster: the island is drawn in far fewer pieces, far labels hide, and soft shadows under everyone on phones.', 'Плавнее и быстрее: остров рисуется гораздо меньшим числом частей, дальние надписи скрываются, на телефонах — мягкие тени под всеми.'],
   ['🎪', 'Up to 3 admin shows at the same time, plus 2 new shows: 👽 UFO invasion (its beam lifts you!) and 🫧 Foam party on the stadium.', 'До 3 шоу одновременно и 2 новых шоу: 👽 Нашествие НЛО (луч поднимает тебя!) и 🫧 Пенная вечеринка на стадионе.'],
   ['🌪️', 'More admin fun: tornado, earthquake, chicken rain, bubbles, rainbow, everyone tiny, freeze, shuffle and a MEGA party button.', 'Больше веселья у админа: торнадо, землетрясение, дождь из кур, пузыри, радуга, все маленькие, заморозка, перемешка и МЕГА-вечеринка.'],
   ['💻', 'World Islands for Windows — a safe app for your computer (Menu → Windows app).', 'World Islands для Windows — безопасное приложение для компьютера (Меню → Приложение для Windows).'],
