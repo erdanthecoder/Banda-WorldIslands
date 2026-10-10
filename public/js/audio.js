@@ -158,6 +158,8 @@ export const SONGS = [
   { name: 'Disco Fever', bpm: 120, root: 57, scale: [0, 2, 3, 5, 7, 9, 10], prog: [0, 3, 4, 3], drums: 'disco', lead: 'square', seed: 31 },
   { name: 'Crab Party', bpm: 125, root: 55, scale: [0, 2, 3, 5, 7, 8, 10], prog: [0, 5, 3, 6], drums: 'four', lead: 'sawtooth', seed: 42 },
   { name: 'Live Concert', bpm: 112, root: 59, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 4, 5, 3], drums: 'anthem', lead: 'sawtooth', seed: 57 },
+  { name: 'Space Groove', bpm: 118, root: 53, scale: [0, 2, 3, 5, 7, 8, 11], prog: [0, 6, 5, 4], drums: 'four', lead: 'square', seed: 77 },
+  { name: 'Bubble Pop', bpm: 128, root: 62, scale: [0, 2, 4, 5, 7, 9, 11], prog: [0, 5, 3, 4], drums: 'disco', lead: 'triangle', seed: 91 },
 ];
 
 let musicTimer = null, current = -1;

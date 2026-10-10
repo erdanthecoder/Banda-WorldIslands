@@ -16,6 +16,7 @@ import { Bots } from './bots.js';
 import { Shows } from './shows.js';
 import { Admin } from './admin.js';
 import { Fishing } from './fishing.js';
+import { whatsNew } from './whatsnew.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
 import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
 import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
@@ -149,11 +150,12 @@ async function start(serverId) {
   shareElevators(world, net);
   app.phone.start();
   if (app.pending > 0) setTimeout(() => app.settle(), 4000);
+  setTimeout(() => whatsNew(app), 2500);
 
   let last = '', lastSent = 0;
   setInterval(() => {
     const g = world.me.group, p = g.position;
-    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0, em: world.me.emote ? app.emoteSig : '', fx: app.mood || '', hb: app.hover ? 1 : 0 };
+    const pos = { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), ry: +g.rotation.y.toFixed(2), giant: !!app.effects.giant, sh: app.mg.shCount || 0, em: world.me.emote ? app.emoteSig : '', fx: app.mood || '', hb: app.hover ? 1 : 0, tiny: world.tiny ? 1 : 0 };
     const sig = JSON.stringify(pos);
     if (sig !== last || Date.now() - lastSent > 3000) { last = sig; lastSent = Date.now(); net.sendPos(pos); }
   }, 200);
@@ -505,6 +507,7 @@ function hudSetup() {
   $('#bLang').onclick = () => { setLang(getLang() === 'en' ? 'ru' : 'en'); applyI18n(); app.pads.forEach(p => w.setLabel(p, t('mg_' + p.type))); renderMe(); if (app.me.role === 'teacher') teacherPanel(); };
   $('#bBag').onclick = () => app.shop.openBag();
   $('#bPhone').onclick = () => app.phone.open();
+  $('#bNew').onclick = () => whatsNew(app, true);
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
   $('#bAvatar').onclick = () => {
     w.pause(true); show('#creator');

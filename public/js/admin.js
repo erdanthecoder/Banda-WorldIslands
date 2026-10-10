@@ -31,11 +31,12 @@ export class Admin {
       return;
     }
     this.bots = app.bots ? app.bots.count : this.bots;
-    const fun = [['launch', '🚀'], ['dance', '💃'], ['candy', '🍬'], ['fish', '🐟'], ['barsik', '🐱'], ['snow', '❄️'], ['meteors', '☄️'], ['confetti', '🎊']];
+    const fun = [['launch', '🚀'], ['dance', '💃'], ['candy', '🍬'], ['fish', '🐟'], ['chickens', '🐔'], ['barsik', '🐱'], ['tornado', '🌪️'], ['quake', '🌍'], ['rainbow', '🌈'], ['bubbles', '🫧'], ['tiny', '🐜'], ['freeze', '🧊'], ['shuffle', '🔀'], ['snow', '❄️'], ['meteors', '☄️'], ['confetti', '🎊']];
     const powers = [['night', '🌙'], ['lowGravity', '🪶'], ['speed', '⚡'], ['giant', '🦖']];
     const people = [{ uid: app.me.uid, name: app.me.name + ' (' + t('me') + ')' }, ...Object.values(app.players).filter((p, i, a) => p.uid && p.uid !== app.me.uid && a.findIndex(q => q.uid === p.uid) === i).map(p => ({ uid: p.uid, name: p.name }))];
     b.innerHTML = `${head('🔐 ' + t('appAdmin'))}<p class="ph-tip" style="margin-top:4px">🌍 ${t('adminAll')}</p>
-      <h4>🎪 ${t('shows')}</h4><div class="adm-grid">
+      <h4>🎪 ${t('shows')}</h4><p class="ph-tip" style="margin:0 0 6px">${t('showsHint')} ${app.shows && app.shows.on ? '· ▶ ' + Object.keys(app.shows.active).map(k => SHOWS[k].icon).join(' ') : ''}</p><div class="adm-grid">
+        <button data-act="mega" class="mega"><b>🎉</b>${t('megaParty')}</button>
         ${Object.keys(SHOWS).map(k => `<button data-show="${k}"><b>${SHOWS[k].icon}</b>${t('show_' + k)}</button>`).join('')}
         <button data-show="stop"><b>⏹</b>${t('stopShow')}</button>
         <button data-act="bigfoot"><b>⚽</b>${t('bigFootball')}</button>
@@ -65,6 +66,7 @@ export class Admin {
     b.querySelectorAll('[data-act]').forEach(x => x.onclick = async () => {
       const a = x.dataset.act;
       if (a === 'fireworks') return this.cmd('fireworks', {});
+      if (a === 'mega') { for (const k of ['disco', 'ufo', 'foam']) if (!(await this.cmd('show', { kind: k }))) return; app.phone.close(); return; }
       if (a === 'summon') { const p = app.world.me.group.position; if (await this.cmd('summon', { x: p.x, z: p.z, y: p.y })) app.toast('🧲 ' + t('summoned2')); return; }
       if (await this.cmd('bigfootball', { type: a === 'basket' ? 'basketball' : 'football' })) app.phone.close();
     });

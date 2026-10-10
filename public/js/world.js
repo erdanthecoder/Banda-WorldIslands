@@ -805,7 +805,7 @@ export class World {
     const hs = Math.hypot(this.vel.x, this.vel.z);
     if (hs > 0.4) { const target = Math.atan2(this.vel.x, this.vel.z); let d = target - me.group.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); me.group.rotation.y += d * Math.min(1, dt * 10); }
     me.animate(hs, dt, !this.onGround && !swim); me.updatePet(this.scene, dt);
-    const sc = E.giant ? 2.2 : 1; me.group.scale.setScalar(me.group.scale.x + (sc - me.group.scale.x) * Math.min(1, dt * 4));
+    const sc = E.giant ? 2.2 : this.tiny ? 0.45 : 1; me.group.scale.setScalar(me.group.scale.x + (sc - me.group.scale.x) * Math.min(1, dt * 4));
     this.speedNow = hs; this.inside = inside;
   }
 
@@ -849,7 +849,7 @@ export class World {
       if (d.em && (d.em !== r.em || (!r.av.emote && LOOPING.includes(emName) && spd < 0.4 && r.pos.distanceTo(g.position) < 0.3))) { r.em = d.em; r.av.play(emName); }
       if (r.av.setBoard) r.av.setBoard(!!d.hb);
       r.av.animate(r.av.emote && LOOPING.includes(r.av.emote) && spd < 1.2 ? 0 : spd, dt, false); r.av.updatePet(this.scene, dt);
-      const sc = d.giant ? 2.2 : 1; g.scale.setScalar(g.scale.x + (sc - g.scale.x) * Math.min(1, dt * 4));
+      const sc = d.giant ? 2.2 : d.tiny ? 0.45 : 1; g.scale.setScalar(g.scale.x + (sc - g.scale.x) * Math.min(1, dt * 4));
       g.visible = !r.hidden;
     }
   }

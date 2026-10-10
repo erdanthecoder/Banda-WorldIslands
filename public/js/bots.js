@@ -124,15 +124,18 @@ export class Bots {
 
   // ---- what an ambient bot does: pick something useful, do it, pick the next thing ----
   life(b, dt) {
-    const show = this.app.showSpot;
+    // with several shows running, each bot picks one of them (and stays with it)
+    const spots = this.app.showSpots || [], seed = b.id.charCodeAt(b.id.length - 1) + b.id.length;
+    const show = spots.length ? spots[seed % spots.length] : null;
+    if (show && b.spot && b.spotKind !== show.kind) { b.spot = null; b.em = ''; }
     if (b.guide) return this.guide(b, dt);
     // dance party: stop where you are and dance
     if (b.danceUntil > performance.now()) { b.speed = 0; if (!b.em || !b.em.startsWith('dance')) this.emote(b, 'dance'); return; }
     if (show && b.act !== 'show') { this.endAct(b); b.act = 'show'; b.route = null; }
     if (b.act === 'show') {
       if (!show) { b.act = null; b.em = ''; return; }
-      if (!b.spot) { const a = rand(0, 6.28), r = rand(show.r * 0.6, show.r + 4); b.spot = [show.x + Math.cos(a) * r, show.z + Math.sin(a) * r]; }
-      if (this.moveTo(b, b.spot[0], b.spot[1], 3.2, dt)) { b.speed = 0; b.ry = Math.atan2(show.x - b.x, (show.kind === 'concert' ? show.z + 9 : show.z) - b.z); if (!b.em || !b.em.startsWith('dance')) this.emote(b, 'dance'); }
+      if (!b.spot) { const a = rand(0, 6.28), r = rand(show.r * 0.6, show.r + 4); b.spot = [show.x + Math.cos(a) * r, show.z + Math.sin(a) * r]; b.spotKind = show.kind; }
+      if (this.moveTo(b, b.spot[0], b.spot[1], 3.2, dt)) { b.speed = 0; b.ry = Math.atan2(show.x - b.x, (show.kind === 'concert' ? 15 : show.z) - b.z); if (!b.em || !b.em.startsWith('dance')) this.emote(b, 'dance'); }
       return;
     }
     if (!b.act) {

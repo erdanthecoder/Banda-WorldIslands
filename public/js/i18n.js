@@ -1,5 +1,10 @@
 const D = {
   en: {
+    showComeStadium: 'come to the stadium!',
+    show_ufo: 'UFO INVASION', show_foam: 'FOAM PARTY', showsTogether: '{n} shows at the same time!', showsHint: 'Up to 3 shows run at the same time.', megaParty: 'MEGA party (3 shows)',
+    fxn_chickens: 'Chicken rain', fxn_tornado: 'Tornado', fxn_quake: 'Earthquake', fxn_rainbow: 'Rainbow', fxn_bubbles: 'Bubbles', fxn_tiny: 'Everyone tiny', fxn_freeze: 'Freeze all', fxn_shuffle: 'Shuffle',
+    fx_chickens: '🐔 It is raining chickens!', fx_tornado: '🌪️ TORNADO! Run!', fx_quake: '🌍 EARTHQUAKE!', fx_rainbow: '🌈 A giant rainbow!', fx_bubbles: '🫧 Bubbles everywhere!', fx_tiny: '🐜 Everyone is tiny for 30 seconds!', fx_freeze: '🧊 FREEZE! Nobody moves!', fx_shuffle: '🔀 Shuffle! Where are you now?',
+    v2: 'World Islands 2.0', whatsNew: "What's new in 2.0", letsGo: "Let's go!",
     winApp: 'Windows app',
     em_backflip: '🤸 Backflip', em_floss: '🕺 Floss', em_laugh: '😂 Laugh', em_spin: '🌀 Spin', em_sleep: '😴 Sleep', hoverboard: 'Hoverboard', hoverOn: 'Hoverboard on — zoom!', hoverOff: 'Hoverboard off',
     fishPier: 'Fishing pier', fishing: 'Fishing', cast: 'Cast', waiting: 'Wait…', reel: 'REEL!', stop: 'STOP!', castAgain: 'Cast again',
@@ -76,6 +81,11 @@ const D = {
     craftHelp: 'Click to start · WASD move · Space jump · Left click break · Right click place · 1–9 blocks · diamond ore = star', tapToFly: 'Tap or press Space', gameOver: 'Game over', best: 'Best', tapToRetry: 'Tap to try again',
   },
   ru: {
+    showComeStadium: 'все на стадион!',
+    show_ufo: 'НАШЕСТВИЕ НЛО', show_foam: 'ПЕННАЯ ВЕЧЕРИНКА', showsTogether: '{n} шоу одновременно!', showsHint: 'До 3 шоу одновременно.', megaParty: 'МЕГА-вечеринка (3 шоу)',
+    fxn_chickens: 'Дождь из кур', fxn_tornado: 'Торнадо', fxn_quake: 'Землетрясение', fxn_rainbow: 'Радуга', fxn_bubbles: 'Пузыри', fxn_tiny: 'Все маленькие', fxn_freeze: 'Заморозить всех', fxn_shuffle: 'Перемешать',
+    fx_chickens: '🐔 Дождь из кур!', fx_tornado: '🌪️ ТОРНАДО! Беги!', fx_quake: '🌍 ЗЕМЛЕТРЯСЕНИЕ!', fx_rainbow: '🌈 Огромная радуга!', fx_bubbles: '🫧 Везде пузыри!', fx_tiny: '🐜 Все маленькие на 30 секунд!', fx_freeze: '🧊 ЗАМРИ! Никто не двигается!', fx_shuffle: '🔀 Перемешка! Где ты теперь?',
+    v2: 'World Islands 2.0', whatsNew: 'Что нового в 2.0', letsGo: 'Поехали!',
     winApp: 'Приложение для Windows',
     em_backflip: '🤸 Сальто', em_floss: '🕺 Флосс', em_laugh: '😂 Смех', em_spin: '🌀 Кружиться', em_sleep: '😴 Спать', hoverboard: 'Ховерборд', hoverOn: 'Ховерборд включён — вжух!', hoverOff: 'Ховерборд выключен',
     fishPier: 'Рыбацкий пирс', fishing: 'Рыбалка', cast: 'Закинуть', waiting: 'Ждём…', reel: 'ТЯНИ!', stop: 'СТОП!', castAgain: 'Ещё раз',
