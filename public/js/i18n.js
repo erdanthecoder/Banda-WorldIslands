@@ -1,5 +1,6 @@
 const D = {
   en: {
+    winApp: 'Windows app',
     em_backflip: '🤸 Backflip', em_floss: '🕺 Floss', em_laugh: '😂 Laugh', em_spin: '🌀 Spin', em_sleep: '😴 Sleep', hoverboard: 'Hoverboard', hoverOn: 'Hoverboard on — zoom!', hoverOff: 'Hoverboard off',
     fishPier: 'Fishing pier', fishing: 'Fishing', cast: 'Cast', waiting: 'Wait…', reel: 'REEL!', stop: 'STOP!', castAgain: 'Cast again',
     fishWait: 'Shh… wait for a bite…', fishReel: 'Stop the white line in the GREEN zone!', fishLost: 'It got away! Try again.', fishBite: 'A bite! Press REEL!', fishSlow: 'Too slow — the fish swam away.',
@@ -75,6 +76,7 @@ const D = {
     craftHelp: 'Click to start · WASD move · Space jump · Left click break · Right click place · 1–9 blocks · diamond ore = star', tapToFly: 'Tap or press Space', gameOver: 'Game over', best: 'Best', tapToRetry: 'Tap to try again',
   },
   ru: {
+    winApp: 'Приложение для Windows',
     em_backflip: '🤸 Сальто', em_floss: '🕺 Флосс', em_laugh: '😂 Смех', em_spin: '🌀 Кружиться', em_sleep: '😴 Спать', hoverboard: 'Ховерборд', hoverOn: 'Ховерборд включён — вжух!', hoverOff: 'Ховерборд выключен',
     fishPier: 'Рыбацкий пирс', fishing: 'Рыбалка', cast: 'Закинуть', waiting: 'Ждём…', reel: 'ТЯНИ!', stop: 'СТОП!', castAgain: 'Ещё раз',
     fishWait: 'Тихо… ждём поклёвку…', fishReel: 'Останови белую линию в ЗЕЛЁНОЙ зоне!', fishLost: 'Сорвалась! Попробуй ещё.', fishBite: 'Клюёт! Жми ТЯНИ!', fishSlow: 'Не успел — рыба уплыла.',

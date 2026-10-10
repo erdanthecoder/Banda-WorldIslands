@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>World Islands for Windows</title>
+<meta name="description" content="Download World Islands for Windows 10 and 11. Free, safe, no admin rights needed.">
+<link rel="icon" href="/img/favicon.png">
+<style>
+:root { --bg: #0e1622; --ink: #eef3f8; --muted: #9fb0c2; --card: #162233; --line: #263449; --accent: #4aa8ff; --ok: #3ddc84; }
+* { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; }
+main { max-width: 760px; margin: 0 auto; padding: 32px 16px 60px; }
+.hero { text-align: center; } .hero img { width: 112px; height: 112px; border-radius: 26px; box-shadow: 0 12px 40px rgba(74,168,255,.3); }
+h1 { font-size: clamp(28px, 6vw, 42px); margin: 14px 0 4px; } .sub { color: var(--muted); margin: 0 0 22px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: #06223d; font-weight: 800; font-size: 18px; padding: 14px 28px; border-radius: 999px; text-decoration: none; }
+.btn[aria-disabled=true] { opacity: .5; pointer-events: none; }
+.small { color: var(--muted); font-size: 13px; margin-top: 10px; word-break: break-all; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; margin-top: 18px; }
+.card h2 { font-size: 18px; margin: 0 0 8px; } ol, ul { margin: 0; padding-left: 20px; } li { margin: 4px 0; }
+.ok li::marker { content: '✓  '; color: var(--ok); }
+code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
+.lang { text-align: right; } .lang button { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+</style>
+</head>
+<body><main>
+<div class="lang"><button id="lang">Русский</button></div>
+<div class="hero">
+  <img src="/img/logo-192.png" alt="">
+  <h1 data-t="title">World Islands for Windows</h1>
+  <p class="sub" data-t="sub">The island game as an app on your computer. Free.</p>
+  <a class="btn" id="dl" href="/download/WorldIslands-Setup.exe" download>⬇ <span data-t="btn">Download for Windows</span></a>
+  <p class="small"><span data-t="req">Windows 10 or 11 (64-bit) · about 110 MB · no admin rights needed</span><br><span id="sum"></span></p>
+</div>
+<div class="card"><h2 data-t="howT">How to install</h2><ol>
+  <li data-t="h1">Open the downloaded file <code>WorldIslands-Setup.exe</code>.</li>
+  <li data-t="h2">Windows may say “Windows protected your PC”. This appears for new apps that are not yet signed with a paid certificate. Click “More info”, then “Run anyway”.</li>
+  <li data-t="h3">The app installs for your user only and opens. You will find “World Islands” on your desktop and in the Start menu.</li>
+  <li data-t="h4">Sign in with your FlexiHub account, the same as on the website.</li>
+</ol></div>
+<div class="card"><h2 data-t="secT">Why it is safe</h2><ul class="ok">
+  <li data-t="s1">It only opens World Islands and its sign-in pages. Any other link opens in your normal browser.</li>
+  <li data-t="s2">The game page cannot touch your files or your computer (sandboxed, no Node.js).</li>
+  <li data-t="s3">Only secure connections (HTTPS). Fake or broken certificates are always refused.</li>
+  <li data-t="s4">Only World Islands may use the camera and microphone, and only when you start a call or the Mood camera. No other permissions.</li>
+  <li data-t="s5">Installs without administrator rights. Uninstall any time from Windows Settings → Apps.</li>
+  <li data-t="s6">The game updates itself — every new World Islands update is in the app right away.</li>
+</ul></div>
+<div class="card"><h2 data-t="chkT">Check the file (optional)</h2><p class="small" style="margin:0" data-t="chk">In PowerShell run: Get-FileHash WorldIslands-Setup.exe — it must match the SHA-256 shown above.</p></div>
+</main>
+<script>
+const RU = { title: 'World Islands для Windows', sub: 'Игра про острова — как приложение на компьютере. Бесплатно.', btn: 'Скачать для Windows', req: 'Windows 10 или 11 (64-бит) · около 110 МБ · права администратора не нужны',
+  howT: 'Как установить', h1: 'Открой скачанный файл WorldIslands-Setup.exe.', h2: 'Windows может написать «Система Windows защитила ваш компьютер». Так бывает с новыми приложениями без платной подписи. Нажми «Подробнее», затем «Выполнить в любом случае».', h3: 'Приложение установится только для тебя и откроется. Ярлык «World Islands» появится на рабочем столе и в меню Пуск.', h4: 'Войди через аккаунт FlexiHub — так же, как на сайте.',
+  secT: 'Почему это безопасно', s1: 'Открывает только World Islands и страницы входа. Остальные ссылки открываются в обычном браузере.', s2: 'Страница игры не имеет доступа к твоим файлам и компьютеру (песочница, без Node.js).', s3: 'Только защищённые соединения (HTTPS). Поддельные сертификаты всегда отклоняются.', s4: 'Камеру и микрофон может использовать только World Islands — и только когда ты звонишь или включаешь камеру настроения.', s5: 'Устанавливается без прав администратора. Удалить можно в Параметры → Приложения.', s6: 'Игра обновляется сама — все новые обновления сразу в приложении.',
+  chkT: 'Проверить файл (по желанию)', chk: 'В PowerShell выполни: Get-FileHash WorldIslands-Setup.exe — значение должно совпасть с SHA-256 выше.' };
+const EN = {}; document.querySelectorAll('[data-t]').forEach(e => EN[e.dataset.t] = e.textContent);
+let ru = /^ru/i.test(navigator.language); const apply = () => { document.querySelectorAll('[data-t]').forEach(e => e.textContent = (ru ? RU : EN)[e.dataset.t]); document.getElementById('lang').textContent = ru ? 'English' : 'Русский'; document.documentElement.lang = ru ? 'ru' : 'en'; };
+document.getElementById('lang').onclick = () => { ru = !ru; apply(); }; apply();
+fetch('/download/WorldIslands-Setup.sha256.txt', { cache: 'no-store' }).then(r => r.ok ? r.text() : Promise.reject()).then(t => { t = t.trim(); if (!/^[0-9a-f]{64}$/.test(t)) throw 0; document.getElementById('sum').textContent = 'SHA-256: ' + t; })
+  .catch(() => { const b = document.getElementById('dl'); b.setAttribute('aria-disabled', 'true'); document.getElementById('sum').textContent = ru ? 'Приложение собирается, загляни через несколько минут.' : 'The app is being built — check back in a few minutes.'; });
+</script>
+</body></html>

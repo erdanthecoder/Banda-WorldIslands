@@ -126,6 +126,8 @@ export class Bots {
   life(b, dt) {
     const show = this.app.showSpot;
     if (b.guide) return this.guide(b, dt);
+    // dance party: stop where you are and dance
+    if (b.danceUntil > performance.now()) { b.speed = 0; if (!b.em || !b.em.startsWith('dance')) this.emote(b, 'dance'); return; }
     if (show && b.act !== 'show') { this.endAct(b); b.act = 'show'; b.route = null; }
     if (b.act === 'show') {
       if (!show) { b.act = null; b.em = ''; return; }

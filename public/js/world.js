@@ -46,6 +46,7 @@ export const PATHS = [
   { id: 'stadium', x0: -2.5, x1: 2.5, z0: 22, z1: 58.2 },
 ];
 export const PLAZA_R = 25;
+const LOOPING = ['dance', 'sit', 'floss', 'sleep'];
 export const HOUSES = [];
 // built-up areas where grass and flowers must not grow
 const rectIn = (x, z, cx, cz, hw, hd, m) => Math.abs(x - cx) < hw + m && Math.abs(z - cz) < hd + m;
@@ -843,9 +844,11 @@ export class World {
       const before = g.position.clone();
       if (g.position.distanceTo(r.pos) > 25) g.position.copy(r.pos); else g.position.lerp(r.pos, Math.min(1, dt * 6));
       let dr = (d.ry || 0) - g.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); g.rotation.y += dr * Math.min(1, dt * 8);
-      if (d.em && d.em !== r.em) { r.em = d.em; r.av.play(d.em.split(':')[0]); }
+      const spd = before.distanceTo(g.position) / Math.max(dt, 0.001), emName = d.em ? d.em.split(':')[0] : '';
+      // start a new emote; looping ones (dance, sit…) start again once the avatar has stopped sliding into place
+      if (d.em && (d.em !== r.em || (!r.av.emote && LOOPING.includes(emName) && spd < 0.4 && r.pos.distanceTo(g.position) < 0.3))) { r.em = d.em; r.av.play(emName); }
       if (r.av.setBoard) r.av.setBoard(!!d.hb);
-      r.av.animate(before.distanceTo(g.position) / Math.max(dt, 0.001), dt, false); r.av.updatePet(this.scene, dt);
+      r.av.animate(r.av.emote && LOOPING.includes(r.av.emote) && spd < 1.2 ? 0 : spd, dt, false); r.av.updatePet(this.scene, dt);
       const sc = d.giant ? 2.2 : 1; g.scale.setScalar(g.scale.x + (sc - g.scale.x) * Math.min(1, dt * 4));
       g.visible = !r.hidden;
     }

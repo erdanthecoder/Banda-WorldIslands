@@ -68,7 +68,7 @@ export class Shows {
     const app = this.app, w = this.w, t = app.t, me = w.me.group.position, inGame = app.mg && app.mg.active;
     app.ui.banner(t('fx_' + type), 3000);
     if (type === 'launch') { if (inGame) return; w.vel.y = 26; w.onGround = false; app.sfx('slideUp'); app.sfx('boing'); }
-    if (type === 'dance') { w.me.play('dance'); app.emoteSig = 'dance:' + Date.now(); if (app.bots) for (const id in app.bots.b) app.bots.emote(app.bots.b[id], 'dance'); app.sfx('airhorn'); }
+    if (type === 'dance') { w.me.play('dance'); app.emoteSig = 'dance:' + Date.now(); if (app.bots) for (const id in app.bots.b) { const bb = app.bots.b[id]; if (!bb.team) { bb.danceUntil = performance.now() + 15000; app.bots.emote(bb, 'dance'); } } app.sfx('airhorn'); }
     if (type === 'confetti') { w.fireworks(14); app.sfx('cheer'); }
     if (type === 'candy') this.rain(['🍬', '🍭', '🍫', '🍩', '🧁', '🍪'], 45, true);
     if (type === 'fish') this.rain(['🐟', '🐠', '🐡'], 40, false);

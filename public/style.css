@@ -392,3 +392,4 @@ body:not(.teacher) .teacher-only { display: none; }
 .fish-dex span.got { opacity: 1; }
 .fish-dex small { font-size: 11px; font-weight: 800; color: var(--sheet-ink); }
 #fishBtn { min-width: 200px; font-size: 20px; }
+a.tile { text-decoration: none; }
