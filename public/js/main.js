@@ -17,6 +17,7 @@ import { Shows } from './shows.js';
 import { Admin } from './admin.js';
 import { Fishing } from './fishing.js';
 import { whatsNew } from './whatsnew.js';
+import { isV2, LAUNCH_2 } from './launch.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
 import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
 import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
@@ -150,7 +151,9 @@ async function start(serverId) {
   shareElevators(world, net);
   app.phone.start();
   if (app.pending > 0) setTimeout(() => app.settle(), 4000);
-  setTimeout(() => whatsNew(app), 2500);
+  // World Islands 2.0: on now, or switched on live at 10:00 Amman time for everyone who is playing
+  const go2 = live => { $$('.v2').forEach(e => e.classList.remove('hidden')); show('#bNew'); document.title = 'World Islands 2.0 — 3D learning world for kids'; if (live) { sfx('champions'); app.world.fireworks(12); ui.banner('🎉 World Islands 2.0!', 5000); } setTimeout(() => whatsNew(app), live ? 1500 : 2500); };
+  if (isV2()) go2(false); else setTimeout(() => go2(true), LAUNCH_2 - Date.now() + 500);
 
   let last = '', lastSent = 0;
   setInterval(() => {

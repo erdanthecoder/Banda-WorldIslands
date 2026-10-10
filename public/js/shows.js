@@ -5,9 +5,13 @@ import { playSong, stopSong } from './audio.js';
 import { labelSprite, canvasTex } from './world.js';
 import { Avatar } from './avatar.js';
 import { botAvatar } from './bots.js';
+import { isV2 } from './launch.js';
 
 export const SHOWS = { disco: { song: 5, dur: 90, icon: '🪩' }, crabs: { song: 6, dur: 80, icon: '🦀' }, concert: { song: 7, dur: 120, icon: '🎤' }, ufo: { song: 8, dur: 90, icon: '👽' }, foam: { song: 9, dur: 90, icon: '🫧' } };
-export const MAX_SHOWS = 3;
+// 2.0: several shows at once, the UFO and foam shows and the new fun (before 2.0: one show at a time)
+export const V2_SHOWS = ['ufo', 'foam'];
+export const V2_FX = ['chickens', 'tornado', 'quake', 'rainbow', 'bubbles', 'tiny', 'freeze', 'shuffle'];
+export const maxShows = () => isV2() ? 3 : 1;
 // where bots gather for each show
 const SPOT = { disco: { x: 0, z: 0, r: 11 }, crabs: { x: 0, z: 0, r: 11 }, concert: { x: 0, z: 6, r: 6 }, ufo: { x: 0, z: -12, r: 8 }, foam: { x: 0, z: 86, r: 14 } };
 const DISCO_LIGHTS = ['disco', 'crabs', 'ufo'];
@@ -41,7 +45,8 @@ export class Shows {
   start(kind) {
     const S = SHOWS[kind], app = this.app, w = this.w, t = app.t;
     if (this.active[kind]) this.stop(kind, true);
-    const running = Object.keys(this.active); if (running.length >= MAX_SHOWS) this.stop(running[0], true);
+    if (V2_SHOWS.includes(kind) && !isV2()) return;
+    const running = Object.keys(this.active); if (running.length >= maxShows()) this.stop(running[0], true);
     this.cur = this.active[kind] = { kind, until: performance.now() + S.dur * 1000, t0: performance.now(), objs: [], anim: [] };
     this[kind]();
     this.cur = null;
@@ -84,6 +89,7 @@ export class Shows {
 
   // ---------- quick fun for everyone (admin) ----------
   fx(type) {
+    if (V2_FX.includes(type) && !isV2()) return;
     const app = this.app, w = this.w, t = app.t, me = w.me.group.position, inGame = app.mg && app.mg.active;
     app.ui.banner(t('fx_' + type), 3000);
     if (type === 'launch') { if (inGame) return; w.vel.y = 26; w.onGround = false; app.sfx('slideUp'); app.sfx('boing'); }

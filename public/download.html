@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>World Islands 2.0 for Windows</title>
+<title>World Islands for Windows</title>
 <meta name="description" content="Download World Islands for Windows 10 and 11. Free, safe, no admin rights needed.">
 <link rel="icon" href="/img/favicon.png">
 <style>
@@ -25,7 +25,7 @@ code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
 <div class="lang"><button id="lang">Русский</button></div>
 <div class="hero">
   <img src="/img/logo-192.png" alt="">
-  <h1 data-t="title">World Islands 2.0 for Windows</h1>
+  <h1 data-t="title">World Islands for Windows</h1>
   <p class="sub" data-t="sub">The island game as an app on your computer. Free.</p>
   <a class="btn" id="dl" href="https://github.com/erdanthecoder/copilot/releases/download/windows-app/WorldIslands-Setup.exe">⬇ <span data-t="btn">Download for Windows</span></a>
   <p class="small"><span data-t="req">Windows 10 or 11 (64-bit) · about 110 MB · no admin rights needed</span><br><span id="sum"></span></p>
@@ -47,11 +47,13 @@ code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
 <div class="card"><h2 data-t="chkT">Check the file (optional)</h2><p class="small" style="margin:0" data-t="chk">In PowerShell run: Get-FileHash WorldIslands-Setup.exe — it must match the SHA-256 shown above.</p></div>
 </main>
 <script>
-const RU = { title: 'World Islands 2.0 для Windows', sub: 'Игра про острова — как приложение на компьютере. Бесплатно.', btn: 'Скачать для Windows', req: 'Windows 10 или 11 (64-бит) · около 110 МБ · права администратора не нужны',
+const RU = { title: 'World Islands для Windows', sub: 'Игра про острова — как приложение на компьютере. Бесплатно.', btn: 'Скачать для Windows', req: 'Windows 10 или 11 (64-бит) · около 110 МБ · права администратора не нужны',
   howT: 'Как установить', h1: 'Открой скачанный файл WorldIslands-Setup.exe.', h2: 'Windows может написать «Система Windows защитила ваш компьютер». Так бывает с новыми приложениями без платной подписи. Нажми «Подробнее», затем «Выполнить в любом случае».', h3: 'Приложение установится только для тебя и откроется. Ярлык «World Islands» появится на рабочем столе и в меню Пуск.', h4: 'Войди через аккаунт FlexiHub — так же, как на сайте.',
   secT: 'Почему это безопасно', s1: 'Открывает только World Islands и страницы входа. Остальные ссылки открываются в обычном браузере.', s2: 'Страница игры не имеет доступа к твоим файлам и компьютеру (песочница, без Node.js).', s3: 'Только защищённые соединения (HTTPS). Поддельные сертификаты всегда отклоняются.', s4: 'Камеру и микрофон может использовать только World Islands — и только когда ты звонишь или включаешь камеру настроения.', s5: 'Устанавливается без прав администратора. Удалить можно в Параметры → Приложения.', s6: 'Игра обновляется сама — все новые обновления сразу в приложении.',
   chkT: 'Проверить файл (по желанию)', chk: 'В PowerShell выполни: Get-FileHash WorldIslands-Setup.exe — значение должно совпасть с SHA-256 выше.' };
 const EN = {}; document.querySelectorAll('[data-t]').forEach(e => EN[e.dataset.t] = e.textContent);
+// 2.0 from 10:00 Amman time (07:00 UTC) on 10 Oct 2026
+const V2 = Date.now() >= Date.parse('2026-10-10T07:00:00Z'); if (V2) { RU.title = 'World Islands 2.0 для Windows'; EN.title = 'World Islands 2.0 for Windows'; document.title = 'World Islands 2.0 for Windows'; }
 let ru = /^ru/i.test(navigator.language); const apply = () => { document.querySelectorAll('[data-t]').forEach(e => e.textContent = (ru ? RU : EN)[e.dataset.t]); document.getElementById('lang').textContent = ru ? 'English' : 'Русский'; document.documentElement.lang = ru ? 'ru' : 'en'; };
 document.getElementById('lang').onclick = () => { ru = !ru; apply(); }; apply();
 fetch('/download/WorldIslands-Setup.sha256.txt', { cache: 'no-store' }).then(r => r.ok ? r.text() : Promise.reject()).then(t => { t = t.trim(); if (!/^[0-9a-f]{64}$/.test(t)) throw 0; document.getElementById('sum').textContent = 'SHA-256: ' + t; })

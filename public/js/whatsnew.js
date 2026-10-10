@@ -17,9 +17,9 @@ const NEW = [
   ['📱', 'Faster on phones.', 'Быстрее на телефонах.'],
 ];
 export function whatsNew(app, force) {
-  let seen = ''; try { seen = localStorage.getItem('wi_seen_version') || ''; } catch (e) {}
+  let seen = ''; try { seen = localStorage.getItem('wi_seen_v2') || ''; } catch (e) {}
   if (!force && seen === VERSION) return;
-  try { localStorage.setItem('wi_seen_version', VERSION); } catch (e) {}
+  try { localStorage.setItem('wi_seen_v2', VERSION); } catch (e) {}
   const ru = app.t('loading') && /[а-я]/i.test(app.t('letsGo')), $ = s => document.querySelector(s);
   let box = $('#newBox');
   if (!box) { box = document.createElement('div'); box.id = 'newBox'; box.className = 'modal'; document.body.appendChild(box); }

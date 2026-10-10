@@ -1,6 +1,7 @@
 // 🔐 Admin (phone app). Unlocks with the admin password, which the server checks — it is not stored in the game.
 // Admins can start shows, fun effects and powers on every server, give money to anyone, and set how many bots walk around.
-import { SHOWS } from './shows.js';
+import { SHOWS, V2_SHOWS, V2_FX } from './shows.js';
+import { isV2 } from './launch.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -32,19 +33,20 @@ export class Admin {
     }
     this.bots = app.bots ? app.bots.count : this.bots;
     const fun = [['launch', '🚀'], ['dance', '💃'], ['candy', '🍬'], ['fish', '🐟'], ['chickens', '🐔'], ['barsik', '🐱'], ['tornado', '🌪️'], ['quake', '🌍'], ['rainbow', '🌈'], ['bubbles', '🫧'], ['tiny', '🐜'], ['freeze', '🧊'], ['shuffle', '🔀'], ['snow', '❄️'], ['meteors', '☄️'], ['confetti', '🎊']];
+    const v2 = isV2(), showKeys = Object.keys(SHOWS).filter(k => v2 || !V2_SHOWS.includes(k)), funList = fun.filter(([k]) => v2 || !V2_FX.includes(k));
     const powers = [['night', '🌙'], ['lowGravity', '🪶'], ['speed', '⚡'], ['giant', '🦖']];
     const people = [{ uid: app.me.uid, name: app.me.name + ' (' + t('me') + ')' }, ...Object.values(app.players).filter((p, i, a) => p.uid && p.uid !== app.me.uid && a.findIndex(q => q.uid === p.uid) === i).map(p => ({ uid: p.uid, name: p.name }))];
     b.innerHTML = `${head('🔐 ' + t('appAdmin'))}<p class="ph-tip" style="margin-top:4px">🌍 ${t('adminAll')}</p>
-      <h4>🎪 ${t('shows')}</h4><p class="ph-tip" style="margin:0 0 6px">${t('showsHint')} ${app.shows && app.shows.on ? '· ▶ ' + Object.keys(app.shows.active).map(k => SHOWS[k].icon).join(' ') : ''}</p><div class="adm-grid">
-        <button data-act="mega" class="mega"><b>🎉</b>${t('megaParty')}</button>
-        ${Object.keys(SHOWS).map(k => `<button data-show="${k}"><b>${SHOWS[k].icon}</b>${t('show_' + k)}</button>`).join('')}
+      <h4>🎪 ${t('shows')}</h4><p class="ph-tip" style="margin:0 0 6px">${v2 ? t('showsHint') : ''} ${app.shows && app.shows.on ? '· ▶ ' + Object.keys(app.shows.active).map(k => SHOWS[k].icon).join(' ') : ''}</p><div class="adm-grid">
+        ${v2 ? `<button data-act="mega" class="mega"><b>🎉</b>${t('megaParty')}</button>` : ''}
+        ${showKeys.map(k => `<button data-show="${k}"><b>${SHOWS[k].icon}</b>${t('show_' + k)}</button>`).join('')}
         <button data-show="stop"><b>⏹</b>${t('stopShow')}</button>
         <button data-act="bigfoot"><b>⚽</b>${t('bigFootball')}</button>
         <button data-act="basket"><b>🏀</b>${t('mg_basketball')}</button>
         <button data-act="fireworks"><b>🎆</b>${t('ab_fireworks')}</button>
         <button data-act="summon"><b>🧲</b>${t('summonAll')}</button>
       </div>
-      <h4>🎉 ${t('funAll')}</h4><div class="adm-grid">${fun.map(([k, i]) => `<button data-fx="${k}"><b>${i}</b>${t('fxn_' + k)}</button>`).join('')}</div>
+      <h4>🎉 ${t('funAll')}</h4><div class="adm-grid">${funList.map(([k, i]) => `<button data-fx="${k}"><b>${i}</b>${t('fxn_' + k)}</button>`).join('')}</div>
       <h4>✨ ${t('powersAll')}</h4><div class="adm-grid">${powers.map(([k, i]) => `<button data-pow="${k}" class="${app.effects[k] ? 'on' : ''}"><b>${i}</b>${t('ab_' + k)}</button>`).join('')}</div>
       <h4>💰 ${t('giveMoney')}</h4>
       <div class="adm-money">
