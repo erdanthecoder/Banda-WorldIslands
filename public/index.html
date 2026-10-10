@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>World Islands — 3D learning world for kids</title>
+<meta name="description" content="World Islands is a free 3D island world for students: learning games (math, English, Russian, geography, science), a futuristic World Tower, multiplayer minigames, an mBank, phones, jobs and teachers who can join in. Play in English or Russian.">
+<link rel="canonical" href="https://world-islands.web.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="World Islands">
+<meta property="og:title" content="World Islands — 3D learning world for kids">
+<meta property="og:description" content="Free 3D island world: learning games, World Tower, multiplayer minigames, mBank and more. English and Russian.">
+<meta property="og:url" content="https://world-islands.web.app/">
+<meta property="og:image" content="https://world-islands.web.app/img/share.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"World Islands","url":"https://world-islands.web.app/","image":"https://world-islands.web.app/img/share.jpg","description":"A free 3D island world for students with learning games, multiplayer minigames, World Tower, mBank, phones and jobs.","genre":["Educational","Multiplayer"],"inLanguage":["en","ru"],"gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"publisher":{"@type":"Organization","name":"FlexiHub","url":"https://flexihub.web.app/"}}</script>
+<meta name="theme-color" content="#0e1622">
+<link rel="icon" href="/img/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<noscript><div style="max-width:640px;margin:40px auto;padding:20px;font-family:sans-serif;color:#eef3f8">
+  <h1>World Islands</h1>
+  <p>A free 3D island world for students. Learn math, English, Russian, geography and science in game rooms inside the futuristic World Tower, play multiplayer minigames like football, dodgeball, hide and seek and Quiz Battle, open a card at mBank, shop at World Market, call friends on your in-game phone and take jobs to earn money. Teachers can join, make announcements and give stars and house points.</p>
+  <p>«Мир островов» — бесплатный 3D-мир островов для школьников: учебные игры, мини-игры с друзьями, Башня Мира, mBank, телефон и работа. Русский и английский языки.</p>
+  <p>Please turn on JavaScript to play.</p>
+</div></noscript>
+<div id="fade"></div>
+<div id="vignette"></div>
+
+<!-- Language -->
+<div id="langMenu" class="screen hidden">
+  <div class="card">
+    <div class="brand"><img class="mark-img" src="/img/logo.png" alt="">World Islands<span class="v2 hidden">2.0</span></div>
+    <p class="muted">Choose your language · Выберите язык</p>
+    <div class="row">
+      <button class="btn primary big" data-lang="en">English</button>
+      <button class="btn primary big" data-lang="ru">Русский</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sign in -->
+<div id="signin" class="screen hidden">
+  <div class="card">
+    <div class="brand"><img class="mark-img" src="/img/logo.png" alt="">World Islands<span class="v2 hidden">2.0</span></div>
+    <p class="pill" id="signRole"></p>
+    <p data-i18n="signInText"></p>
+    <button class="btn primary big" id="signBtn"><span class="ws"></span><span data-i18n="signInWs"></span></button>
+    <p class="muted small" data-i18n="signInNote"></p>
+    <button class="link" id="signLang">English / Русский</button>
+  </div>
+</div>
+
+<div id="loading" class="screen hidden"><div class="card"><img class="logo-big" src="/img/logo.png" alt=""><div class="v2 big hidden">World Islands 2.0</div><div class="spinner"></div><p data-i18n="loading"></p></div></div>
+
+<!-- Avatar creator -->
+<div id="creator" class="modal hidden"><div class="sheet"><div class="sheet-head"><h2 data-i18n="yourAvatar"></h2></div><div id="creatorBody"></div></div></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="me" class="glass" data-i18n-title="points">
+    <span class="star">★</span><b id="meStars">0</b><span class="sep"></span><b id="mePoints">0</b><small data-i18n="pointShort"></small><span class="sep"></span><b id="meMoney" class="money">$100.00</b>
+    <div class="prog"><i id="meProg"></i></div>
+    <span id="meName" hidden></span><small id="meNext" hidden></small>
+  </div>
+  <div id="whereBox"><b id="where"></b><small id="online"></small></div>
+  <div id="mgHud" class="glass hidden"></div>
+  <canvas id="minimap" width="300" height="300" title="Map (M)"></canvas>
+  <div id="topBtns">
+    <button class="ibtn teacher-only" id="bPanel" data-i18n-title="teacherPanel"><svg viewBox="0 0 24 24"><path d="M12 3l9 4-9 4-9-4zM6 9v5c3 3 9 3 12 0V9M21 7v6"/></svg></button>
+    <button class="ibtn" id="bMenu" data-i18n-title="menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  </div>
+  <div id="chat">
+    <div id="chatLog"></div>
+    <input id="chatIn" class="hidden" maxlength="120" autocomplete="off" data-i18n-ph="chatPh">
+  </div>
+  <div id="bottomBtns">
+    <button class="rbtn" id="bChat" data-i18n-title="chat"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
+    <button class="rbtn" id="bPhone" data-i18n-title="phone"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></button>
+    <button class="rbtn" id="bEmote" data-i18n-title="emotes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14c1.2 1.6 2.4 2.2 4 2.2s2.8-.6 4-2.2M9 9.5h.01M15 9.5h.01"/></svg></button>
+    <div id="emotes" class="hidden"></div>
+  </div>
+  <button id="bElev" class="elevbtn hidden"></button>
+  <div id="mgBtns" class="hidden"><button class="abtn wide" id="bAction"></button></div>
+  <div id="impBtns" class="hidden"><button class="abtn wide danger hidden" id="bEmergency" data-i18n="emergency"></button><button class="abtn wide" id="bReport" data-i18n="report"></button><button class="abtn wide danger" id="bKill" data-i18n="kill"></button></div>
+  <div id="touch">
+    <div id="joy"><i></i></div>
+    <button class="abtn" id="bJump">⤒</button>
+  </div>
+</div>
+
+<div id="menu" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2 id="menuName"></h2><button class="ibtn light" data-close>✕</button></div>
+    <p class="muted" id="menuNext"></p>
+    <div class="menu-grid">
+      <button class="tile" id="bBag"><span data-i18n="bag"></span><small>🛍️ mPAY</small></button>
+      <button class="tile" id="bAvatar"><span data-i18n="yourAvatar"></span></button>
+      <button class="tile" id="bBoard"><span data-i18n="leaderboard"></span></button>
+      <button class="tile" id="bMute"><span data-i18n="sound"></span><small id="muteState"></small></button>
+      <button class="tile" id="bLang"><span data-i18n="language"></span><small>English / Русский</small></button>
+      <button class="tile" id="bQuality"><span data-i18n="graphics"></span><small id="qualState"></small></button>
+      <button class="tile" id="bHow"><span>📖 <span data-i18n="howBtn"></span></span><small>WASD · 📱 · 💰</small></button>
+      <button class="tile hidden" id="bNew"><span>✨ <span data-i18n="whatsNew"></span></span><small>2.0</small></button>
+      <a class="tile" id="bWin" href="/download.html" target="_blank" rel="noopener"><span>📲 <span data-i18n="winApp"></span></span><small>Windows · Android</small></a>
+      <button class="tile" id="bOut"><span data-i18n="signOut"></span></button>
+    </div>
+    <h3 data-i18n="controls"></h3>
+    <p class="muted" data-i18n-html="help"></p>
+  </div>
+</div>
+
+<div id="payoutBox" class="modal hidden"><div class="mpay"><div class="mpay-brand"><img src="/img/mbank.svg" class="mb-logo" alt="">mBank</div><p class="po-title" data-i18n="youEarned"></p><div class="po-amount" id="poAmount"></div><div id="poBody"></div></div></div>
+<div id="announce" class="hidden"><small data-i18n="announcement"></small><div id="announceText"></div><small id="announceBy"></small></div>
+<div id="banner" class="hidden"></div>
+<div id="toasts"></div>
+<div id="blind" class="hidden"><div><h2 data-i18n="seekerWait"></h2><h1 id="blindN"></h1></div></div>
+<div id="flash" class="hidden"></div>
+
+<div id="game" class="modal hidden">
+  <div class="sheet">
+    <div class="sheet-head"><h2 id="gameTitle"></h2><button class="ibtn light" id="gameClose" aria-label="Close">✕</button></div>
+    <div id="gameBody"></div>
+  </div>
+</div>
+
+<div id="qModal" class="modal hidden"><div class="sheet small"><div class="sheet-head"><h2 id="qTitle"></h2></div><div id="qBody"></div></div></div>
+
+<div id="bldBox" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2 id="bldTitle"></h2><button class="ibtn light" id="bldClose">✕</button></div>
+    <div id="bldList" class="menu-grid"></div>
+  </div>
+</div>
+
+<div id="board" class="modal hidden">
+  <div class="sheet small">
+    <div class="sheet-head"><h2 data-i18n="leaderboard"></h2><button class="ibtn light" data-close>✕</button></div>
+    <p class="muted" data-i18n="pointRule"></p>
+    <ol id="boardList"></ol>
+  </div>
+</div>
+
+<div id="results" class="modal hidden">
+  <div class="sheet small center">
+    <h2 id="resTitle"></h2><div id="resLines"></div>
+    <button class="btn primary" data-close>OK</button>
+  </div>
+</div>
+
+<div id="panel" class="modal hidden">
+  <div class="sheet">
+    <div class="sheet-head"><h2 data-i18n="teacherPanel"></h2><button class="ibtn light" data-close>✕</button></div>
+    <div class="tabs" id="ptabs">
+      <button data-tab="announce" class="on" data-i18n="tAnnounce"></button>
+      <button data-tab="abuse" data-i18n="tAbuse"></button>
+      <button data-tab="games" data-i18n="tGames"></button>
+      <button data-tab="music" data-i18n="tMusic"></button>
+      <button data-tab="kids" data-i18n="tKids"></button>
+    </div>
+    <div class="tab" data-tab="announce">
+      <textarea id="annText" rows="3" maxlength="200" data-i18n-ph="annPh"></textarea>
+      <div class="row"><button class="btn primary" id="annSend" data-i18n="send"></button></div>
+    </div>
+    <div class="tab hidden" data-tab="abuse">
+      <div class="menu-grid" id="abuseGrid"></div>
+      <h3 data-i18n="giveaway"></h3>
+      <div class="row left" id="giveRow"></div>
+    </div>
+    <div class="tab hidden" data-tab="games">
+      <h3 data-i18n="duration"></h3>
+      <div class="row left" id="durRow"></div>
+      <h3 data-i18n="quizSettings"></h3>
+      <div class="row left" id="quizOpts"></div>
+      <div class="menu-grid" id="mgGrid"></div>
+      <button class="btn danger" id="mgEnd" data-i18n="endGame"></button>
+    </div>
+    <div class="tab hidden" data-tab="music">
+      <div class="menu-grid" id="songGrid"></div>
+      <h3 data-i18n="sounds"></h3>
+      <div class="menu-grid" id="sfxGrid"></div>
+    </div>
+    <div class="tab hidden" data-tab="kids">
+      <p class="muted" data-i18n="kidsHelp"></p>
+      <div id="kidList"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/main.js"></script>
+<script src="https://flexihub.web.app/switcher.js" data-side="right" data-hide="#game:not(.hidden), .modal:not(.hidden), .screen:not(.hidden)" defer></script>
+</body>
+</html>

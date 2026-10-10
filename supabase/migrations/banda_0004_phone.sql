@@ -1,0 +1,6 @@
+-- Phones and messages. (Applied as "banda_0004_phone" and "banda_0005_messages".)
+-- banda_players.phone text unique: a random 4-digit number, shown as +0 XXXX
+-- banda_phone(): gives the player a number once and returns it; banda_my_phone(): the caller's number
+-- banda_messages(id, to_phone, from_phone, from_name, body 1..300, created_at)
+--   RLS: read your own (to or from your number); send only from your number to a number that exists
+--   in the supabase_realtime publication for live delivery
