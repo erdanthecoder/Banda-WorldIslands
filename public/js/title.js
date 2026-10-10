@@ -46,7 +46,7 @@ export function titleScreen(app, { lang, setLang, quality, toggleQuality, muted,
         </div>
         <p class="ttl-hello">👋 ${t('hello')}, <b>${(app.me.name || '').replace(/[<>&]/g, '')}</b> · ${app.server ? app.server.name : ''}</p>
       </div>
-      <footer class="ttl-foot"><a href="/privacy.html" target="_blank" rel="noopener">${t('privacy')}</a> · FlexiHub · ${v2 ? 'v2.0' : 'v1'}</footer>
+      <footer class="ttl-foot"><a href="/privacy.html" target="_blank" rel="noopener">${t('privacy')}</a> · <a href="https://flexihub.web.app/" target="_blank" rel="noopener">FlexiHub</a> · ${v2 ? 'v2.0' : 'v1'}</footer>
       <div class="ttl-how hidden" id="ttlHowBox"><div class="sheet"><div class="sheet-head"><h2>📖 ${t('howBtn')}</h2><button class="ibtn light" id="ttlHowX">✕</button></div>${howToHtml(lang())}<div class="row"><button class="btn primary big" id="ttlHowPlay">▶ ${t('play')}</button></div></div></div>`;
     $('#ttlPlay').onclick = play;
     $('#ttlHow').onclick = () => { app.sfx('click'); $('#ttlHowBox').classList.remove('hidden'); };

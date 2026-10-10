@@ -526,7 +526,10 @@ function hudSetup() {
   $('#bNew').onclick = () => whatsNew(app, true);
   $('#bHow').onclick = () => { $('#bldTitle').textContent = '📖 ' + t('howBtn'); $('#bldList').className = 'how-wrap'; $('#bldList').innerHTML = howToHtml(getLang()); show('#bldBox'); w.inputLocked = true; };
   // inside the Windows / Microsoft Store app: no "download the app" links
-  if (/WorldIslandsApp/.test(navigator.userAgent)) { document.body.classList.add('in-app'); show('#bWin', false); }
+  // (the Android app opens with ?app=android, or from an android-app:// referrer; remembered for this session)
+  try { if (/[?&]app=android/.test(location.search) || /^android-app:/.test(document.referrer)) sessionStorage.setItem('wi_android', '1'); } catch (e) {}
+  let inAndroid = false; try { inAndroid = sessionStorage.getItem('wi_android') === '1'; } catch (e) {}
+  if (/WorldIslandsApp/.test(navigator.userAgent) || inAndroid) { document.body.classList.add('in-app'); show('#bWin', false); }
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
   $('#bAvatar').onclick = () => {
     w.pause(true); show('#creator');

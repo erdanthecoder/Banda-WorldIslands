@@ -2,62 +2,80 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>World Islands for Windows</title>
-<meta name="description" content="Download World Islands for Windows 10 and 11. Free, safe, no admin rights needed.">
+<title>World Islands apps — Windows and Android</title>
+<meta name="description" content="Download World Islands for Windows 10/11 and Android. Free and safe.">
 <link rel="icon" href="/img/favicon.png">
 <style>
 :root { --bg: #0e1622; --ink: #eef3f8; --muted: #9fb0c2; --card: #162233; --line: #263449; --accent: #4aa8ff; --ok: #3ddc84; }
-* { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; }
-main { max-width: 760px; margin: 0 auto; padding: 32px 16px 60px; }
-.hero { text-align: center; } .hero img { width: 112px; height: 112px; border-radius: 26px; box-shadow: 0 12px 40px rgba(74,168,255,.3); }
-h1 { font-size: clamp(28px, 6vw, 42px); margin: 14px 0 4px; } .sub { color: var(--muted); margin: 0 0 22px; }
-.btn { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: #06223d; font-weight: 800; font-size: 18px; padding: 14px 28px; border-radius: 999px; text-decoration: none; }
-.btn[aria-disabled=true] { opacity: .5; pointer-events: none; }
-.small { color: var(--muted); font-size: 13px; margin-top: 10px; word-break: break-all; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; margin-top: 18px; }
-.card h2 { font-size: 18px; margin: 0 0 8px; } ol, ul { margin: 0; padding-left: 20px; } li { margin: 4px 0; }
+* { box-sizing: border-box; } body { margin: 0; background: radial-gradient(ellipse at 50% -10%, #1b3a5c 0%, #0e1622 55%); color: var(--ink); font-family: system-ui, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; min-height: 100vh; }
+main { max-width: 900px; margin: 0 auto; padding: 28px 16px 60px; }
+.top { display: flex; justify-content: space-between; align-items: center; } .top a { color: var(--muted); text-decoration: none; font-weight: 700; }
+.lang button { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.hero { text-align: center; margin: 18px 0 8px; } .hero img { width: 104px; height: 104px; border-radius: 24px; box-shadow: 0 12px 40px rgba(74,168,255,.3); }
+h1 { font-size: clamp(28px, 6vw, 42px); margin: 12px 0 4px; } h1 .v2 { font-size: .45em; background: linear-gradient(90deg,#ff3fa4,#ffb800); color: #1a1030; border-radius: 8px; padding: 1px 8px; vertical-align: middle; }
+.sub { color: var(--muted); margin: 0 0 18px; }
+.apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.app { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.app.mine { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(74,168,255,.25); }
+.app h2 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; } .app h2 span { font-size: 30px; }
+.req { color: var(--muted); font-size: 13px; margin: 0; }
+.btn { display: inline-flex; justify-content: center; align-items: center; gap: 10px; background: var(--accent); color: #06223d; font-weight: 800; font-size: 17px; padding: 13px 22px; border-radius: 999px; text-decoration: none; }
+.btn.and { background: var(--ok); color: #05301a; }
+.sum { color: var(--muted); font-size: 11px; word-break: break-all; margin: 0; min-height: 1em; }
+.app ol { margin: 0; padding-left: 20px; font-size: 14px; } .app li { margin: 3px 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px; margin-top: 16px; }
+.card h2 { font-size: 18px; margin: 0 0 8px; } ul { margin: 0; padding-left: 20px; } li { margin: 4px 0; }
 .ok li::marker { content: '✓  '; color: var(--ok); }
-code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
-.lang { text-align: right; } .lang button { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.foot { text-align: center; color: var(--muted); font-size: 13px; margin-top: 20px; } .foot a { color: var(--accent); }
 </style>
 </head>
 <body><main>
-<div class="lang"><button id="lang">Русский</button></div>
+<div class="top"><a href="/">← World Islands</a><div class="lang"><button id="lang">Русский</button></div></div>
 <div class="hero">
   <img src="/img/logo-192.png" alt="">
-  <h1 data-t="title">World Islands for Windows</h1>
-  <p class="sub" data-t="sub">The island game as an app on your computer. Free.</p>
-  <a class="btn" id="dl" href="https://github.com/erdanthecoder/copilot/releases/download/windows-app/WorldIslands-Setup.exe">⬇ <span data-t="btn">Download for Windows</span></a>
-  <p class="small"><span data-t="req">Windows 10 or 11 (64-bit) · about 110 MB · no admin rights needed</span><br><span id="sum"></span></p>
+  <h1><span data-t="title">World Islands apps</span> <span class="v2">2.0</span></h1>
+  <p class="sub" data-t="sub">Play World Islands as an app on your computer or phone. Free, safe, and it updates by itself.</p>
 </div>
-<div class="card"><h2 data-t="howT">How to install</h2><ol>
-  <li data-t="h1">Open the downloaded file <code>WorldIslands-Setup.exe</code>.</li>
-  <li data-t="h2">Windows may say “Windows protected your PC”. This appears for new apps that are not yet signed with a paid certificate. Click “More info”, then “Run anyway”.</li>
-  <li data-t="h3">The app installs for your user only and opens. You will find “World Islands” on your desktop and in the Start menu.</li>
-  <li data-t="h4">Sign in with your FlexiHub account, the same as on the website.</li>
-</ol></div>
-<div class="card"><h2 data-t="secT">Why it is safe</h2><ul class="ok">
-  <li data-t="s1">It only opens World Islands and its sign-in pages. Any other link opens in your normal browser.</li>
-  <li data-t="s2">The game page cannot touch your files or your computer (sandboxed, no Node.js).</li>
-  <li data-t="s3">Only secure connections (HTTPS). Fake or broken certificates are always refused.</li>
-  <li data-t="s4">Only World Islands may use the camera and microphone, and only when you start a call or the Mood camera. No other permissions.</li>
-  <li data-t="s5">Installs without administrator rights. Uninstall any time from Windows Settings → Apps.</li>
-  <li data-t="s6">The game updates itself — every new World Islands update is in the app right away.</li>
+<div class="apps" id="apps">
+  <section class="app" id="win">
+    <h2><span>💻</span> Windows</h2>
+    <p class="req" data-t="winReq">Windows 10 or 11 (64-bit) · about 110 MB · no admin rights needed</p>
+    <a class="btn" href="/download/windows">⬇ <span data-t="winBtn">Download for Windows</span></a>
+    <p class="sum" id="sumWin"></p>
+    <ol><li data-t="w1">Open the downloaded file WorldIslands-Setup.exe.</li><li data-t="w2">If Windows says “Windows protected your PC”, click “More info”, then “Run anyway” (new apps without a paid certificate show this).</li><li data-t="w3">World Islands installs and opens. It is on your desktop and in the Start menu.</li></ol>
+  </section>
+  <section class="app" id="and">
+    <h2><span>🤖</span> Android</h2>
+    <p class="req" data-t="andReq">Android 7 or newer · phones and tablets · needs Google Chrome</p>
+    <a class="btn and" href="/download/android">⬇ <span data-t="andBtn">Download for Android</span></a>
+    <p class="sum" id="sumAnd"></p>
+    <ol><li data-t="a1">Open the downloaded file WorldIslands.apk.</li><li data-t="a2">If your phone asks, allow your browser to “Install unknown apps” (Settings), then tap Install.</li><li data-t="a3">Tap World Islands on your home screen. It opens full screen.</li></ol>
+  </section>
+</div>
+<div class="card"><h2 data-t="secT">Safe by design</h2><ul class="ok">
+  <li data-t="s1">The apps only open World Islands and its sign-in pages. Other links open in your normal browser.</li>
+  <li data-t="s2">The game can't touch your files. Only secure connections (HTTPS).</li>
+  <li data-t="s3">Camera and microphone are only used when you start a call or the Mood camera — never recorded or sent as video.</li>
+  <li data-t="s4">Every World Islands update is in the apps right away — no need to download again.</li>
 </ul></div>
-<p class="small" style="text-align:center"><a href="/privacy.html" style="color:#4aa8ff">Privacy policy · Политика конфиденциальности</a></p>
-<div class="card"><h2 data-t="chkT">Check the file (optional)</h2><p class="small" style="margin:0" data-t="chk">In PowerShell run: Get-FileHash WorldIslands-Setup.exe — it must match the SHA-256 shown above.</p></div>
+<p class="foot"><span data-t="chk">Check a file: compare its SHA-256 with the one shown above.</span><br><a href="/privacy.html" data-t="priv">Privacy policy</a></p>
 </main>
 <script>
-const RU = { title: 'World Islands для Windows', sub: 'Игра про острова — как приложение на компьютере. Бесплатно.', btn: 'Скачать для Windows', req: 'Windows 10 или 11 (64-бит) · около 110 МБ · права администратора не нужны',
-  howT: 'Как установить', h1: 'Открой скачанный файл WorldIslands-Setup.exe.', h2: 'Windows может написать «Система Windows защитила ваш компьютер». Так бывает с новыми приложениями без платной подписи. Нажми «Подробнее», затем «Выполнить в любом случае».', h3: 'Приложение установится только для тебя и откроется. Ярлык «World Islands» появится на рабочем столе и в меню Пуск.', h4: 'Войди через аккаунт FlexiHub — так же, как на сайте.',
-  secT: 'Почему это безопасно', s1: 'Открывает только World Islands и страницы входа. Остальные ссылки открываются в обычном браузере.', s2: 'Страница игры не имеет доступа к твоим файлам и компьютеру (песочница, без Node.js).', s3: 'Только защищённые соединения (HTTPS). Поддельные сертификаты всегда отклоняются.', s4: 'Камеру и микрофон может использовать только World Islands — и только когда ты звонишь или включаешь камеру настроения.', s5: 'Устанавливается без прав администратора. Удалить можно в Параметры → Приложения.', s6: 'Игра обновляется сама — все новые обновления сразу в приложении.',
-  chkT: 'Проверить файл (по желанию)', chk: 'В PowerShell выполни: Get-FileHash WorldIslands-Setup.exe — значение должно совпасть с SHA-256 выше.' };
+const RU = { title: 'Приложения World Islands', sub: 'Играй в World Islands как в приложение на компьютере или телефоне. Бесплатно, безопасно и обновляется само.',
+  winReq: 'Windows 10 или 11 (64-бит) · около 110 МБ · без прав администратора', winBtn: 'Скачать для Windows',
+  w1: 'Открой скачанный файл WorldIslands-Setup.exe.', w2: 'Если Windows пишет «Система Windows защитила ваш компьютер», нажми «Подробнее», затем «Выполнить в любом случае» (так бывает с новыми приложениями без платной подписи).', w3: 'World Islands установится и откроется. Ярлык — на рабочем столе и в меню Пуск.',
+  andReq: 'Android 7 или новее · телефоны и планшеты · нужен Google Chrome', andBtn: 'Скачать для Android',
+  a1: 'Открой скачанный файл WorldIslands.apk.', a2: 'Если телефон спросит, разреши браузеру «Установку неизвестных приложений» (Настройки) и нажми «Установить».', a3: 'Нажми World Islands на главном экране — откроется на весь экран.',
+  secT: 'Безопасно', s1: 'Приложения открывают только World Islands и страницы входа. Остальные ссылки — в обычном браузере.', s2: 'Игра не имеет доступа к твоим файлам. Только защищённые соединения (HTTPS).', s3: 'Камера и микрофон работают только во время звонка или камеры настроения — ничего не записывается и не отправляется как видео.', s4: 'Все обновления World Islands сразу в приложениях — скачивать заново не нужно.',
+  chk: 'Проверка файла: сравни его SHA-256 с указанным выше.', priv: 'Политика конфиденциальности' };
 const EN = {}; document.querySelectorAll('[data-t]').forEach(e => EN[e.dataset.t] = e.textContent);
-// 2.0 from 10:00 Amman time (07:00 UTC) on 10 Oct 2026
-const V2 = Date.now() >= Date.parse('2026-10-10T07:00:00Z'); if (V2) { RU.title = 'World Islands 2.0 для Windows'; EN.title = 'World Islands 2.0 for Windows'; document.title = 'World Islands 2.0 for Windows'; }
-let ru = /^ru/i.test(navigator.language); const apply = () => { document.querySelectorAll('[data-t]').forEach(e => e.textContent = (ru ? RU : EN)[e.dataset.t]); document.getElementById('lang').textContent = ru ? 'English' : 'Русский'; document.documentElement.lang = ru ? 'ru' : 'en'; };
+let ru = /^ru/i.test(navigator.language);
+const apply = () => { document.querySelectorAll('[data-t]').forEach(e => e.textContent = (ru ? RU : EN)[e.dataset.t]); document.getElementById('lang').textContent = ru ? 'English' : 'Русский'; document.documentElement.lang = ru ? 'ru' : 'en'; };
 document.getElementById('lang').onclick = () => { ru = !ru; apply(); }; apply();
-fetch('/download/WorldIslands-Setup.sha256.txt', { cache: 'no-store' }).then(r => r.ok ? r.text() : Promise.reject()).then(t => { t = t.trim(); if (!/^[0-9a-f]{64}$/.test(t)) throw 0; document.getElementById('sum').textContent = 'SHA-256: ' + t; })
-  .catch(() => { const b = document.getElementById('dl'); b.setAttribute('aria-disabled', 'true'); document.getElementById('sum').textContent = ru ? 'Приложение собирается, загляни через несколько минут.' : 'The app is being built — check back in a few minutes.'; });
+// on a phone, show the Android app first
+const android = /android/i.test(navigator.userAgent), apps = document.getElementById('apps');
+if (android) { apps.prepend(document.getElementById('and')); document.getElementById('and').classList.add('mine'); } else if (/windows/i.test(navigator.userAgent)) document.getElementById('win').classList.add('mine');
+const sum = (file, id) => fetch(file, { cache: 'no-store' }).then(r => r.ok ? r.text() : Promise.reject()).then(t => { t = t.trim(); if (!/^[0-9a-f]{64}$/.test(t)) throw 0; document.getElementById(id).textContent = 'SHA-256: ' + t; }).catch(() => {});
+sum('/download/WorldIslands-Setup.sha256.txt', 'sumWin'); sum('/download/WorldIslands-apk.sha256.txt', 'sumAnd');
 </script>
 </body></html>
