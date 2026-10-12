@@ -3,7 +3,8 @@ import { t, setLang, getLang, applyI18n, langChosen } from './i18n.js';
 import { sfx, say, playSong, stopSong, SONGS, setMuted, isMuted, unlockAudio, ambience } from './audio.js';
 import { createNet } from './net.js';
 import { currentAccount, signInWithHub, signOut } from './auth.js';
-import { World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, MALL, HOTEL, FERRIS, PATHS, PLAZA_R } from './world.js';
+import * as THREE from 'three';
+import { labelSprite, World, ISLANDS, TOWER, MARKET, PLAYGROUND, PITCH, COURT, BANK, RESTO, MALL, HOTEL, FERRIS, PATHS, PLAZA_R } from './world.js';
 import { Avatar, avatarCreator, randomAvatar, EMOTES } from './avatar.js';
 import { Tower, Market, Bank, Restaurant, FLOORS } from './buildings.js';
 import { Mall } from './mall.js';
@@ -161,7 +162,7 @@ async function start(serverId) {
   app.phone.start();
   if (app.pending > 0) setTimeout(() => app.settle(), 4000);
   // World Islands 2.0: on now, or switched on live at 10:00 Amman time for everyone who is playing
-  const go2 = live => { $$('.v2').forEach(e => e.classList.remove('hidden')); show('#bNew'); document.title = 'World Islands 2.0 — 3D learning world for kids'; if (live) { sfx('champions'); app.world.fireworks(12); ui.banner('🎉 World Islands 2.0!', 5000); } if (live) setTimeout(() => whatsNew(app), 1500); else app.afterPlay(() => setTimeout(() => whatsNew(app), 900)); };
+  const go2 = live => { $$('.v2').forEach(e => e.classList.remove('hidden')); show('#bNew'); document.title = 'Marbly — World Island'; if (live) { sfx('champions'); app.world.fireworks(12); ui.banner('🎉 World Islands 2.0!', 5000); } if (live) setTimeout(() => whatsNew(app), 1500); else app.afterPlay(() => setTimeout(() => whatsNew(app), 900)); };
   if (isV2()) go2(false); else setTimeout(() => go2(true), LAUNCH_2 - Date.now() + 500);
 
   let last = '', lastSent = 0;
@@ -181,6 +182,7 @@ async function start(serverId) {
     quality: () => world.hq, toggleQuality: () => { try { localStorage.setItem('banda_quality', world.hq ? 'low' : 'high'); } catch (e) {} location.reload(); },
     muted: isMuted, toggleMute: () => setMuted(!isMuted()),
     onPlay: () => { show('#hud'); app.played = true; (app.playQ || []).forEach(f => f()); app.playQ = []; },
+    editAvatar: () => $('#bAvatar').click(),
   });
   $('#online').textContent = `${app.server.name} · 1 ${t('online')}`;
   if (!localStorage.getItem('banda_tip')) { ui.chat(t('howToPlay'), 'sys'); try { localStorage.setItem('banda_tip', '1'); } catch (e) {} }
@@ -207,8 +209,10 @@ function buildWorld(world) {
     cafe: () => app.shop.openAisle('☕ ' + t('cafe'), CAFE, { cafe: true }),
   });
   app.market = new Market(world, { t, aisle: a => app.shop.openAisle(t('aisle_' + a.id), a.items), checkout: () => app.shop.checkout() });
-  app.mbank = new Bank(world, { t, desk: i => app.bankUI.desk(i), someoneAt, wait: () => ui.toast(`⏳ ${t('waitInLine')}`),
-    jobs: () => app.jobs.board(), cashierIn: () => app.jobs.cashierIn(), cashierOut: () => app.jobs.cashierOut() });
+  // mBank moved out: it is its own Marbly experience now. Portals take you to the other games.
+  portal(world, BANK.x + 6, BANK.z, '🏦 mBank HQ', '/hq.html', 0x3a86ff);
+  portal(world, -19, -9, '🏁 Island Raceway', '/race.html', 0xe71d36);
+  portal(world, 19, -9, '📚 Quiz Day', '/school.html', 0x8a3ffc);
   app.resto = new Restaurant(world, { t, sit: seat => restoSit(seat), pass: () => app.jobs.pass() });
   app.mall = new Mall(world, { t, shop: (id, sh) => app.shop.openAisle(`${sh.icon} ${t('mall_' + id)}`, sh.items, { cafe: true }), jobs: () => app.jobs.board(), barista: on => app.jobs && app.jobs.baristaAt(on) });
   app.jobs = new Jobs(app);
@@ -228,6 +232,18 @@ function buildWorld(world) {
   app.hotel.guests();
   app.ferris = new Ferris(world, { t, sfx, buy, banner: (m, ms) => ui.banner(m, ms) });
   app.street = new StreetCrowd(world, world.hq ? { walkers: 120, chatters: 36, fans: 90 } : { walkers: 80, chatters: 24, fans: 60 });
+}
+
+// a glowing gate to another Marbly experience
+function portal(world, x, z, label, href, color) {
+  const y = world.groundAt(x, z), g = new THREE.Group(); g.position.set(x, y, z);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.22, 16, 48), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.6, metalness: 0.4, roughness: 0.3 })); ring.position.y = 2.1;
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(1.7, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, side: THREE.DoubleSide })); disc.position.y = 2.1;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(2, 2.2, 0.25, 40), new THREE.MeshStandardMaterial({ color: 0x1b1f2a, emissive: color, emissiveIntensity: 0.4 })); base.position.y = 0.12;
+  ring.userData.dynamic = disc.userData.dynamic = true; g.add(ring, disc, base); world.scene.add(g);
+  const lab = labelSprite(label + ' →', 0.55, { bg: '#' + color.toString(16).padStart(6, '0') }); lab.position.set(x, y + 4.5, z); world.scene.add(lab);
+  world.updaters.push((dt, tt) => { ring.rotation.z += dt * 0.8; disc.material.opacity = 0.25 + Math.sin(tt * 3) * 0.12; });
+  world.zone({ x, z, r: 1.6, onEnter: () => { sfx('teleport'); ui.banner(`✨ ${label}…`, 1500); setTimeout(() => { location.href = href; }, 600); } });
 }
 
 // sit at a restaurant table: the menu opens and the waiter brings what you order
@@ -630,7 +646,7 @@ function drawMinimap() {
   g.fillStyle = '#2c4f73'; g.beginPath(); g.arc(X(TOWER.x), Z(TOWER.z), TOWER.R * scale, 0, 7); g.fill();
   if (big || scale > 1) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t('tower'), X(TOWER.x), Z(TOWER.z)); g.textBaseline = 'alphabetic'; }
   rect(MARKET.x, MARKET.z, MARKET.w, MARKET.d, '#2e8b57', t('market'));
-  rect(BANK.x, BANK.z, BANK.w, BANK.d, '#14629e', 'mBank');
+  rect(BANK.x + 6, BANK.z, 6, 6, '#3a86ff', 'mBank HQ');
   g.fillStyle = '#7b2cbf'; g.beginPath(); for (let i = 0; i < 5; i++) { const an = (36 + i * 72) * Math.PI / 180; g.lineTo(X(MALL.x + Math.sin(an) * MALL.R), Z(MALL.z + Math.cos(an) * MALL.R)); } g.fill();
   if (big || scale > 1) { g.fillStyle = '#fff'; g.font = `700 ${big ? 15 : 11}px Manrope, system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('Pentagon Mall', X(MALL.x), Z(MALL.z)); g.textBaseline = 'alphabetic'; }
   rect(PLAYGROUND.x, PLAYGROUND.z, PLAYGROUND.w, PLAYGROUND.d, '#d9533f', t('playground'));

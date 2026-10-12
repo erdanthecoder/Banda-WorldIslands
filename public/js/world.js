@@ -215,8 +215,9 @@ export function labelSprite(text, height = 0.5, { color = '#fff', bg = 'rgba(14,
 
 // ---------- World ----------
 export class World {
-  constructor(canvas, { quality = 'high' } = {}) {
-    this.hq = quality === 'high';
+  // blank: { ground: y } builds only sky, sun, sea and physics (no island) for Marbly experiences
+  constructor(canvas, { quality = 'high', blank = null } = {}) {
+    this.hq = quality === 'high'; this.blank = blank;
     // phones and slow computers ('low'): no shadows, no antialiasing, less grass, and the resolution drops by itself if it gets slow
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio, this.hq ? 1.5 : 1));
@@ -306,6 +307,7 @@ export class World {
     }
     this._setSun(25, 228);
     const bed = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x6d6650 })); bed.position.y = -10; S.add(bed);
+    if (this.blank) { this.grassU = { uTime: { value: 0 } }; this.islandMeshes = []; this.grassSpots = []; return; }
     this.islandMeshes = [];
     this.grassSpots = [];
     for (const I of ISLANDS) {
@@ -532,7 +534,7 @@ export class World {
       if (inside && zn.onStay) zn.onStay(zn);
     }
   }
-  groundAt(x, z, y = 1e9) { let best = null; for (const g of this.grounds) { const v = g(x, z, y); if (v !== null && (best === null || v > best)) best = v; } return best ?? heightAt(x, z); }
+  groundAt(x, z, y = 1e9) { let best = null; for (const g of this.grounds) { const v = g(x, z, y); if (v !== null && (best === null || v > best)) best = v; } return best ?? (this.blank ? this.blank.ground ?? 0 : heightAt(x, z)); }
 
 
 
@@ -833,7 +835,7 @@ export class World {
     const p = this.cameraOverride ? this.camera.position : this.me.group.position;
     this.sun.position.set(p.x + this.sunDir.x * 180, p.y + this.sunDir.y * 180, p.z + this.sunDir.z * 180); this.sun.target.position.copy(p);
     if (this.cameraOverride) { this.cameraOverride(this.camera, dt); return; }
-    const s = this.me.group.scale.x, I = this.inside, under = !I && p.y < heightAt(p.x, p.z) - 0.8;
+    const s = this.me.group.scale.x, I = this.inside, under = !I && !this.blank && p.y < heightAt(p.x, p.z) - 0.8;
     const d = (I || under ? Math.min(this.dist, 4) : this.dist) * (0.75 + s * 0.25), cp = Math.cos(this.pitch);
     const target = new THREE.Vector3(p.x + Math.sin(this.yaw) * cp * d, p.y + 1.6 * s + Math.sin(this.pitch) * d, p.z + Math.cos(this.yaw) * cp * d);
     if (I) { target.y = Math.min(I.floor + (I.ceil || 4.5) - 0.3, Math.max(I.floor + 0.6, target.y)); target.x = Math.min(I.maxX - 0.3, Math.max(I.minX + 0.3, target.x)); target.z = Math.min(I.maxZ - 0.3, Math.max(I.minZ + 0.3, target.z)); }

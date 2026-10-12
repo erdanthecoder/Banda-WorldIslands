@@ -83,7 +83,7 @@ class SupaNet extends Base {
   }
   // admin commands: the password is checked on the server; the command then reaches everyone like a teacher command
   async admin(pw, kind, data) { const { data: ok, error } = await this.c.rpc('banda_admin', { pw, srv: this.server, k: kind, d: data || {} }); if (error) throw error; return !!ok; }
-  async adminMoney(pw, cents, target, phone) { const { data, error } = await this.c.rpc('banda_admin_money', { pw, cents, target: target || null, phone: phone || null }); if (error) throw error; return data; }
+  async adminMoney(pw, cents, target, phone) { const { data, error } = await this.c.rpc('banda_admin_money', { pw, cents, target: target || null, phone: phone || null }); if (error) throw error; if (data === null) throw new Error('wrong password'); return data; }
   async claimMoney(cmd) { const { data } = await this.c.rpc('banda_claim_money', { cmd }); return data || 0; }
   async loadUsers() {
     const { data } = await this.c.from('banda_players').select('id, name, stars, points, avatar').order('stars', { ascending: false }).limit(300);
@@ -171,7 +171,7 @@ class LocalNet extends Base {
   }
   async admin(pw, kind, data) {
     const h = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw || '')))].map(b => b.toString(16).padStart(2, '0')).join('');
-    if (h !== 'eff3fdd3f486565f12baf0df16bd88f07f5652e3489aa047b92d78c57b9cac8c') return false;
+    if (h !== 'a3fcba144b2d4651dc7c02edffb6394dde06f806b5ae9893f333d91c24fc1500') return false;
     if (kind === 'effects') { localStorage.setItem('banda_dev_effects_' + this.server, JSON.stringify(data)); const ev = { type: '_state', data: { key: 'effects', val: data } }; this._event(ev); this.bc.postMessage({ k: 'e', server: this.server, ev }); return true; }
     if (kind !== 'check') this.emit(kind, data, true); return true;
   }
@@ -206,7 +206,7 @@ class LocalNet extends Base {
   async use(item) { const [u, r] = this._me(); if (!r.inv[item] || ['crown', 'headphones', 'tophat', 'dog', 'cat', 'bunny', 'dragon'].includes(item)) return -1; r.inv[item]--; this._save(u); return r.inv[item]; }
   async inventory() { const [, r] = this._me(); const o = {}; for (const k in r.inv) if (r.inv[k] > 0) o[k] = r.inv[k]; return o; }
   async myRow() { const [u, r] = this._me(); this._save(u); return r; }
-  async bankOpen() { const [u, r] = this._me(); r.bank_card ||= '4400 ' + [0, 0, 0].map(() => String(Math.floor(Math.random() * 1e4)).padStart(4, '0')).join(' '); this._save(u); return r.bank_card; }
+  async bankOpen() { const [u, r] = this._me(); if (!r.bank_card || r.bank_card.length !== 7) r.bank_card = String(Math.floor(Math.random() * 1e7)).padStart(7, '0'); this._save(u); return r.bank_card; }
   async handSetup() { const [u, r] = this._me(); if (!r.bank_card) return false; r.hand_pay = true; this._save(u); return true; }
   async phone() { const [u, r] = this._me(); if (!r.phone) { const used = new Set(Object.values(u).map(x => x.phone)); do r.phone = String(1000 + Math.floor(Math.random() * 9000)); while (used.has(r.phone)); this._save(u); } return r.phone; }
   _msgs() { try { return JSON.parse(localStorage.getItem('banda_dev_msgs')) || []; } catch (e) { return []; } }

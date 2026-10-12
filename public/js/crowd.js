@@ -71,7 +71,7 @@ export class Bodies {
 }
 
 // how a walking/standing person holds arms and legs
-function walkPose(p, moving, now, extra = {}) {
+export function walkPose(p, moving, now, extra = {}) {
   const swing = moving ? Math.sin(p.walk) * 0.7 : 0;
   return { s: p.s, armL: swing, armR: p.bag ? -swing * 0.3 : -swing, legL: -swing, legR: swing, bag: p.bag, lift: moving ? Math.abs(Math.cos(p.walk)) * 0.05 : Math.sin(now * 1.6 + p.phase) * 0.008, ...extra };
 }

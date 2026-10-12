@@ -1,0 +1,48 @@
+/* Marbly experiences: shared HUD */
+.x-loading { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: 10px; color: #fff; background: radial-gradient(circle at 50% 35%, #2b5fd9, #0b1530 70%); transition: opacity .4s; }
+.x-loading.hidden { opacity: 0; pointer-events: none; display: grid; }
+.x-logo { font-size: 56px; font-weight: 800; letter-spacing: -.02em; background: linear-gradient(90deg, #ffd34d, #ff6fa8, #6ff3ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.x-sub { font-size: 18px; font-weight: 700; opacity: .9; margin-bottom: 8px; }
+.x-top { position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; z-index: 20; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+.x-top > * { pointer-events: auto; } .x-right { margin-left: auto; display: flex; gap: 6px; }
+.x-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.18); background: rgba(10,16,28,.72); color: #fff; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; backdrop-filter: blur(6px); }
+.x-btn:hover { background: rgba(30,40,64,.85); } .x-btn.admin { background: rgba(120,20,40,.7); }
+.x-chip { display: flex; flex-direction: column; padding: 6px 12px; border-radius: 12px; background: rgba(10,16,28,.72); color: #fff; font-weight: 800; backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.12); }
+.x-chip small { font-weight: 600; opacity: .7; font-size: 11px; } .x-chip.money { flex-direction: row; gap: 6px; align-items: center; color: #7dffc6; cursor: pointer; }
+.x-emotes { position: fixed; top: 64px; right: 10px; z-index: 21; display: grid; grid-template-columns: repeat(3, auto); gap: 6px; }
+.x-hud { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 15; padding: 10px 18px; border-radius: 16px; background: rgba(10,16,28,.8); color: #fff; font-weight: 800; text-align: center; backdrop-filter: blur(6px); max-width: calc(100vw - 24px); }
+.x-banner { position: fixed; top: 26%; left: 50%; transform: translateX(-50%); z-index: 30; padding: 14px 26px; border-radius: 18px; background: linear-gradient(135deg, rgba(43,95,217,.95), rgba(180,40,140,.95)); color: #fff; font-size: 22px; font-weight: 800; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.4); animation: xPop .45s cubic-bezier(.2,1.6,.4,1); max-width: calc(100vw - 32px); }
+@keyframes xPop { from { transform: translateX(-50%) scale(.4); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+.x-toasts { position: fixed; left: 12px; bottom: 120px; z-index: 30; display: grid; gap: 6px; }
+.x-toast { padding: 8px 14px; border-radius: 12px; background: rgba(10,16,28,.85); color: #fff; font-weight: 700; animation: xIn .3s; }
+@keyframes xIn { from { transform: translateX(-20px); opacity: 0; } }
+.x-sheet { width: min(560px, 100%); } .x-sheet h4 { margin: 14px 0 8px; }
+.x-pw { display: flex; gap: 8px; } .x-pw input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 2px solid #dfe5ee; font: inherit; }
+.x-err { color: #d64545; font-weight: 700; min-height: 1.2em; }
+.x-adm.on { border-color: #22a06b; transform: scale(.96); }
+.x-touch { position: fixed; inset: auto 0 0 0; height: 0; z-index: 18; }
+.x-joy { position: fixed; left: 24px; bottom: 28px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.25); touch-action: none; }
+.x-joy i { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.55); }
+.x-jump { position: fixed; right: 26px; bottom: 36px; width: 80px; height: 80px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); background: rgba(255,255,255,.18); color: #fff; font-size: 30px; touch-action: none; }
+.x-flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 50; } .x-flash.on { animation: xFlash .5s; }
+@keyframes xFlash { 0% { opacity: .9; } 100% { opacity: 0; } }
+.x-conf { position: fixed; top: -12px; width: 9px; height: 14px; z-index: 60; pointer-events: none; animation: xFall linear forwards; border-radius: 2px; }
+@keyframes xFall { to { transform: translateY(110vh) rotate(720deg); } }
+.x-card7 { width: 300px; aspect-ratio: 1.6; margin: 10px auto; border-radius: 18px; padding: 18px; color: #fff; display: grid; align-content: space-between; background: linear-gradient(135deg, #1e5bd8, #6a2bd8 60%, #d82b8c); box-shadow: 0 18px 40px rgba(30,40,120,.4); animation: xCard .7s cubic-bezier(.2,1.4,.4,1); }
+.x-card7 b { font-size: 20px; letter-spacing: .02em; } .x-card7 span { font-size: 36px; font-weight: 800; letter-spacing: .12em; font-variant-numeric: tabular-nums; } .x-card7 small { opacity: .85; }
+@keyframes xCard { from { transform: rotateY(90deg) scale(.6); } }
+/* the first-person iPad (Quiz Day) */
+.ipad { position: fixed; left: 50%; bottom: -14px; transform: translateX(-50%) perspective(900px) rotateX(14deg); z-index: 25; width: min(640px, 96vw); aspect-ratio: 4 / 3; max-height: 62vh; padding: 18px; border-radius: 34px; background: linear-gradient(145deg, #2b2f36, #0d0f12); box-shadow: 0 30px 80px rgba(0,0,0,.55), inset 0 0 0 2px #444a55; animation: ipUp .5s cubic-bezier(.2,1.2,.4,1); }
+@keyframes ipUp { from { transform: translateX(-50%) perspective(900px) rotateX(40deg) translateY(60%); } }
+.ipad-screen { width: 100%; height: 100%; border-radius: 18px; background: #46178f; color: #fff; overflow: hidden; display: flex; flex-direction: column; padding: 12px; gap: 10px; font-family: Manrope, system-ui, sans-serif; }
+.ip-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; opacity: .95; } .ip-head span { opacity: .75; }
+.ip-q { background: #fff; color: #1b1b1b; border-radius: 12px; padding: 12px; font-size: clamp(16px, 3vw, 22px); font-weight: 800; text-align: center; }
+.ip-timer { height: 8px; border-radius: 99px; background: rgba(255,255,255,.25); overflow: hidden; } .ip-timer i { display: block; height: 100%; background: #ffd34d; width: 100%; }
+.ip-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ip-a { border: 0; border-radius: 12px; color: #fff; font: inherit; font-weight: 800; font-size: clamp(14px, 2.6vw, 20px); display: flex; align-items: center; gap: 10px; padding: 8px 14px; cursor: pointer; box-shadow: 0 5px 0 rgba(0,0,0,.25); text-align: left; }
+.ip-a span { font-size: 1.4em; } .ip-a:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+.ip-big { margin-top: auto; font-size: clamp(24px, 5vw, 38px); font-weight: 900; text-align: center; } .ip-sub { margin-bottom: auto; text-align: center; opacity: .9; font-weight: 600; }
+.ip-lock { align-self: center; width: 90px; height: 90px; border-radius: 18px; display: grid; place-items: center; font-size: 46px; margin-bottom: auto; }
+.ip-res { margin-top: auto; text-align: center; font-size: clamp(28px, 6vw, 46px); font-weight: 900; padding: 14px; border-radius: 16px; } .ip-res.ok { background: #26890c; } .ip-res.bad { background: #e21b3c; }
+.ip-board { display: grid; gap: 6px; } .ip-board div { display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,.12); border-radius: 10px; padding: 8px 12px; font-weight: 800; }
+.ip-board div.me { background: #ffd34d; color: #3b2400; } .ip-board span { flex: 1; } .ip-board em { font-style: normal; }

@@ -26,28 +26,38 @@ export function howToHtml(lang) {
   return `<div class="how">${L.map(([i, h, list]) => `<section><h3><span>${i}</span>${h}</h3><ul>${list.map(x => `<li>${x}</li>`).join('')}</ul></section>`).join('')}</div>`;
 }
 
-export function titleScreen(app, { lang, setLang, quality, toggleQuality, muted, toggleMute, onPlay }) {
+export function titleScreen(app, { lang, setLang, quality, toggleQuality, muted, toggleMute, onPlay, editAvatar }) {
   const w = app.world, t = app.t;
   let el = $('#title');
   if (!el) { el = document.createElement('div'); el.id = 'title'; document.body.appendChild(el); }
   const draw = () => {
     const v2 = isV2();
+    const ru = lang() === 'ru', X = (en, r) => (ru ? r : en);
+    // Marbly: one account, one avatar, many experiences. World Island plays right here; the others open their own page.
+    const EXPS = [
+      { id: 'world', icon: '🏝️', name: 'World Island', sub: X('Tower, mall, hotel, jobs, minigames', 'Башня, молл, отель, работа, мини-игры'), bg: 'linear-gradient(135deg,#1e8fd8,#22c1a0)' },
+      { id: 'race', icon: '🏁', name: 'Island Raceway', sub: X('Buy a car with mBank and race', 'Купи машину через mBank и гоняй'), bg: 'linear-gradient(135deg,#e71d36,#ff9f1c)', href: '/race.html' },
+      { id: 'hq', icon: '🏦', name: 'mBank HQ', sub: X('Open your 7-digit card, Hand Pay', 'Карта из 7 цифр, оплата рукой'), bg: 'linear-gradient(135deg,#1e5bd8,#6a2bd8)', href: '/hq.html' },
+      { id: 'school', icon: '📚', name: 'Quiz Day', sub: X('School day + iPad quiz. Lose = push-ups!', 'Школьный день + викторина. Проиграл — отжимайся!'), bg: 'linear-gradient(135deg,#46178f,#d82b8c)', href: '/school.html' },
+    ];
     el.innerHTML = `<div class="ttl-shade"></div>
-      <div class="ttl-main">
-        <img class="ttl-logo" src="/img/logo.png" alt="">
-        <h1>World Islands${v2 ? ' <span class="v2">2.0</span>' : ''}</h1>
-        <p class="ttl-sub">${t('titleSub')}</p>
-        <button class="ttl-play" id="ttlPlay">▶ ${t('play')}</button>
+      <div class="ttl-main mb-main">
+        <h1 class="mbly-logo">Marbly</h1>
+        <p class="ttl-sub">${X('Pick an experience. Your avatar and your mBank money come with you everywhere.', 'Выбери игру. Твой аватар и деньги mBank всегда с тобой.')}</p>
+        <div class="mb-exps">${EXPS.map(e => `<button class="mb-exp" data-x="${e.id}" ${e.id === 'world' ? 'id="ttlPlay"' : ''} style="--bg:${e.bg}"><span class="mb-ic">${e.icon}</span><b>${e.name}</b><small>${e.sub}</small><em>▶ ${t('play')}</em></button>`).join('')}</div>
         <div class="ttl-row">
+          <button id="ttlAv">👕 ${X('Avatar', 'Аватар')}</button>
           <button id="ttlHow">📖 ${t('howBtn')}</button>
-          <button id="ttlLang">🌐 ${lang() === 'ru' ? 'Русский' : 'English'}</button>
+          <button id="ttlLang">🌐 ${ru ? 'Русский' : 'English'}</button>
           <button id="ttlGfx">🖥️ ${quality() ? t('qHigh') : t('qLow')}</button>
           <button id="ttlSnd">${muted() ? '🔇' : '🔊'}</button>
         </div>
-        <p class="ttl-hello">👋 ${t('hello')}, <b>${(app.me.name || '').replace(/[<>&]/g, '')}</b> · ${app.server ? app.server.name : ''}</p>
+        <p class="ttl-hello">👋 ${t('hello')}, <b>${(app.me.name || '').replace(/[<>&]/g, '')}</b> · 💳 ${app.money !== undefined ? '$' + (app.money / 100).toFixed(2) : ''}</p>
       </div>
-      <footer class="ttl-foot"><a href="/privacy.html" target="_blank" rel="noopener">${t('privacy')}</a> · <a href="https://flexihub.web.app/" target="_blank" rel="noopener">FlexiHub</a> · ${v2 ? 'v2.0' : 'v1'}</footer>
+      <footer class="ttl-foot"><a href="/privacy.html" target="_blank" rel="noopener">${t('privacy')}</a> · <a href="https://flexihub.web.app/" target="_blank" rel="noopener">FlexiHub</a> · Marbly</footer>
       <div class="ttl-how hidden" id="ttlHowBox"><div class="sheet"><div class="sheet-head"><h2>📖 ${t('howBtn')}</h2><button class="ibtn light" id="ttlHowX">✕</button></div>${howToHtml(lang())}<div class="row"><button class="btn primary big" id="ttlHowPlay">▶ ${t('play')}</button></div></div></div>`;
+    document.querySelectorAll('.mb-exp').forEach(b => { const e = EXPS.find(x => x.id === b.dataset.x); if (e.href) b.onclick = () => { app.sfx('chime'); b.classList.add('go'); setTimeout(() => { location.href = e.href; }, 250); }; });
+    $('#ttlAv').onclick = () => editAvatar && editAvatar();
     $('#ttlPlay').onclick = play;
     $('#ttlHow').onclick = () => { app.sfx('click'); $('#ttlHowBox').classList.remove('hidden'); };
     $('#ttlHowX').onclick = () => $('#ttlHowBox').classList.add('hidden');
@@ -68,6 +78,6 @@ export function titleScreen(app, { lang, setLang, quality, toggleQuality, muted,
   }
   draw();
   setTimeout(() => $('#ttlPlay') && $('#ttlPlay').focus(), 50);
-  const key = e => { if (!document.body.contains(el)) return removeEventListener('keydown', key); if (e.key === 'Enter' && $('#ttlHowBox').classList.contains('hidden')) { e.preventDefault(); play(); removeEventListener('keydown', key); } };
+  const key = e => { if (!document.body.contains(el)) return removeEventListener('keydown', key); if (e.key === 'Enter' && $('#ttlHowBox').classList.contains('hidden') && !document.activeElement?.closest?.('.mb-exp:not(#ttlPlay)')) { e.preventDefault(); play(); removeEventListener('keydown', key); } };
   addEventListener('keydown', key);
 }

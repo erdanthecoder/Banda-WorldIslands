@@ -16,7 +16,8 @@ const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = a => a[rnd(0, a.length - 1)];
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const cents = c => '$' + (c / 100).toFixed(2);
-export const JOBS = ['cashier', 'cleaner', 'helper', 'waiter', 'fisher', 'barista'];
+// (the mBank cashier job left with the bank: mBank is now its own Marbly experience, mBank HQ)
+export const JOBS = ['cleaner', 'helper', 'waiter', 'fisher', 'barista'];
 const JOB_ICON = { cashier: '🏦', cleaner: '🧹', helper: '🙋', waiter: '🍽️', fisher: '🎣', barista: '☕' };
 
 // places on the island, for the helper job and for bots that show you the way

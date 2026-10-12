@@ -6,6 +6,7 @@ export const PRICES = {
   plov: 500, lagman: 450, manty: 450, soup: 300, salad: 250, pancakes: 300, lemonade: 150,
   ball: 800, balloon: 300, teddy: 1200, crown: 5000, headphones: 2500, tophat: 2000, dog: 4000, cat: 4000, bunny: 3500, dragon: 9000,
   hotelroom: 1500, suite: 4000, ferris: 200,
+  car_buggy: 800, car_sport: 2500, car_muscle: 4500, car_f1: 9000, car_hyper: 20000,
 };
 export const ICON = {
   apple: '🍎', banana: '🍌', juice: '🧃', soda: '🥤', chips: '🍟', chocolate: '🍫', icecream: '🍦', pizza: '🍕', burger: '🍔', cake: '🎂',
@@ -13,9 +14,10 @@ export const ICON = {
   plov: '🍛', lagman: '🍜', manty: '🥟', soup: '🍲', salad: '🥗', pancakes: '🥞', lemonade: '🍋',
   ball: '⚽', balloon: '🎈', teddy: '🧸', crown: '👑', headphones: '🎧', tophat: '🎩', dog: '🐶', cat: '🐱', bunny: '🐰', dragon: '🐲',
   hotelroom: '🏨', suite: '🌟', ferris: '🎡',
+  car_buggy: '🏖️', car_sport: '🏎️', car_muscle: '🚗', car_f1: '🏁', car_hyper: '⚡',
 };
 // paid services (hotel, rides): bought with mPAY but never kept in your bag
-export const SERVICES = ['hotelroom', 'suite', 'ferris'];
+export const SERVICES = ['hotelroom', 'suite', 'ferris', 'car_buggy', 'car_sport', 'car_muscle', 'car_f1', 'car_hyper'];
 export const FOOD = ['plov', 'lagman', 'manty', 'soup', 'salad', 'pancakes', 'lemonade', 'coffee', 'latte', 'cocoa', 'tea', 'croissant', 'apple', 'banana', 'juice', 'soda', 'chips', 'chocolate', 'icecream', 'pizza', 'burger', 'cake'];
 export const HAT_ITEMS = ['crown', 'headphones', 'tophat'];
 export const PET_ITEMS = ['dog', 'cat', 'bunny', 'dragon'];
