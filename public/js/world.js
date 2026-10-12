@@ -231,6 +231,7 @@ export class World {
     this.solids = []; this.interiors = []; this.zones = []; this.grounds = []; this.holes = []; this.holeMats = [];
     this.yaw = Math.PI; this.pitch = 0.28; this.dist = 6.5;
     this.vel = new THREE.Vector3(); this.onGround = false;
+    try { this.sens = +(localStorage.getItem('marbly_sens') || 1); } catch (e) { this.sens = 1; }
     this.frozenUntil = 0; this.constrain = null; this.inputLocked = false; this.stars = [];
     makeTextures();
     this._build();
@@ -763,7 +764,7 @@ export class World {
     addEventListener('pointerup', e => { if (drag && drag.id === e.pointerId) drag = null; });
     addEventListener('pointermove', e => {
       if (!drag || drag.id !== e.pointerId) return;
-      this.yaw -= (e.clientX - drag.x) * 0.005; this.pitch = Math.min(1.2, Math.max(-0.35, this.pitch + (e.clientY - drag.y) * 0.004));
+      const k = this.sens || 1; this.yaw -= (e.clientX - drag.x) * 0.005 * k; this.pitch = Math.min(1.2, Math.max(-0.35, this.pitch + (e.clientY - drag.y) * 0.004 * k));
       drag.x = e.clientX; drag.y = e.clientY;
     });
     c.addEventListener('wheel', e => { this.dist = Math.min(18, Math.max(2.5, this.dist + e.deltaY * 0.008)); }, { passive: true });

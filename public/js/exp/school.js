@@ -105,7 +105,7 @@ function build(app) {
   app.bots = BOT_NAMES.map((n, i) => ({ id: 'b' + i, name: n, skill: 0.45 + ((i * 37) % 50) / 100 }));
   const botSeats = app.seats.filter(s => !s.player);
   app.botAv = app.bots.map((b, i) => { const av = new Avatar(randomAvatar(), b.name, 'bot'); const s = botSeats[i]; av.group.position.set(s.x, 0.35, s.z); av.group.rotation.y = s.ry; av.play('sit'); S.add(av.group); av.seat = s; return av; });
-  w.updaters.push(dt => { app.botAv.forEach(av => { if (!av.push) av.animate(0, dt, false); }); if (!app.teacherDance) app.teacher.animate(0, dt, false); });
+  w.updaters.push(dt => { app.botAv.forEach(av => { if (!av.push) av.animate(0, dt, false); }); });
   // ---------- the quiz state (run by the host) ----------
   app.day = { phase: 'arrive', phaseEnds: Date.now() + 8000, qs: pickQs(), qi: 0, scores: {}, ans: {}, last: {} };
   app.net.onState('day', d => d && setDay(app, d));
@@ -160,8 +160,8 @@ function mySeat(app) {
   return free[k] || { x: -6 + k * 1.2, z: 8.2, ry: Math.PI, standing: true };
 }
 function seat(app) {
-  const w = app.world, s = app.mySeat = mySeat(app); if (w.carrier && w.carrier.school) return;
-  w.carrier = { school: true, update: (dt, p, me) => { p.set(s.x, s.standing ? 0 : 0.35, s.z); me.group.rotation.y = s.ry; if (app.pushing) pushPose(me, app.pushT); else if (!s.standing && me.emote !== 'sit') me.play('sit'); me.animate(0, dt, false); if (app.pushing) pushPose(me, app.pushT); return false; }, onCancel: () => {} };
+  const w = app.world; if (w.carrier && w.carrier.school) return; const s = app.mySeat = { ...mySeat(app) };
+  w.carrier = { school: true, update: (dt, p, me) => { if (!app.pushing && (app._seatT = (app._seatT || 0) + dt) > 1) { app._seatT = 0; const ns = mySeat(app); if (ns.x !== s.x || ns.z !== s.z) { Object.assign(s, ns); } } p.set(s.x, s.standing ? 0 : 0.35, s.z); me.group.rotation.y = s.ry; if (app.pushing) pushPose(me, app.pushT); else if (!s.standing && me.emote !== 'sit') me.play('sit'); me.animate(0, dt, false); if (app.pushing) pushPose(me, app.pushT); return false; }, onCancel: () => {} };
   if (!s.standing) { w.me.play('sit'); app.emoteSig = 'sit:' + Date.now(); }
 }
 function stand(app) { const w = app.world; if (w.carrier && w.carrier.school) { w.carrier = null; w.me.emote = null; w.teleport(app.mySeat.x + 1.4, app.mySeat.z, Math.PI); } pov(app, false); app.pushing = false; }
@@ -254,6 +254,7 @@ function frame(dt, t, app) {
   // remote players who lost do push-ups too
   if (app.day.phase === 'pushups') for (const id in app.world.remotes) if ((app.day.losers || []).includes(id)) pushPose(app.world.remotes[id].av, t * 5);
   if (app.teacherDance) { if (app.teacher.emote !== 'dance') app.teacher.play('dance'); app.teacher.animate(0, dt, false); }
+  else alive(app, dt, t);
   if (app.snow) app.snow.forEach(f => { f.position.y -= dt * 0.8; f.position.x += Math.sin(t + f.userData.k) * dt * 0.2; if (f.position.y < 0) f.position.y = 4.2; });
   if (app.allPush) app.botAv.forEach((av, i) => { av.animate(0, dt, false); pushPose(av, t * 5 + i); });
 }
@@ -274,4 +275,24 @@ function onAdmin(a, d, app) {
   if (a === 'teacherdance') { app.teacherDance = true; teacherSays(app, '🎶 ' + L('Let me show you my moves!', 'Смотрите, как я танцую!')); setTimeout(() => { app.teacherDance = false; app.teacher.emote = null; }, 15000); }
   if (a === 'pizza') { confetti(80); ui.banner('🍕 ' + L('Pizza party!', 'Пицца-вечеринка!')); app.seats.forEach(s => { const p = labelSprite('🍕', 0.5, { bg: null }); p.position.set(s.x, 1.1, s.z - 0.62); app.world.scene.add(p); setTimeout(() => app.world.scene.remove(p), 20000); }); app.sfx('cheer'); }
   if (a === 'snow') { if (!app.snow) { app.snow = []; const m = std(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.5 }); for (let i = 0; i < 300; i++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.04, 4, 3), m); f.position.set((Math.random() - 0.5) * C.w, Math.random() * 4.2, (Math.random() - 0.5) * C.d); f.userData.k = i; app.world.scene.add(f); app.snow.push(f); } setTimeout(() => { app.snow.forEach(f => app.world.scene.remove(f)); app.snow = null; }, 30000); } ui.banner('❄️ ' + L('It is snowing in class!', 'В классе идёт снег!')); }
+}
+
+// ---------- a real classroom: the teacher moves about, classmates react ----------
+function alive(app, dt, t) {
+  const d = app.day, T = app.teacher, g = T.group;
+  // the teacher walks along the front during the lesson and stands by the board for the quiz
+  const lesson = d.phase === 'lesson' || d.phase === 'arrive' || d.phase === 'break';
+  const tx = lesson ? Math.sin(t * 0.25) * 6 : -6.2, tz = -C.d / 2 + (lesson ? 2.6 : 3.8), dx = tx - g.position.x, dz = tz - g.position.z, dist = Math.hypot(dx, dz);
+  if (dist > 0.05) { const st = Math.min(dist, 1.1 * dt); g.position.x += dx / dist * st; g.position.z += dz / dist * st; g.rotation.y = Math.atan2(dx, dz); T.animate(1.1, dt, false); }
+  else { g.rotation.y += (0 - g.rotation.y) * Math.min(1, dt * 4); T.animate(0, dt, false); if (lesson && !T.emote && Math.sin(t * 0.9) > 0.6) { T.armR.rotation.set(-2.2, 0, -0.3); } }
+  if (app.bubble) app.bubble.position.set(g.position.x, 2.5, g.position.z + 0.3);
+  // classmates: hands up in the lesson, typing in the quiz, cheering or sad after each answer
+  app.botAv.forEach((av, i) => {
+    if (av.push || app.allPush) return;
+    const b = app.bots[i], last = d.last && d.last[b.id], q = Q[d.qs ? d.qs[d.qi] : 0];
+    if (d.phase === 'lesson' && Math.sin(t * 0.4 + i * 2.1) > 0.92) { av.armR.rotation.set(-2.9, 0, 0.1); }
+    else if (d.phase === 'q') { const tap = Math.sin(t * 9 + i) * 0.15; av.armL.rotation.set(-1.1 + tap, 0, 0.2); av.armR.rotation.set(-1.1 - tap, 0, -0.2); av.head.rotation.x = 0.35; }
+    else if (d.phase === 'reveal' && last) { if (last.pts > 0) { const j = Math.abs(Math.sin(t * 8 + i)); av.armL.rotation.set(-2.9, 0, 0.3); av.armR.rotation.set(-2.9, 0, -0.3); av.body.position.y = -0.62 + j * 0.06; } else { av.head.rotation.x = 0.5; av.armL.rotation.set(-0.3, 0, 0.6); av.armR.rotation.set(-0.3, 0, -0.6); } }
+    void q;
+  });
 }

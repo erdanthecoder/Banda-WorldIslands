@@ -134,6 +134,13 @@ function build(app) {
     if (ev.type === 'rjoin' && app.isHost()) { app.joined.add(JSON.stringify(ev.data)); }
     if (ev.type === 'rfin' && app.isHost() && app.race.phase === 'racing') { app.race.results = app.race.results || {}; if (!app.race.results[ev.data.pid]) { app.race.results[ev.data.pid] = ev.data.time; push(app); } }
   });
+  fxSetup(app);
+  // tyre walls on the outside of the corners and painted grid boxes
+  const tyreGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.32, 14), tyres = new THREE.InstancedMesh(tyreGeo, std(0x15171c, { roughness: 0.9 }), 900), M4 = new THREE.Matrix4();
+  let tn = 0;
+  for (let i = 0; i < T.N; i += 3) { const a = T.tan[i], b = T.tan[(i + 6) % T.N], turn = a.x * b.z - a.z * b.x; if (Math.abs(turn) < 0.035) continue; const side = -Math.sign(turn), p = T.pts[i], off = side * (W / 2 + 4.1); for (let h = 0; h < 3 && tn < 900; h++) { M4.makeTranslation(p.x - a.z * off, 0.16 + h * 0.32, p.z + a.x * off); tyres.setMatrixAt(tn++, M4); } }
+  tyres.count = tn; tyres.castShadow = true; S.add(tyres);
+  for (let k = 0; k < 8; k++) { const g = gridSpot(app, k); mesh(w, new THREE.PlaneGeometry(2.6, 4.6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 }), g.p.x, 0.045, g.p.z, { ry: g.h, cast: false }); }
   app.extraPos = () => (app.drive ? { car: app.drive.id, h: +app.drive.h.toFixed(2), cs: app.giantCars ? 2 : 1, rd: Math.round(app.drive.d) } : {});
   app.remoteD = {};
   drawScreen(app);
@@ -220,6 +227,13 @@ function drive(app, dt, p, meAv) {
   const before = D.d; D.d += best - D.lapD; D.lapD = best;
   if (racing && Math.floor(D.d / app.T.len) > Math.floor(before / app.T.len) && D.d > 0) { const lap = Math.floor(D.d / app.T.len) + 1; if (lap <= LAPS) { ui.banner(lap === LAPS ? '🔔 ' + L('Final lap!', 'Последний круг!') : `🏁 ${L('Lap', 'Круг')} ${lap}/${LAPS}`, 1800); app.sfx('ding'); } }
   if (racing && D.d >= LAPS * app.T.len) { D.done = true; const time = (Date.now() - r.start) / 1000; app.emit('rfin', { pid: app.me.pid, time }); if (app.isHost()) { r.results[app.me.pid] = time; push(app); } ui.banner(`🏁 ${L('Finished!', 'Финиш!')} ${time.toFixed(1)}s`, 3000); app.sfx('cheer'); }
+  // bumping into other cars pushes you apart and costs speed
+  for (const c of Object.values(app.cars)) { const dx = D.x - c.position.x, dz = D.z - c.position.z, dd = Math.hypot(dx, dz), min = 2.3 * (app.giantCars ? 2 : 1); if (dd < min && dd > 0.01) { D.x += dx / dd * (min - dd); D.z += dz / dd * (min - dd); D.v *= 0.82; if (!D.hit || performance.now() - D.hit > 500) { D.hit = performance.now(); app.sfx('bonk'); } } }
+  // skid marks and smoke when you corner hard or brake, dust when you go off the road
+  const slide = Math.abs(D.steer) * Math.abs(D.v) / C.max, braking = thr < 0 && D.v > 6;
+  if ((slide > 0.55 || braking) && racing) { skid(app, D, 0.95); skid(app, D, -0.95); if (Math.random() < 0.5) puff(app, D.x - Math.sin(D.h) * 1.8, D.z - Math.cos(D.h) * 1.8, 0xdddddd); }
+  if (!onRoad && Math.abs(D.v) > 4 && Math.random() < 0.6) puff(app, D.x - Math.sin(D.h) * 1.8, D.z - Math.cos(D.h) * 1.8, 0xb59a6a);
+  const cam = app.world.camera, fov = 56 + Math.min(1, Math.abs(D.v) / 40) * 16; if (Math.abs(cam.fov - fov) > 0.2) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
   const sc = app.giantCars ? 2 : 1, body = D.car.userData.body;
   // the body leans out of corners and dips when braking, like a real car
   const roll = -D.steer * Math.min(1, Math.abs(D.v) / C.max) * 0.09, pitch = (D.v - (D.pv ?? D.v)) / Math.max(dt, 0.001) * -0.004; D.pv = D.v;
@@ -230,7 +244,7 @@ function drive(app, dt, p, meAv) {
   p.set(D.x - Math.sin(D.h) * 0.2 * sc, 0.25 * sc, D.z - Math.cos(D.h) * 0.2 * sc); meAv.group.rotation.y = D.h; meAv.animate(0, dt, false);
 }
 function endDrive(app) {
-  const D = app.drive, w = app.world; if (!D) return; engine(app, 0, 0, true);
+  const D = app.drive, w = app.world; if (!D) return; engine(app, 0, 0, true); w.camera.fov = 56; w.camera.updateProjectionMatrix();
   w.scene.remove(D.car); app.drive = null; w.carrier = null; w.cameraOverride = null; w.me.emote = null;
   w.teleport(app.pad.x - 4, app.pad.z, Math.PI);
 }
@@ -271,13 +285,16 @@ function frame(dt, tt, app) {
     if (!b.bot) continue; live.add(b.id);
     let c = app.cars[b.id]; if (!c) { c = app.cars[b.id] = makeCar(b.car, true); w.scene.add(c); const nl = labelSprite(b.name, 0.4); nl.position.y = 2.2; c.add(nl); }
     const slot = r.racers.indexOf(b), d = (-6 - Math.floor(slot / 2) * 8) + Math.min(botDist(b, t), LAPS * app.T.len + 30), lane = (slot % 2 ? 3.5 : -3.5) * Math.max(0, 1 - t / 6) + Math.sin(t * 0.5 + b.seed * 9) * 3 * Math.min(1, t / 6);
-    const q = at(app.T, d, lane); c.position.set(q.p.x, 0.05, q.p.z); c.rotation.y = q.h; c.scale.setScalar(app.giantCars ? 2 : 1); spin(c, r.phase === 'racing' ? botSpeed(b) : 0, dt);
+    const q = at(app.T, d, lane), dh = Math.atan2(Math.sin(q.h - (c.userData.ph ?? q.h)), Math.cos(q.h - (c.userData.ph ?? q.h))); c.userData.ph = q.h;
+    const body = c.userData.body; body.rotation.z += (Math.max(-0.08, Math.min(0.08, -dh / Math.max(dt, 0.001) * 0.05)) - body.rotation.z) * Math.min(1, dt * 5); c.userData.front.forEach(f => (f.rotation.y = Math.max(-0.4, Math.min(0.4, dh / Math.max(dt, 0.001) * 0.3))));
+    c.position.set(q.p.x, 0.05, q.p.z); c.rotation.y = q.h; c.scale.setScalar(app.giantCars ? 2 : 1); spin(c, r.phase === 'racing' ? botSpeed(b) : 0, dt);
   }
   // other players' cars follow their avatars
   for (const id in w.remotes) {
     const R = w.remotes[id], d = R.d || {}; if (d.rd !== undefined) app.remoteD[id] = d.rd; if (d.car) { live.add('p' + id); let c = app.cars['p' + id]; if (!c || c.userData.kind !== d.car) { if (c) w.scene.remove(c); c = app.cars['p' + id] = makeCar(d.car); w.scene.add(c); } c.position.set(R.av.group.position.x + Math.sin(d.h || 0) * 0.2, 0.05, R.av.group.position.z + Math.cos(d.h || 0) * 0.2); c.rotation.y = d.h || 0; c.scale.setScalar(d.cs || 1); spin(c, 20, dt); }
   }
   for (const k in app.cars) if (!live.has(k)) { w.scene.remove(app.cars[k]); delete app.cars[k]; }
+  fxTick(app, dt);
   app.showroom.forEach((c, i) => (c.rotation.y += dt * 0.3 * (i % 2 ? 1 : -1)));
   if (app.rainbowUntil > tt) app.roadMat.color.setHSL((tt * 0.2) % 1, 0.7, 0.5); else if (app._rb) { app._rb = false; app.roadMat.color.set(0x3b3f46); }
   if ((app._scr = (app._scr || 0) + dt) > 0.3) { app._scr = 0; drawScreen(app); if (app.drive && r.phase === 'racing') { const order = standings(app, r), pos = order.findIndex(x => x.id === app.me.pid) + 1; ui.hud(app.drive.done ? `🏁 ${L('Finished', 'Финиш')} · P${pos}` : `P${pos}/${order.length} · ${L('Lap', 'Круг')} ${Math.min(LAPS, Math.floor(Math.max(0, app.drive.d) / app.T.len) + 1)}/${LAPS} · ${Math.round(Math.abs(app.drive.v) * 3.6)} km/h`); } else if (!(toGo > 0 && toGo < 5)) ui.hud(''); }
@@ -343,3 +360,23 @@ function engine(app, k, thr, stop) {
     E.f.frequency.setTargetAtTime(500 + k * 1600, E.ac.currentTime, 0.08); E.g.gain.setTargetAtTime(document.hidden ? 0 : 0.035 + k * 0.035, E.ac.currentTime, 0.1);
   } catch (e) {}
 }
+
+// ---------- skid marks, smoke and dust ----------
+function fxSetup(app) {
+  const S = app.world.scene;
+  app.skids = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.32, 0.9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.55, depthWrite: false }), 600);
+  app.skids.count = 0; app.skids.frustumCulled = false; app.skidN = 0; S.add(app.skids);
+  app.puffs = Array.from({ length: 40 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, roughness: 1 })); m.visible = false; S.add(m); return m; });
+  app.puffN = 0;
+}
+function skid(app, D, side) {
+  // each mark joins up with the last one, so the tyres leave one long line
+  const m = new THREE.Matrix4(), x = D.x - Math.sin(D.h) * 1.3 + Math.cos(D.h) * side, z = D.z - Math.cos(D.h) * 1.3 - Math.sin(D.h) * side;
+  const last = (D.sk ||= {})[side], now = performance.now(); D.sk[side] = { x, z, t: now };
+  if (!last || now - last.t > 250) return;
+  const dx = x - last.x, dz = z - last.z, len = Math.hypot(dx, dz); if (len < 0.05 || len > 4) return;
+  m.compose(new THREE.Vector3((x + last.x) / 2, 0.05, (z + last.z) / 2), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(dx, dz)), new THREE.Vector3(1, 1, len / 0.9));
+  app.skids.setMatrixAt(app.skidN % 600, m); app.skidN++; app.skids.count = Math.min(600, app.skidN); app.skids.instanceMatrix.needsUpdate = true;
+}
+function puff(app, x, z, color) { const p = app.puffs[app.puffN++ % app.puffs.length]; p.position.set(x + (Math.random() - 0.5), 0.4, z + (Math.random() - 0.5)); p.scale.setScalar(0.4); p.material.color.setHex(color); p.material.opacity = 0.55; p.visible = true; p.userData.t = 0; }
+function fxTick(app, dt) { for (const p of app.puffs) { if (!p.visible) continue; p.userData.t += dt; p.position.y += dt * 0.8; p.scale.setScalar(0.4 + p.userData.t * 2.2); p.material.opacity = Math.max(0, 0.55 - p.userData.t * 0.6); if (p.material.opacity <= 0) p.visible = false; } }

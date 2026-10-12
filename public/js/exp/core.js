@@ -11,6 +11,7 @@ import { sfx, setMuted, isMuted, unlockAudio, playSong, stopSong } from '../audi
 import { t, getLang } from '../i18n.js';
 import { Shop, money } from '../shop.js';
 import { MPay } from '../mpay.js';
+import { openMenu } from '../menu.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -78,6 +79,7 @@ export async function experience(def) {
     def.onPlayers && def.onPlayers(app);
   });
   net.onEvent(ev => { if (ev.trusted) adminEvent(app, ev); app.evCbs.forEach(cb => cb(ev)); });
+  net.watchLobby(c => { app.lobby = c; });
   await net.joinServer(def.server || def.id + '-1', { pid: app.me.pid, uid: app.me.uid, name: app.me.name, role: app.me.role, avatar: app.me.avatar });
   $('#xOnline').textContent = `${app.count()} ${L('online', 'онлайн')}`;
 
@@ -117,7 +119,7 @@ function hudDom(def) {
       <a class="x-btn" href="/" title="Marbly">⬅ <b>Marbly</b></a>
       <div class="x-chip"><span>${esc(def.icon)} ${esc(L(def.title, def.titleRu))}</span><small id="xOnline"></small></div>
       <div class="x-chip money" id="xMoneyChip">💳 <b id="xMoney">$0.00</b></div>
-      <div class="x-right"><button class="x-btn" id="xEmote" title="Emotes">😀</button><button class="x-btn" id="xSnd">🔊</button><button class="x-btn admin" id="xAdmin" title="Admin">🛡️</button></div>
+      <div class="x-right"><button class="x-btn" id="xMenu" title="Menu (Esc)">☰</button><button class="x-btn" id="xEmote" title="Emotes">😀</button><button class="x-btn" id="xSnd">🔊</button><button class="x-btn admin" id="xAdmin" title="Admin">🛡️</button></div>
     </div>
     <div id="xEmotes" class="x-emotes hidden"></div>
     <div id="xHud" class="x-hud hidden"></div>
@@ -131,8 +133,14 @@ function hudDom(def) {
 
 function hudSetup(app) {
   const w = app.world;
-  $('#xSnd').onclick = () => { setMuted(!isMuted()); $('#xSnd').textContent = isMuted() ? '🔇' : '🔊'; };
+  $('#xSnd').textContent = isMuted() ? '🔇' : '🔊';
+  $('#xSnd').onclick = () => { setMuted(!isMuted()); try { localStorage.setItem('marbly_muted', isMuted() ? '1' : '0'); } catch (e) {} $('#xSnd').textContent = isMuted() ? '🔇' : '🔊'; };
   $('#xAdmin').onclick = () => openAdmin(app);
+  // the Marbly menu: experiences with live player counts, the players here, settings
+  const menu = () => openMenu({ here: app.def.id, lobby: () => app.lobby || {}, world: w, onSound: () => { $('#xSnd').textContent = isMuted() ? '🔇' : '🔊'; },
+    players: () => [{ name: app.me.name, me: true, role: app.me.role }, ...Object.values(app.players).map(p => ({ name: p.name, role: p.role }))] });
+  $('#xMenu').onclick = menu;
+  addEventListener('keydown', e => { if (e.code === 'Escape' && document.querySelector('#xModal').classList.contains('hidden')) { const m = document.querySelector('#mbMenu'); if (m && !m.classList.contains('hidden')) m.querySelector('#mbX').click(); else menu(); } });
   $('#xMoneyChip').onclick = () => app.mpay.scratch();
   addEventListener('pointerdown', () => unlockAudio(), { once: true });
   // emotes

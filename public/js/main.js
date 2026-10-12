@@ -25,6 +25,7 @@ import { Fishing } from './fishing.js';
 import { whatsNew } from './whatsnew.js';
 import { isV2, LAUNCH_2 } from './launch.js';
 import { titleScreen, howToHtml } from './title.js';
+import { openMenu } from './menu.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
 import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
 import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
@@ -561,6 +562,9 @@ function hudSetup() {
   let inAndroid = false; try { inAndroid = sessionStorage.getItem('wi_android') === '1'; } catch (e) {}
   if (/WorldIslandsApp/.test(navigator.userAgent) || inAndroid) { document.body.classList.add('in-app'); show('#bWin', false); }
   $('#bBoard').onclick = () => { net.loadUsers(); renderBoard(); show('#board'); };
+  // the Marbly menu: every experience with live player counts, the players here, settings
+  $('#bMarbly').onclick = () => openMenu({ here: 'world', lobby: () => app.lobby || {}, world: w, onAvatar: () => $('#bAvatar').click(),
+    players: () => [{ name: app.me.name, me: true, role: app.me.role }, ...Object.values(app.players).map(p => ({ name: p.name, role: p.role }))] });
   $('#bAvatar').onclick = () => {
     w.pause(true); show('#creator');
     avatarCreator($('#creatorBody'), { t, cfg: app.me.avatar, name: app.me.name, owned: app.shop.inv, onLocked: v => ui.toast(`🔒 ${t('it_' + v)} · ${money(PRICES[v])} · ${t('locked')}`), onCancel: () => { show('#creator', false); w.pause(false); },
