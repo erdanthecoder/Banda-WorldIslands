@@ -142,12 +142,15 @@ async function build(app) {
     seats: seats.concat(Array.from({ length: 10 }, (_, i) => ({ x: -7 + (i % 5) * 3.5, y: 0.5, z: 44 + Math.floor(i / 5) * 1.5, ry: Math.PI, kind: 'stand' }))),
     far: w.hq ? 140 : 95,
   });
+  skyDeck(app);
   app.cardsToday = 1200 + Math.floor(Math.random() * 300);
   drawLed(app, 0);
 }
 
 function frame(dt, t, app) {
   if (!app.logo) return;
+  // clear air on the Sky Deck so you can see far
+  const high = app.world.me.group.position.y > 100, fd = high ? 0.0005 : 0.0022; app.world.scene.fog.density += (fd - app.world.scene.fog.density) * Math.min(1, dt * 2);
   app.logo.rotation.y += dt * (app.spinUntil > t ? 6 : 0.4);
   app.crown.rotation.z += dt * 0.2;
   app.fall.offset.y -= dt * 0.9;
@@ -247,4 +250,42 @@ function palm(w, x, z, y0 = 0) {
   mesh(w, new THREE.CylinderGeometry(0.22, 0.35, 7, 8), trunk, x, y0 + 3.5, z);
   for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, l = mesh(w, new THREE.PlaneGeometry(1.1, 4.2), leaf, x + Math.sin(a) * 1.6, y0 + 7, z + Math.cos(a) * 1.6, { ry: a }); l.rotation.x = -1.0; }
   if (!y0) w.solids.push({ x, z, r: 0.4 });
+}
+
+// ---------- 🌆 the Sky Deck on top of the tower ----------
+function skyDeck(app) {
+  const w = app.world, S = w.scene, Y = 18 + 38 * 3.6 + 0.2, cx = 0, cz = -62, R = 13.5;
+  // the floor, a glass rail all round (you can't fall off), benches, telescopes and a few visitors
+  mesh(w, new THREE.BoxGeometry(R * 2, 0.4, R * 2), std(0xf3efe8, { roughness: 0.35 }), cx, Y - 0.2, cz);
+  w.grounds.push((x, z, y) => (Math.abs(x - cx) < R && Math.abs(z - cz) < R && y > Y - 6 ? Y : null));
+  const rail = new THREE.MeshStandardMaterial({ color: 0xbfe3ff, transparent: true, opacity: 0.3, metalness: 0.6, roughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+  for (const [x, z, ry] of [[cx, cz - R, 0], [cx, cz + R, 0], [cx - R, cz, Math.PI / 2], [cx + R, cz, Math.PI / 2]]) {
+    const g = new THREE.Mesh(new THREE.PlaneGeometry(R * 2, 1.3), rail); g.position.set(x, Y + 0.65, z); g.rotation.y = ry; S.add(g);
+    mesh(w, new THREE.BoxGeometry(R * 2, 0.1, 0.12), std(0xd4af37, { metalness: 1, roughness: 0.2 }), x, Y + 1.3, z, { ry, cast: false });
+    w.solids.push({ x, z, hw: ry ? 0.15 : R, hd: ry ? R : 0.15, rot: 0, y0: Y - 3, y1: Y + 6 });
+  }
+  for (const [x, z, ry] of [[cx - 8, cz + 8, Math.PI * 0.75], [cx + 8, cz + 8, -Math.PI * 0.75], [cx - 8, cz - 8, Math.PI / 4], [cx + 8, cz - 8, -Math.PI / 4]]) {
+    mesh(w, new THREE.CylinderGeometry(0.08, 0.12, 1.2, 8), std(0x23324a, { metalness: 0.7 }), x, Y + 0.6, z);
+    const tube = mesh(w, new THREE.CylinderGeometry(0.12, 0.18, 0.9, 10), std(0xd4af37, { metalness: 1, roughness: 0.2 }), x, Y + 1.3, z, { ry }); tube.rotation.x = 1.2;
+    w.zone({ test: (px, py, pz) => Math.hypot(px - x, pz - z) < 1.1 && py > Y - 1, onEnter: () => { ui.banner('🔭 ' + L('What a view! You can see the whole of Marbly.', 'Какой вид! Видно весь Marbly.'), 3000); app.sfx('star'); } });
+  }
+  for (const [x, z] of [[cx, cz + 10.5], [cx, cz - 10.5]]) mesh(w, new RoundedBox(5, 0.45, 0.9, 2, 0.12), std(0x23324a), x, Y + 0.3, z);
+  const sign = labelSprite('🌆 mBank SKY DECK', 0.9, { bg: 'rgba(15,42,74,0.92)', weight: 800 }); sign.position.set(cx, Y + 4, cz); S.add(sign);
+  // the glass lift: a pad in the lobby and one up here
+  const lift = (x, z, y, label, toUp) => {
+    mesh(w, new THREE.CylinderGeometry(1.4, 1.5, 0.2, 36), std(0x111827, { emissive: 0x3a86ff, emissiveIntensity: 0.8 }), x, y + 0.1, z, { cast: false });
+    const glassTube = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 3, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x9fd4ff, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false })); glassTube.position.set(x, y + 1.6, z); S.add(glassTube);
+    const l = labelSprite(label, 0.5, { bg: 'rgba(58,134,255,0.95)' }); l.position.set(x, y + 3.6, z); S.add(l);
+    w.zone({ test: (px, py, pz) => Math.hypot(px - x, pz - z) < 1.2 && Math.abs(py - y) < 2, onEnter: () => ride(app, toUp) });
+  };
+  lift(9, -12, 0, '🌆 ' + L('Sky Deck lift', 'Лифт на крышу'), true);
+  lift(cx + 6, cz, Y, '⬇ ' + L('Back to the lobby', 'Вниз в лобби'), false);
+  app.deckPeople = new People(w, { rings: [], seats: [[cx - 9, cz + 12.2, 0], [cx - 3, cz + 12.2, 0], [cx + 4, cz - 12.2, Math.PI], [cx + 10, cz - 12.2, Math.PI], [cx - 12.2, cz + 2, -Math.PI / 2], [cx + 12.2, cz - 4, Math.PI / 2]].map(([x, z, ry]) => ({ x, y: Y, z, ry, kind: 'stand' })), far: 80 });
+  app.deck = { cx, cz, Y };
+}
+function ride(app, up) {
+  const w = app.world, D = app.deck; if (app._riding) return; app._riding = true;
+  app.sfx('ding'); ui.banner(up ? '🛗 ' + L('Going up to the Sky Deck…', 'Едем на крышу…') : '🛗 ' + L('Going down…', 'Едем вниз…'), 1600);
+  const f = document.querySelector('#xFlash'); f.style.background = '#000'; f.classList.remove('on'); f.offsetHeight; f.classList.add('on');
+  setTimeout(() => { if (up) w.teleport(D.cx + 3, D.cz + 3, Math.PI, D.Y + 0.1); else w.teleport(9, -9, Math.PI); app.sfx('ding'); f.style.background = ''; app._riding = false; }, 380);
 }

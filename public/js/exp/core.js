@@ -12,6 +12,8 @@ import { t, getLang } from '../i18n.js';
 import { Shop, money } from '../shop.js';
 import { MPay } from '../mpay.js';
 import { openMenu } from '../menu.js';
+import { clean } from '../safe.js';
+import { labelSprite } from '../world.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -125,6 +127,7 @@ function hudDom(def) {
     <div id="xHud" class="x-hud hidden"></div>
     <div id="xBanner" class="x-banner hidden"></div>
     <div id="xToasts" class="x-toasts"></div>
+    <div id="xChat" class="x-chat"><div id="xChatLog"></div><form id="xChatF" class="hidden"><input id="xChatIn" maxlength="120" autocomplete="off" placeholder="${esc(L('Say something nice… (Enter)', 'Напиши что-нибудь… (Enter)'))}"></form><button id="xChatB" class="x-btn" title="Chat (Enter)">💬</button></div>
     <div id="xModal" class="modal hidden"><div class="sheet small x-sheet"><div class="sheet-head"><h2 id="xModalT"></h2><button class="ibtn light" id="xModalX">✕</button></div><div id="xModalB"></div></div></div>
     <div id="xTouch" class="x-touch hidden"><div id="xJoy" class="x-joy"><i></i></div><button id="xJump" class="x-jump">⤒</button></div>
     <div id="xFlash" class="x-flash"></div>`);
@@ -140,6 +143,18 @@ function hudSetup(app) {
   const menu = () => openMenu({ here: app.def.id, lobby: () => app.lobby || {}, world: w, onSound: () => { $('#xSnd').textContent = isMuted() ? '🔇' : '🔊'; },
     players: () => [{ name: app.me.name, me: true, role: app.me.role }, ...Object.values(app.players).map(p => ({ name: p.name, role: p.role }))] });
   $('#xMenu').onclick = menu;
+  // chat: Enter or 💬 to type; messages show in the corner and as a bubble over the speaker's head
+  const openChat = () => { $('#xChatF').classList.remove('hidden'); $('#xChatIn').focus(); w.inputLocked = true; w.keys = {}; };
+  const closeChat = () => { $('#xChatF').classList.add('hidden'); $('#xChatIn').blur(); w.inputLocked = false; };
+  $('#xChatB').onclick = () => ($('#xChatF').classList.contains('hidden') ? openChat() : closeChat());
+  $('#xChatF').onsubmit = e => {
+    e.preventDefault(); const text = clean($('#xChatIn').value.trim()); $('#xChatIn').value = ''; closeChat(); if (!text) return;
+    if (Date.now() - (app._lastChat || 0) < 1500) return ui.toast('⏳ ' + L('Slow down a little', 'Не так быстро'));
+    app._lastChat = Date.now(); app.emit('chat', { name: app.me.name, role: app.me.role, text, pid: app.me.pid });
+  };
+  $('#xChatIn').addEventListener('keydown', e => { if (e.code === 'Escape') { e.stopPropagation(); closeChat(); } });
+  addEventListener('keydown', e => { if (e.code === 'Enter' && !w.inputLocked && !/INPUT|TEXTAREA/.test(e.target.tagName) && document.querySelector('#xModal').classList.contains('hidden')) { e.preventDefault(); openChat(); } });
+  app.onEvent(ev => { if (ev.type === 'chat' && ev.data) chatLine(app, ev.data); });
   addEventListener('keydown', e => { if (e.code === 'Escape' && document.querySelector('#xModal').classList.contains('hidden')) { const m = document.querySelector('#mbMenu'); if (m && !m.classList.contains('hidden')) m.querySelector('#mbX').click(); else menu(); } });
   $('#xMoneyChip').onclick = () => app.mpay.scratch();
   addEventListener('pointerdown', () => unlockAudio(), { once: true });
@@ -241,3 +256,15 @@ export function mesh(world, geo, mat, x, y, z, { ry = 0, cast = true, solid = fa
   return m;
 }
 export function canvasTexture(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; return tx; }
+
+// one chat line (filtered again on the way in) and a speech bubble over the speaker
+function chatLine(app, d) {
+  const text = clean(d.text), log = document.querySelector('#xChatLog'), line = document.createElement('div');
+  line.innerHTML = `<b>${esc(d.name)}${d.role === 'teacher' ? ' 👩‍🏫' : ''}:</b> ${esc(text)}`; log.appendChild(line);
+  while (log.children.length > 8) log.firstChild.remove();
+  setTimeout(() => line.classList.add('old'), 12000);
+  const av = d.pid === app.me.pid ? app.world.me : app.world.remotes[d.pid]?.av; if (!av) return;
+  if (av._bubble) av.group.remove(av._bubble);
+  const b = labelSprite(text.length > 40 ? text.slice(0, 38) + '…' : text, 0.34, { bg: 'rgba(255,255,255,0.95)', color: '#14181f' }); b.position.y = 2.75; av.group.add(b); av._bubble = b;
+  app.sfx('pop'); setTimeout(() => { if (av._bubble === b) { av.group.remove(b); av._bubble = null; } }, 6000);
+}

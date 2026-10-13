@@ -26,6 +26,7 @@ import { whatsNew } from './whatsnew.js';
 import { isV2, LAUNCH_2 } from './launch.js';
 import { titleScreen, howToHtml } from './title.js';
 import { openMenu } from './menu.js';
+import { clean } from './safe.js';
 import { mathQuiz, speedMath, timesTable, langQuiz, wordMatch } from './games/learn.js';
 import { flappy, snake, minicraft, breaker, dodger } from './games/arcade.js';
 import { geoQuiz, scienceQuiz, spellingBee, logicQuiz } from './games/discover.js';
@@ -454,7 +455,7 @@ function renderBoard() {
 // ---------------- Events ----------------
 async function onEvent(ev) {
   const d = ev.data || {}, w = app.world, kid = app.me.role !== 'teacher';
-  if (ev.type === 'chat') return ui.chat(`<b>${esc(d.name)}${d.role === 'teacher' ? ' · ' + t('teacher') : ''}:</b> ${esc(d.text)}`, d.role === 'teacher' ? 'tch' : '');
+  if (ev.type === 'chat') return ui.chat(`<b>${esc(d.name)}${d.role === 'teacher' ? ' · ' + t('teacher') : ''}:</b> ${esc(clean(d.text))}`, d.role === 'teacher' ? 'tch' : '');
   if (!ev.trusted) return; // everything below comes from a verified teacher command
   switch (ev.type) {
     case 'announce':
@@ -590,7 +591,7 @@ function hudSetup() {
     if (!text) return;
     if (/^\/teachers?\b/i.test(text)) return ui.toast(app.me.role === 'teacher' ? t('teacherMode') : t('notTeacherAccount'));
     if (app.effects.chatLock && app.me.role !== 'teacher') return ui.toast(t('chatLocked'));
-    net.emit('chat', { name: app.me.name, role: app.me.role, text: text.slice(0, 120) });
+    net.emit('chat', { name: app.me.name, role: app.me.role, text: clean(text).slice(0, 120) });
   };
   addEventListener('keydown', e => {
     if (/INPUT|TEXTAREA/.test(e.target.tagName)) return;

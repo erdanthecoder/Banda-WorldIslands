@@ -23,7 +23,17 @@ const Q = [ // [question en, question ru, [answers], correct index]
   ['How many hours in a day?', 'Сколько часов в сутках?', ['12', '20', '24', '48'], 2], ['The past tense of "go" is…', 'Прошедшее время «go»…', ['goed', 'went', 'gone', 'going'], 1],
   ['6 × 7 = ?', '6 × 7 = ?', ['42', '36', '48', '49'], 0], ['Lake Issyk-Kul is in…', 'Озеро Иссык-Куль находится в…', ['Kazakhstan', 'Kyrgyzstan', 'China', 'Russia'], 1],
   ['Which is NOT a fruit?', 'Что НЕ фрукт?', ['Apple', 'Banana', 'Carrot', 'Mango'], 2], ['What makes a rainbow?', 'Из-за чего появляется радуга?', ['Wind', 'Sunlight and rain', 'Snow', 'Clouds only'], 1],
-  ['45 ÷ 5 = ?', '45 ÷ 5 = ?', ['8', '9', '7', '10'], 1], ['Which is the tallest mountain?', 'Самая высокая гора?', ['Everest', 'K2', 'Elbrus', 'Lenin Peak'], 0],
+  ['45 ÷ 5 = ?', '45 ÷ 5 = ?', ['8', '9', '7', '10'], 1],
+  ['How many sides does a hexagon have?', 'Сколько сторон у шестиугольника?', ['5', '6', '7', '8'], 1], ['Which gas do we breathe in to live?', 'Каким газом мы дышим, чтобы жить?', ['Oxygen', 'Nitrogen', 'Carbon dioxide', 'Helium'], 0],
+  ['8 × 12 = ?', '8 × 12 = ?', ['86', '96', '108', '92'], 1], ['What is the plural of "mouse"?', 'Множественное число «mouse»?', ['mouses', 'mice', 'meese', 'mouse'], 1],
+  ['Which planet is called the Red Planet?', 'Какую планету называют Красной?', ['Jupiter', 'Venus', 'Mars', 'Saturn'], 2], ['What is 25% of 200?', '25% от 200?', ['25', '40', '50', '75'], 2],
+  ['Where do penguins mostly live?', 'Где в основном живут пингвины?', ['Arctic', 'Antarctica', 'Africa', 'Europe'], 1], ['How many bones are in an adult human?', 'Сколько костей у взрослого человека?', ['106', '206', '306', '156'], 1],
+  ['Which instrument has 88 keys?', 'У какого инструмента 88 клавиш?', ['Guitar', 'Violin', 'Piano', 'Drum'], 2], ['What is H₂O?', 'Что такое H₂O?', ['Salt', 'Water', 'Air', 'Sugar'], 1],
+  ['1000 − 1 = ?', '1000 − 1 = ?', ['990', '999', '900', '1001'], 1], ['Which word is a verb?', 'Какое слово — глагол?', ['run', 'blue', 'happy', 'table'], 0],
+  ['The fastest land animal is the…', 'Самое быстрое наземное животное…', ['Lion', 'Horse', 'Cheetah', 'Rabbit'], 2], ['How many players are on a football team on the field?', 'Сколько игроков футбольной команды на поле?', ['9', '10', '11', '12'], 2],
+  ['What colour do you get mixing blue and yellow?', 'Какой цвет из синего и жёлтого?', ['Purple', 'Green', 'Orange', 'Brown'], 1], ['Which is the longest river in the world?', 'Самая длинная река в мире?', ['Nile', 'Volga', 'Thames', 'Danube'], 0],
+  ['15 × 4 = ?', '15 × 4 = ?', ['45', '50', '60', '65'], 2], ['What do caterpillars turn into?', 'В кого превращается гусеница?', ['Bees', 'Butterflies', 'Spiders', 'Beetles'], 1],
+  ['Which month has 28 or 29 days?', 'В каком месяце 28 или 29 дней?', ['January', 'February', 'April', 'June'], 1], ['The opposite of "early" is…', 'Противоположность «early»…', ['late', 'fast', 'soon', 'now'], 0], ['Which is the tallest mountain?', 'Самая высокая гора?', ['Everest', 'K2', 'Elbrus', 'Lenin Peak'], 0],
   ['A baby dog is a…', 'Детёныш собаки —…', ['kitten', 'puppy', 'calf', 'cub'], 1], ['How many minutes in an hour?', 'Сколько минут в часе?', ['30', '60', '100', '90'], 1],
 ];
 const SLIDES = [
@@ -124,7 +134,9 @@ function hostTick(app, now) {
   if (d.phase === 'q') { // score everyone: players' answers, and the bots answer too
     const q = Q[d.qs[d.qi]], scores = { ...d.scores }, last = {}, mult = app.double ? 2 : 1;
     for (const b of app.bots) { const ok = Math.random() < b.skill, ms = 2500 + Math.random() * 10000; const c = ok ? q[3] : (q[3] + 1 + Math.floor(Math.random() * 3)) % 4; d.ans[b.id] = { c, ms, name: b.name, bot: true }; }
-    for (const id in d.ans) { const a = d.ans[id], ok = a.c === q[3], pts = ok ? Math.round((500 + 500 * (1 - Math.min(1, a.ms / (PH.q * 1000)))) * mult) : 0; scores[id] = { name: a.name, pts: (scores[id]?.pts || 0) + pts, bot: !!a.bot }; last[id] = { c: a.c, pts }; }
+    // fast right answers score more, and a streak of right answers adds a bonus (🔥 +100 per answer in a row, up to +300)
+    for (const id in d.ans) { const a = d.ans[id], ok = a.c === q[3], streak = ok ? (scores[id]?.streak || 0) + 1 : 0, bonus = ok && streak > 1 ? Math.min(300, (streak - 1) * 100) : 0, pts = ok ? Math.round((500 + 500 * (1 - Math.min(1, a.ms / (PH.q * 1000)))) * mult) + bonus : 0; scores[id] = { name: a.name, pts: (scores[id]?.pts || 0) + pts, bot: !!a.bot, streak }; last[id] = { c: a.c, pts, streak, bonus }; }
+    for (const id in scores) if (!d.ans[id] && scores[id].streak) scores[id] = { ...scores[id], streak: 0 };
     for (const p of [app.me, ...Object.values(app.players)]) { const id = p.pid; if (!scores[id]) scores[id] = { name: p.name, pts: 0 }; }
     n = { ...n, scores, last, ans: {} };
   }
@@ -185,7 +197,7 @@ function renderIpad(app) {
     el.querySelectorAll('.ip-a').forEach(b => b.onclick = () => { if (app.answered != null) return; app.answered = +b.dataset.i; app.sfx('click'); const ms = Date.now() - (app.qStart || Date.now()); app.emit('qa', { pid: app.me.pid, qi: d.qi, c: app.answered, ms, name: app.me.name }); if (app.isHost()) app.day.ans[app.me.pid] = { c: app.answered, ms, name: app.me.name }; renderIpad(app); });
     return;
   }
-  if (d.phase === 'reveal') { const m = d.last?.[app.me.pid], ok = m && m.pts > 0; el.innerHTML = `${head}<div class="ip-res ${ok ? 'ok' : 'bad'}">${ok ? '✅ ' + L('Correct!', 'Верно!') : m ? '❌ ' + L('Wrong!', 'Неверно!') : '⏰ ' + L("Time's up!", 'Время вышло!')}</div><div class="ip-sub">${ok ? '+' + m.pts + ' pts' : L('The answer was:', 'Правильный ответ:') + ' <b>' + esc(q[2][q[3]]) + '</b>'}</div>`; return; }
+  if (d.phase === 'reveal') { const m = d.last?.[app.me.pid], ok = m && m.pts > 0; el.innerHTML = `${head}<div class="ip-res ${ok ? 'ok' : 'bad'}">${ok ? '✅ ' + L('Correct!', 'Верно!') : m ? '❌ ' + L('Wrong!', 'Неверно!') : '⏰ ' + L("Time's up!", 'Время вышло!')}</div><div class="ip-sub">${ok ? '+' + m.pts + ' pts' + (m.streak > 1 ? `<div class="ip-streak">🔥 ${m.streak} ${L('in a row!', 'подряд!')} +${m.bonus}</div>` : '') : L('The answer was:', 'Правильный ответ:') + ' <b>' + esc(q[2][q[3]]) + '</b>'}</div>`; return; }
   if (d.phase === 'board') { const r = rank(d), me = r.findIndex(([id]) => id === app.me.pid); el.innerHTML = `${head}<div class="ip-board">${r.slice(0, 5).map(([id, s], i) => `<div class="${id === app.me.pid ? 'me' : ''}"><b>${i + 1}</b><span>${esc(s.name)}</span><em>${s.pts}</em></div>`).join('')}</div>${me >= 5 ? `<div class="ip-sub">${L('You are', 'Ты на')} #${me + 1}</div>` : ''}`; return; }
 }
 

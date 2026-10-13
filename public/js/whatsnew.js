@@ -1,6 +1,10 @@
 // World Islands 2.0 — everything that is new, shown once after an update (and from Menu → What's new).
 export const VERSION = '2.0';
 const NEW = [
+  ['💬', 'Chat in every Marbly game: press Enter or 💬, and your message shows as a bubble over your head. Rude words are hidden automatically.', 'Чат во всех играх Marbly: нажми Enter или 💬 — сообщение появится облачком над головой. Грубые слова скрываются.'],
+  ['⏱', 'Raceway: lap timer, your best lap record and a live track map with every car.', 'Гонки: таймер круга, твой лучший круг и карта трассы со всеми машинами.'],
+  ['🌆', 'mBank HQ: take the glass lift to the Sky Deck on top of the tower, with telescopes and a view over all of Marbly.', 'mBank HQ: стеклянный лифт на смотровую площадку на крыше башни с телескопами и видом на весь Marbly.'],
+  ['🔥', 'Quiz Day: answer streaks give bonus points (up to +300), and there are 50 questions now.', 'День викторины: серии верных ответов дают бонус (до +300), теперь 50 вопросов.'],
   ['☰', 'New Marbly menu (like Roblox): every experience with how many people are playing right now, the players in your server, and settings (graphics, sound, language, camera sensitivity, full screen). Press Esc or the menu button.', 'Новое меню Marbly (как в Roblox): все игры и сколько людей играет прямо сейчас, игроки на сервере и настройки (графика, звук, язык, чувствительность камеры, полный экран). Нажми Esc или кнопку меню.'],
   ['🏎️', 'More realistic racing: skid marks, tyre smoke and dust, cars lean in corners, bump into each other, tyre walls in the corners and an engine sound.', 'Реалистичнее гонки: следы шин, дым и пыль, машины кренятся в поворотах, толкаются, шины в поворотах и звук мотора.'],
   ['🏫', 'A livelier Quiz Day: the teacher walks and points at the board, classmates raise hands, type on their iPads and cheer or groan after each answer.', 'Живее День викторины: учитель ходит и показывает на доску, ученики поднимают руки, печатают на айпадах и радуются или грустят после ответа.'],

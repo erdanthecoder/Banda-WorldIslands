@@ -225,7 +225,10 @@ function drive(app, dt, p, meAv) {
   let best = D.lapD, bestE = 1e9;
   for (let s = -12; s <= 24; s += 1.5) { const q = at(app.T, D.lapD + s).p, e = (q.x - D.x) ** 2 + (q.z - D.z) ** 2; if (e < bestE) { bestE = e; best = D.lapD + s; } }
   const before = D.d; D.d += best - D.lapD; D.lapD = best;
-  if (racing && Math.floor(D.d / app.T.len) > Math.floor(before / app.T.len) && D.d > 0) { const lap = Math.floor(D.d / app.T.len) + 1; if (lap <= LAPS) { ui.banner(lap === LAPS ? '🔔 ' + L('Final lap!', 'Последний круг!') : `🏁 ${L('Lap', 'Круг')} ${lap}/${LAPS}`, 1800); app.sfx('ding'); } }
+  if (racing && Math.floor(D.d / app.T.len) > Math.floor(before / app.T.len) && D.d > 0) {
+    // lap times: the first time over the line starts the clock, every next crossing is a lap
+    const nowT = Date.now(); if (D.lapStart) { const lt = (nowT - D.lapStart) / 1000, best = +(localStorage.getItem('marbly_bestlap') || 0); if (!best || lt < best) { try { localStorage.setItem('marbly_bestlap', lt.toFixed(2)); } catch (e) {} ui.toast(`⏱ ${L('New best lap', 'Лучший круг')}: ${lt.toFixed(2)}s 🏆`); } else ui.toast(`⏱ ${L('Lap', 'Круг')}: ${lt.toFixed(2)}s`); } D.lapStart = nowT;
+    const lap = Math.floor(D.d / app.T.len) + 1; if (lap <= LAPS) { ui.banner(lap === LAPS ? '🔔 ' + L('Final lap!', 'Последний круг!') : `🏁 ${L('Lap', 'Круг')} ${lap}/${LAPS}`, 1800); app.sfx('ding'); } }
   if (racing && D.d >= LAPS * app.T.len) { D.done = true; const time = (Date.now() - r.start) / 1000; app.emit('rfin', { pid: app.me.pid, time }); if (app.isHost()) { r.results[app.me.pid] = time; push(app); } ui.banner(`🏁 ${L('Finished!', 'Финиш!')} ${time.toFixed(1)}s`, 3000); app.sfx('cheer'); }
   // bumping into other cars pushes you apart and costs speed
   for (const c of Object.values(app.cars)) { const dx = D.x - c.position.x, dz = D.z - c.position.z, dd = Math.hypot(dx, dz), min = 2.3 * (app.giantCars ? 2 : 1); if (dd < min && dd > 0.01) { D.x += dx / dd * (min - dd); D.z += dz / dd * (min - dd); D.v *= 0.82; if (!D.hit || performance.now() - D.hit > 500) { D.hit = performance.now(); app.sfx('bonk'); } } }
@@ -295,9 +298,10 @@ function frame(dt, tt, app) {
   }
   for (const k in app.cars) if (!live.has(k)) { w.scene.remove(app.cars[k]); delete app.cars[k]; }
   fxTick(app, dt);
+  if ((app._mm = (app._mm || 0) + dt) > 0.2) { app._mm = 0; miniMap(app); }
   app.showroom.forEach((c, i) => (c.rotation.y += dt * 0.3 * (i % 2 ? 1 : -1)));
   if (app.rainbowUntil > tt) app.roadMat.color.setHSL((tt * 0.2) % 1, 0.7, 0.5); else if (app._rb) { app._rb = false; app.roadMat.color.set(0x3b3f46); }
-  if ((app._scr = (app._scr || 0) + dt) > 0.3) { app._scr = 0; drawScreen(app); if (app.drive && r.phase === 'racing') { const order = standings(app, r), pos = order.findIndex(x => x.id === app.me.pid) + 1; ui.hud(app.drive.done ? `🏁 ${L('Finished', 'Финиш')} · P${pos}` : `P${pos}/${order.length} · ${L('Lap', 'Круг')} ${Math.min(LAPS, Math.floor(Math.max(0, app.drive.d) / app.T.len) + 1)}/${LAPS} · ${Math.round(Math.abs(app.drive.v) * 3.6)} km/h`); } else if (!(toGo > 0 && toGo < 5)) ui.hud(''); }
+  if ((app._scr = (app._scr || 0) + dt) > 0.3) { app._scr = 0; drawScreen(app); if (app.drive && r.phase === 'racing') { const order = standings(app, r), pos = order.findIndex(x => x.id === app.me.pid) + 1; const el = Math.max(0, (Date.now() - r.start) / 1000), bl = localStorage.getItem('marbly_bestlap'); ui.hud(app.drive.done ? `🏁 ${L('Finished', 'Финиш')} · P${pos}` : `P${pos}/${order.length} · ${L('Lap', 'Круг')} ${Math.min(LAPS, Math.floor(Math.max(0, app.drive.d) / app.T.len) + 1)}/${LAPS} · ${Math.round(Math.abs(app.drive.v) * 3.6)} km/h · ⏱ ${Math.floor(el / 60)}:${(el % 60).toFixed(1).padStart(4, '0')}${bl ? ` · 🏆 ${(+bl).toFixed(1)}s` : ''}`); } else if (!(toGo > 0 && toGo < 5)) ui.hud(''); }
 }
 function drawScreen(app) {
   const g = app.scrG, r = app.race, W2 = 1024, H2 = 512;
@@ -366,7 +370,7 @@ function fxSetup(app) {
   const S = app.world.scene;
   app.skids = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.32, 0.9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.55, depthWrite: false }), 600);
   app.skids.count = 0; app.skids.frustumCulled = false; app.skidN = 0; S.add(app.skids);
-  app.puffs = Array.from({ length: 40 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, roughness: 1 })); m.visible = false; S.add(m); return m; });
+  app.puffs = Array.from({ length: 40 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; S.add(m); return m; });
   app.puffN = 0;
 }
 function skid(app, D, side) {
@@ -378,5 +382,22 @@ function skid(app, D, side) {
   m.compose(new THREE.Vector3((x + last.x) / 2, 0.05, (z + last.z) / 2), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(dx, dz)), new THREE.Vector3(1, 1, len / 0.9));
   app.skids.setMatrixAt(app.skidN % 600, m); app.skidN++; app.skids.count = Math.min(600, app.skidN); app.skids.instanceMatrix.needsUpdate = true;
 }
-function puff(app, x, z, color) { const p = app.puffs[app.puffN++ % app.puffs.length]; p.position.set(x + (Math.random() - 0.5), 0.4, z + (Math.random() - 0.5)); p.scale.setScalar(0.4); p.material.color.setHex(color); p.material.opacity = 0.55; p.visible = true; p.userData.t = 0; }
-function fxTick(app, dt) { for (const p of app.puffs) { if (!p.visible) continue; p.userData.t += dt; p.position.y += dt * 0.8; p.scale.setScalar(0.4 + p.userData.t * 2.2); p.material.opacity = Math.max(0, 0.55 - p.userData.t * 0.6); if (p.material.opacity <= 0) p.visible = false; } }
+function puff(app, x, z, color) { const p = app.puffs[app.puffN++ % app.puffs.length]; p.position.set(x + (Math.random() - 0.5), 0.4, z + (Math.random() - 0.5)); p.scale.setScalar(0.3); p.material.color.setHex(color); p.material.opacity = 0.32; p.visible = true; p.userData.t = 0; }
+function fxTick(app, dt) { for (const p of app.puffs) { if (!p.visible) continue; p.userData.t += dt; p.position.y += dt * 0.8; p.scale.setScalar(0.3 + p.userData.t * 3); p.material.opacity = Math.max(0, 0.32 - p.userData.t * 0.45); if (p.material.opacity <= 0) p.visible = false; } }
+
+// ---------- the track map in the corner: every car as a dot ----------
+function miniMap(app) {
+  let c = document.querySelector('#rMap');
+  if (!c) {
+    c = document.createElement('canvas'); c.id = 'rMap'; c.width = c.height = 300; c.className = 'r-map'; document.body.appendChild(c);
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of app.T.pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); }
+    const k = 260 / Math.max(x1 - x0, z1 - z0); app.mapF = (x, z) => [150 + (x - (x0 + x1) / 2) * k, 150 + (z - (z0 + z1) / 2) * k];
+  }
+  const g = c.getContext('2d'), F = app.mapF; g.clearRect(0, 0, 300, 300);
+  g.lineWidth = 14; g.strokeStyle = 'rgba(20,24,32,0.85)'; g.lineJoin = 'round'; g.beginPath(); app.T.pts.forEach((p, i) => { const [x, y] = F(p.x, p.z); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); g.stroke();
+  g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,0.6)'; g.stroke();
+  const st = at(app.T, 0), [sx, sy] = F(st.p.x, st.p.z); g.fillStyle = '#fff'; g.fillRect(sx - 2, sy - 9, 4, 18);
+  const dot = (x, z, col, r = 7) => { const [px, py] = F(x, z); g.fillStyle = col; g.beginPath(); g.arc(px, py, r, 0, 7); g.fill(); g.strokeStyle = '#000'; g.lineWidth = 2; g.stroke(); };
+  for (const id in app.cars) { const car = app.cars[id]; dot(car.position.x, car.position.z, id.startsWith('p') ? '#ffffff' : '#ff6fa8', 6); }
+  if (app.drive) dot(app.drive.x, app.drive.z, '#ffd34d', 9); else { const p = app.world.me.group.position; dot(p.x, p.z, '#ffd34d', 7); }
+}
