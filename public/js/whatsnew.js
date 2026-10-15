@@ -1,6 +1,7 @@
 // World Islands 2.0 — everything that is new, shown once after an update (and from Menu → What's new).
-export const VERSION = '2.1';
+export const VERSION = '2.2';
 const NEW = [
+  ['🤖', 'Raceway bots play with items too: they spin out on bananas, get knocked aside by a ⭐ star, and drop bananas of their own.', 'Боты на гонках тоже играют с предметами: скользят на бананах, отлетают от ⭐ звезды и сами бросают бананы.'],
   ['🍄', 'Island Raceway is a real kart game now: ❔ item boxes (turbo, triple turbo, super star, bananas, coin bags), boost pads, drift mini-turbos, a jump ramp with flips, coins on the track, and Free drive on the green pad any time.', 'Остров Гонок теперь настоящие картинги: ❔ коробки с предметами (турбо, тройное турбо, суперзвезда, бананы, мешки монет), ускорители, мини-турбо в заносе, трамплин с сальто, монеты на трассе и свободная езда на зелёной площадке.'],
   ['🏆', 'mBank HQ: the Gold Vault Climb, a 26-step parkour tower with moving platforms, checkpoints, a timer and a vault prize at the top. Plus a coin hunt with gold bars, bounce pads and a Mega bounce. Catch the coins when an admin makes it rain gold!', 'mBank HQ: Восхождение к Золотому Сейфу — паркур-башня из 26 платформ с движущимися платформами, чекпоинтами, таймером и призом наверху. А ещё охота за монетами и слитками, батуты и Мега-батут.'],
   ['🧻', 'Quiz Day: ✌️ 50/50 and ⚡ Double points power-ups on your iPad, paper balls to throw when the teacher is not looking (if she sees you, push-ups!), and a paper fight with the whole class at break.', 'День викторины: бонусы ✌️ 50/50 и ⚡ Двойные очки на айпаде, бумажки, которые можно кидать, пока учитель не смотрит (увидит — отжимайся!), и бумажный бой всем классом на перемене.'],

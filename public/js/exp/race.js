@@ -202,11 +202,20 @@ function setRace(app, r) {
   if (r.phase === 'countdown' && was !== 'countdown') { ui.banner('🚦 ' + L('Race starting! Drivers to the grid!', 'Гонка начинается! Пилоты на старт!'), 3000); app.sfx('drumroll'); if (mine) { if (app.drive) endDrive(app); toGrid(app, mine, r); } }
   if (r.phase === 'racing' && was !== 'racing') { app.sfx('go'); ui.banner('🟢 GO! GO! GO!', 1800); app.people.hype = 1; setTimeout(() => (app.people.hype = 0), 4000); app.people.wave = true; }
   if (r.phase === 'results' && was !== 'results') results(app, r);
-  if (r.phase === 'lobby' && was !== 'lobby') { app.people.wave = false; if (app.drive && !app.drive.free) endDrive(app); }
+  if (r.phase === 'lobby' && was !== 'lobby') { for (const id in app.bananas) app.world.scene.remove(app.bananas[id].m); app.bananas = {}; app.people.wave = false; if (app.drive && !app.drive.free) endDrive(app); }
 }
 // bots drive a smooth, fair line: fast cars are faster, with a little randomness
 function botSpeed(b) { return CARS[b.car].max * (0.8 + b.seed * 0.12); }
 function botDist(b, t) { if (t <= 0) return 0; const v = botSpeed(b), te = t < 3 ? t * t / 6 : t - 1.5; return v * (0.94 * te - 0.06 / 0.7 * (Math.cos(0.7 * te + b.seed * 6) - Math.cos(b.seed * 6))); }
+// distance from a point to the line a car drove this frame (so a fast car can't skip over a banana)
+function segDist(x, z, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, l = dx * dx + dz * dz, k = l ? Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l)) : 0; return Math.hypot(x - ax - dx * k, z - az - dz * k); }
+// every hit (banana, star bump) stops a bot for a moment: the race clock it has really driven
+const SPIN = 1.2;
+function botT(r, b, t) { const hs = (r.hits && r.hits[b.id]) || []; let lost = 0; for (const h of hs) lost += Math.min(SPIN, Math.max(0, t - h)); return t - lost; }
+function botHit(app, id, t) {
+  const r = app.race; if (r.phase !== 'racing') return; r.hits = r.hits || {}; const hs = r.hits[id] = r.hits[id] || [];
+  if (hs.length && t - hs[hs.length - 1] < SPIN + 0.4) return; hs.push(+t.toFixed(2)); push(app);
+}
 function botTime(app, b) { let lo = 0, hi = 400; const goal = LAPS * app.T.len; for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (botDist(b, m) < goal) lo = m; else hi = m; } return hi; }
 function gridSpot(app, slot) { return at(app.T, -6 - Math.floor(slot / 2) * 8, slot % 2 ? 3.5 : -3.5); }
 
@@ -262,7 +271,7 @@ function drive(app, dt, p, meAv) {
     const lap = Math.floor(D.d / T.len) + 1; if (racing && lap <= LAPS) { ui.banner(lap === LAPS ? '🔔 ' + L('Final lap!', 'Последний круг!') : `🏁 ${L('Lap', 'Круг')} ${lap}/${LAPS}`, 1800); app.sfx('ding'); } }
   if (racing && D.d >= LAPS * T.len) { D.done = true; const time = (Date.now() - r.start) / 1000; app.emit('rfin', { pid: app.me.pid, time }); if (app.isHost()) { r.results[app.me.pid] = time; push(app); } ui.banner(`🏁 ${L('Finished!', 'Финиш!')} ${time.toFixed(1)}s`, 3000); app.sfx('cheer'); }
   // bumping into other cars pushes you apart and costs speed (a star knocks them aside instead)
-  for (const c of Object.values(app.cars)) { const dx = D.x - c.position.x, dz = D.z - c.position.z, dd = Math.hypot(dx, dz), min = 2.3 * (app.giantCars ? 2 : 1); if (dd < min && dd > 0.01 && !D.air) { D.x += dx / dd * (min - dd); D.z += dz / dd * (min - dd); if (!star) D.v *= 0.82; if (!D.hit || now - D.hit > 500) { D.hit = now; app.sfx(star ? 'pop' : 'bonk'); } } }
+  for (const [ck, c] of Object.entries(app.cars)) { if (star && racing && ck.startsWith('bot')) { const dd0 = Math.hypot(D.x - c.position.x, D.z - c.position.z); if (dd0 < 2.6) { const rt = (Date.now() - r.start) / 1000; if (app.isHost()) botHit(app, ck, rt); else app.emit('bothit', { id: ck, t: rt }); } } const dx = D.x - c.position.x, dz = D.z - c.position.z, dd = Math.hypot(dx, dz), min = 2.3 * (app.giantCars ? 2 : 1); if (dd < min && dd > 0.01 && !D.air) { D.x += dx / dd * (min - dd); D.z += dz / dd * (min - dd); if (!star) D.v *= 0.82; if (!D.hit || now - D.hit > 500) { D.hit = now; app.sfx(star ? 'pop' : 'bonk'); } } }
   if (go) trackHits(app, D, now, dt);
   // drifting: hold a hard turn at speed to charge sparks (blue, then orange); straighten up for a mini-turbo
   const slide = Math.abs(D.steer) * Math.abs(D.v) / C.max, braking = thr < 0 && D.v > 6;
@@ -354,7 +363,7 @@ function trackFun(app) {
   void ramp; const rl = labelSprite('🛫 ' + L('JUMP! (Space = flip)', 'ПРЫЖОК! (Пробел = сальто)'), 0.5, { bg: 'rgba(255,194,26,0.95)', color: '#111' }); const ql = at(T, R.d - 14, R.off); rl.position.set(ql.p.x, 3, ql.p.z); S.add(rl);
   // bananas other drivers dropped
   app.bananas = {};
-  app.onEvent(ev => { if (ev.type === 'banana') addBanana(app, ev.data); if (ev.type === 'bgone' && app.bananas[ev.data.id]) { S.remove(app.bananas[ev.data.id].m); delete app.bananas[ev.data.id]; } });
+  app.onEvent(ev => { if (ev.type === 'bothit' && app.isHost()) botHit(app, ev.data.id, ev.data.t); if (ev.type === 'banana') addBanana(app, ev.data); if (ev.type === 'bgone' && app.bananas[ev.data.id]) { S.remove(app.bananas[ev.data.id].m); delete app.bananas[ev.data.id]; } });
   // buttons: use your item, and get out of the car in free drive
   app.itemBtn = document.createElement('button'); app.itemBtn.className = 'x-act hidden'; app.itemBtn.onclick = () => useItem(app); document.body.appendChild(app.itemBtn);
   app.exitBtn = document.createElement('button'); app.exitBtn.className = 'x-act x-act2 hidden'; app.exitBtn.innerHTML = '🚪<small>X</small>'; app.exitBtn.onclick = () => { if (app.drive && app.drive.free) endDrive(app); }; document.body.appendChild(app.exitBtn);
@@ -458,7 +467,7 @@ function results(app, r) {
 function standings(app, r) {
   const t = Math.max(0, (Date.now() - r.start) / 1000);
   return r.racers.map(x => {
-    if (x.bot) { const bt = botTime(app, x); return { ...x, done: bt <= t, time: bt, dist: botDist(x, t) }; }
+    if (x.bot) { const n = ((r.hits && r.hits[x.id]) || []).length, bt = botTime(app, x) + n * SPIN; return { ...x, done: bt <= t, time: bt, dist: botDist(x, botT(r, x, t)) }; }
     const ft = r.results && r.results[x.id]; const d = x.id === app.me.pid && app.drive ? app.drive.d : (app.remoteD && app.remoteD[x.id]) || 0;
     return { ...x, done: !!ft, time: ft || 1e9, dist: ft ? 1e9 : d };
   }).sort((a, b) => (a.done && b.done ? a.time - b.time : a.done ? -1 : b.done ? 1 : b.dist - a.dist));
@@ -480,10 +489,17 @@ function frame(dt, tt, app) {
   for (const b of racers) {
     if (!b.bot) continue; live.add(b.id);
     let c = app.cars[b.id]; if (!c) { c = app.cars[b.id] = makeCar(b.car, true); w.scene.add(c); const nl = labelSprite(b.name, 0.4); nl.position.y = 2.2; c.add(nl); }
-    const slot = r.racers.indexOf(b), d = (-6 - Math.floor(slot / 2) * 8) + Math.min(botDist(b, t), LAPS * app.T.len + 30), lane = (slot % 2 ? 3.5 : -3.5) * Math.max(0, 1 - t / 6) + Math.sin(t * 0.5 + b.seed * 9) * 3 * Math.min(1, t / 6);
+    const slot = r.racers.indexOf(b), bt = botT(r, b, t), d = (-6 - Math.floor(slot / 2) * 8) + Math.min(botDist(b, bt), LAPS * app.T.len + 30), lane = (slot % 2 ? 3.5 : -3.5) * Math.max(0, 1 - t / 6) + Math.sin(t * 0.5 + b.seed * 9) * 3 * Math.min(1, t / 6);
     const q = at(app.T, d, lane), dh = Math.atan2(Math.sin(q.h - (c.userData.ph ?? q.h)), Math.cos(q.h - (c.userData.ph ?? q.h))); c.userData.ph = q.h;
     const body = c.userData.body; body.rotation.z += (Math.max(-0.08, Math.min(0.08, -dh / Math.max(dt, 0.001) * 0.05)) - body.rotation.z) * Math.min(1, dt * 5); c.userData.front.forEach(f => (f.rotation.y = Math.max(-0.4, Math.min(0.4, dh / Math.max(dt, 0.001) * 0.3))));
-    c.position.set(q.p.x, 0.05 + rampY(app, d, lane), q.p.z); c.rotation.y = q.h; c.scale.setScalar(app.giantCars ? 2 : 1); spin(c, r.phase === 'racing' ? botSpeed(b) : 0, dt);
+    const lastHit = ((r.hits && r.hits[b.id]) || []).slice(-1)[0], sp = lastHit !== undefined && t - lastHit < SPIN ? (t - lastHit) / SPIN * Math.PI * 4 : 0;
+    c.position.set(q.p.x, 0.05 + rampY(app, d, lane), q.p.z); c.rotation.y = q.h + sp;
+    // the host checks bots against bananas, and now and then a bot drops one
+    if (app.isHost() && r.phase === 'racing') {
+      const px = c.userData.px ?? q.p.x, pz = c.userData.pz ?? q.p.z; c.userData.px = q.p.x; c.userData.pz = q.p.z;
+      for (const id in app.bananas) { const bn = app.bananas[id]; if (bn.owner !== b.id && segDist(bn.x, bn.z, px, pz, q.p.x, q.p.z) < 1.6) { app.world.scene.remove(bn.m); delete app.bananas[id]; app.emit('bgone', { id }); botHit(app, b.id, t); } }
+      if (t > 8 && Math.random() < dt * 0.025) { const bq = at(app.T, d - 4, lane), bb = { id: b.id + ':' + Date.now(), x: bq.p.x, z: bq.p.z, owner: b.id }; addBanana(app, bb); app.emit('banana', bb); }
+    } c.scale.setScalar(app.giantCars ? 2 : 1); spin(c, r.phase === 'racing' ? botSpeed(b) : 0, dt);
   }
   // other players' cars follow their avatars
   for (const id in w.remotes) {
