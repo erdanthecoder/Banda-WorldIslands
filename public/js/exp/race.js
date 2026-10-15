@@ -6,6 +6,7 @@ import { experience, L, ui, std, mesh, canvasTexture, confetti, esc, money } fro
 import { TEX, labelSprite } from '../world.js';
 import { People } from './people.js';
 import { surface } from './tex.js';
+import { Coins } from './fun.js';
 
 const CARS = {
   kart: { en: 'Go-kart', ru: 'Карт', price: 0, max: 22, acc: 11, turn: 2.6, color: 0x2ec4b6 },
@@ -152,9 +153,10 @@ function build(app) {
   for (let k = 0; k < 8; k++) { const g = gridSpot(app, k); mesh(w, new THREE.PlaneGeometry(2.4, 4.6).rotateX(-Math.PI / 2), gbm, g.p.x, 0.045, g.p.z, { ry: g.h, cast: false }); }
   app.extraPos = () => (app.drive ? { car: app.drive.id, h: +app.drive.h.toFixed(2), cs: app.giantCars ? 2 : 1, rd: Math.round(app.drive.d) } : {});
   app.remoteD = {};
+  trackFun(app);
   drawScreen(app);
 }
-function started(app) { ui.banner('🏁 ' + L('Island Raceway! Buy a car, then step on the red pad to race.', 'Остров Гонок! Купи машину и встань на красную площадку.'), 5000); }
+function started(app) { ui.banner('🏁 ' + L('Island Raceway! Red pad = race, green pad = free drive. Hit ❔ boxes for items!', 'Остров Гонок! Красная площадка — гонка, зелёная — свободная езда. ❔ коробки дают предметы!'), 5000); }
 
 // ---------- dealer ----------
 async function dealer(app) {
@@ -197,10 +199,10 @@ function hostTick(app, now) {
 function setRace(app, r) {
   const was = app.race.phase; app.race = r;
   const mine = r.racers && r.racers.find(x => x.id === app.me.pid);
-  if (r.phase === 'countdown' && was !== 'countdown') { ui.banner('🚦 ' + L('Race starting! Drivers to the grid!', 'Гонка начинается! Пилоты на старт!'), 3000); app.sfx('drumroll'); if (mine) toGrid(app, mine, r); }
+  if (r.phase === 'countdown' && was !== 'countdown') { ui.banner('🚦 ' + L('Race starting! Drivers to the grid!', 'Гонка начинается! Пилоты на старт!'), 3000); app.sfx('drumroll'); if (mine) { if (app.drive) endDrive(app); toGrid(app, mine, r); } }
   if (r.phase === 'racing' && was !== 'racing') { app.sfx('go'); ui.banner('🟢 GO! GO! GO!', 1800); app.people.hype = 1; setTimeout(() => (app.people.hype = 0), 4000); app.people.wave = true; }
   if (r.phase === 'results' && was !== 'results') results(app, r);
-  if (r.phase === 'lobby' && was !== 'lobby') { app.people.wave = false; endDrive(app); }
+  if (r.phase === 'lobby' && was !== 'lobby') { app.people.wave = false; if (app.drive && !app.drive.free) endDrive(app); }
 }
 // bots drive a smooth, fair line: fast cars are faster, with a little randomness
 function botSpeed(b) { return CARS[b.car].max * (0.8 + b.seed * 0.12); }
@@ -210,57 +212,238 @@ function gridSpot(app, slot) { return at(app.T, -6 - Math.floor(slot / 2) * 8, s
 
 // ---------- driving ----------
 function toGrid(app, me, r) {
-  const slot = r.racers.indexOf(me), g = gridSpot(app, slot), w = app.world;
-  const car = makeCar(me.car); w.scene.add(car);
-  app.drive = { id: me.car, car, x: g.p.x, z: g.p.z, h: g.h, v: 0, d: -6 - Math.floor(slot / 2) * 8, lapD: 0, idx: g.i, steer: 0, done: false };
+  const slot = r.racers.indexOf(me), g = gridSpot(app, slot);
+  startDrive(app, me.car, g.p.x, g.p.z, g.h, -6 - Math.floor(slot / 2) * 8, false);
+}
+// free drive: take your car out on the track any time (not in a race): coins, ? boxes and the ramp
+function freeDrive(app) {
+  if (app.drive) return;
+  const r = app.race, mine = r.racers && r.racers.some(x => x.id === app.me.pid);
+  if (mine && (r.phase === 'countdown' || r.phase === 'racing')) return;
+  const d = 30 + Math.random() * 20, s = at(app.T, d, (Math.random() - 0.5) * 8);
+  startDrive(app, app.mine, s.p.x, s.p.z, s.h, d, true);
+  ui.banner('🚗 ' + L('Free drive! Grab coins, hit ❔ boxes and jump the ramp. X = get out.', 'Свободная езда! Собирай монеты, ❔ коробки и прыгай с трамплина. X = выйти.'), 4500);
+}
+function startDrive(app, id, x, z, h, d, free) {
+  const w = app.world, car = makeCar(id); car.rotation.order = 'YXZ'; w.scene.add(car);
+  // a turbo flame and a star glow that switch on when you have them
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.6, 12).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x66c8ff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+  flame.position.set(0, 0.55, -3); flame.visible = false; car.add(flame);
+  const aura = new THREE.Mesh(new THREE.SphereGeometry(2.6, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffd34d, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false })); aura.scale.set(0.9, 0.55, 1.2); aura.position.y = 0.7; aura.visible = false; car.add(aura);
+  app.drive = { id, car, flame, aura, x, z, h, v: 0, d, lapD: d, steer: 0, done: false, free, y: 0, vy: 0, item: null, uses: 0, charge: 0 };
   w.me.play('sit'); app.emoteSig = 'sit:' + Date.now();
   w.carrier = { update: (dt, p, meAv) => { drive(app, dt, p, meAv); return false; }, onCancel: () => {} };
-  w.cameraOverride = (cam, dt) => { const D = app.drive; if (!D) return; const back = 9 * (app.giantCars ? 1.8 : 1); const tx = D.x - Math.sin(D.h) * back, tz = D.z - Math.cos(D.h) * back; cam.position.lerp(new THREE.Vector3(tx, 4.2 * (app.giantCars ? 1.6 : 1), tz), Math.min(1, dt * 5)); cam.lookAt(D.x + Math.sin(D.h) * 6, 1.2, D.z + Math.cos(D.h) * 6); };
+  w.cameraOverride = (cam, dt) => { const D = app.drive; if (!D) return; const back = 9 * (app.giantCars ? 1.8 : 1); const tx = D.x - Math.sin(D.h) * back, tz = D.z - Math.cos(D.h) * back; cam.position.lerp(new THREE.Vector3(tx, 4.2 * (app.giantCars ? 1.6 : 1) + D.y * 0.6, tz), Math.min(1, dt * 5)); cam.lookAt(D.x + Math.sin(D.h) * 6, 1.2 + D.y * 0.5, D.z + Math.cos(D.h) * 6); };
+  itemBtn(app); app.exitBtn.classList.toggle('hidden', !free);
 }
 function drive(app, dt, p, meAv) {
-  const D = app.drive, w = app.world, r = app.race, C = CARS[D.id], k = w.keys;
-  const racing = r.phase === 'racing' && !D.done;
-  const thr = racing ? ((k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + w.joy.y) : 0, st = (k.KeyA || k.ArrowLeft ? 1 : 0) - (k.KeyD || k.ArrowRight ? 1 : 0) - w.joy.x;
-  const near = at(app.T, D.lapD), off = Math.hypot(D.x - near.p.x, D.z - near.p.z), onRoad = off < W / 2 + 1.2;
-  const max = C.max * (app.boostUntil > performance.now() ? 1.6 : 1) * (onRoad ? 1 : 0.45);
-  D.v += (thr > 0 ? C.acc * thr : thr < 0 ? 18 * thr : 0) * dt; D.v -= D.v * (onRoad ? 0.35 : 1.6) * dt;
+  const D = app.drive, w = app.world, r = app.race, C = CARS[D.id], k = w.keys, now = performance.now(), T = app.T;
+  const racing = !D.free && r.phase === 'racing' && !D.done, go = racing || D.free, spun = D.spinUntil > now;
+  const thr = go && !spun ? ((k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + w.joy.y) : 0, st = spun ? 0 : (k.KeyA || k.ArrowLeft ? 1 : 0) - (k.KeyD || k.ArrowRight ? 1 : 0) - w.joy.x;
+  const near = at(T, D.lapD), off = Math.hypot(D.x - near.p.x, D.z - near.p.z), onRoad = off < W / 2 + 1.2;
+  const star = D.starUntil > now, boost = D.boostUntil > now || app.boostUntil > now;
+  const max = C.max * (boost ? 1.45 : 1) * (star ? 1.25 : 1) * (onRoad || star ? 1 : 0.45);
+  D.v += (thr > 0 ? C.acc * thr : thr < 0 ? 18 * thr : 0) * dt; D.v -= D.v * (onRoad || star ? 0.35 : 1.6) * dt;
+  if (boost && go && D.v > -1) D.v += C.acc * 1.6 * dt; // turbo shoves you forward even off the throttle
+  if (spun) D.v *= Math.max(0, 1 - dt * 3);
   D.v = Math.max(-8, Math.min(max, D.v));
   D.steer += (Math.max(-1, Math.min(1, st)) - D.steer) * Math.min(1, dt * 8);
-  D.h += D.steer * C.turn * Math.min(1, Math.abs(D.v) / 10) * Math.sign(D.v || 1) * dt;
+  D.h += D.steer * C.turn * Math.min(1, Math.abs(D.v) / 10) * Math.sign(D.v || 1) * dt * (D.air ? 0.4 : 1);
   D.x += Math.sin(D.h) * D.v * dt; D.z += Math.cos(D.h) * D.v * dt;
   // walls: bounce back onto the track
-  if (off > W / 2 + 2.6) { const nx = (near.p.x - D.x) / off, nz = (near.p.z - D.z) / off; D.x += nx * (off - W / 2 - 2.6); D.z += nz * (off - W / 2 - 2.6); D.v *= 0.5; if (!D.bonk || performance.now() - D.bonk > 600) { D.bonk = performance.now(); app.sfx('bonk'); } }
+  if (off > W / 2 + 2.6) { const nx = (near.p.x - D.x) / off, nz = (near.p.z - D.z) / off; D.x += nx * (off - W / 2 - 2.6); D.z += nz * (off - W / 2 - 2.6); D.v *= 0.5; if (!D.bonk || now - D.bonk > 600) { D.bonk = now; app.sfx('bonk'); } }
   // progress round the track: find the nearest point ahead of where we were
   let best = D.lapD, bestE = 1e9;
-  for (let s = -12; s <= 24; s += 1.5) { const q = at(app.T, D.lapD + s).p, e = (q.x - D.x) ** 2 + (q.z - D.z) ** 2; if (e < bestE) { bestE = e; best = D.lapD + s; } }
+  for (let s = -12; s <= 24; s += 1.5) { const q = at(T, D.lapD + s).p, e = (q.x - D.x) ** 2 + (q.z - D.z) ** 2; if (e < bestE) { bestE = e; best = D.lapD + s; } }
   const before = D.d; D.d += best - D.lapD; D.lapD = best;
-  if (racing && Math.floor(D.d / app.T.len) > Math.floor(before / app.T.len) && D.d > 0) {
+  if (go && Math.floor(D.d / T.len) > Math.floor(before / T.len) && D.d > 0) {
     // lap times: the first time over the line starts the clock, every next crossing is a lap
-    const nowT = Date.now(); if (D.lapStart) { const lt = (nowT - D.lapStart) / 1000, best = +(localStorage.getItem('marbly_bestlap') || 0); if (!best || lt < best) { try { localStorage.setItem('marbly_bestlap', lt.toFixed(2)); } catch (e) {} ui.toast(`⏱ ${L('New best lap', 'Лучший круг')}: ${lt.toFixed(2)}s 🏆`); } else ui.toast(`⏱ ${L('Lap', 'Круг')}: ${lt.toFixed(2)}s`); } D.lapStart = nowT;
-    const lap = Math.floor(D.d / app.T.len) + 1; if (lap <= LAPS) { ui.banner(lap === LAPS ? '🔔 ' + L('Final lap!', 'Последний круг!') : `🏁 ${L('Lap', 'Круг')} ${lap}/${LAPS}`, 1800); app.sfx('ding'); } }
-  if (racing && D.d >= LAPS * app.T.len) { D.done = true; const time = (Date.now() - r.start) / 1000; app.emit('rfin', { pid: app.me.pid, time }); if (app.isHost()) { r.results[app.me.pid] = time; push(app); } ui.banner(`🏁 ${L('Finished!', 'Финиш!')} ${time.toFixed(1)}s`, 3000); app.sfx('cheer'); }
-  // bumping into other cars pushes you apart and costs speed
-  for (const c of Object.values(app.cars)) { const dx = D.x - c.position.x, dz = D.z - c.position.z, dd = Math.hypot(dx, dz), min = 2.3 * (app.giantCars ? 2 : 1); if (dd < min && dd > 0.01) { D.x += dx / dd * (min - dd); D.z += dz / dd * (min - dd); D.v *= 0.82; if (!D.hit || performance.now() - D.hit > 500) { D.hit = performance.now(); app.sfx('bonk'); } } }
-  // skid marks and smoke when you corner hard or brake, dust when you go off the road
+    const nowT = Date.now(); if (D.lapStart) { const lt = (nowT - D.lapStart) / 1000, bl = +(localStorage.getItem('marbly_bestlap') || 0); if (!bl || lt < bl) { try { localStorage.setItem('marbly_bestlap', lt.toFixed(2)); } catch (e) {} ui.toast(`⏱ ${L('New best lap', 'Лучший круг')}: ${lt.toFixed(2)}s 🏆`); app.sfx('star'); } else ui.toast(`⏱ ${L('Lap', 'Круг')}: ${lt.toFixed(2)}s`); } D.lapStart = nowT;
+    const lap = Math.floor(D.d / T.len) + 1; if (racing && lap <= LAPS) { ui.banner(lap === LAPS ? '🔔 ' + L('Final lap!', 'Последний круг!') : `🏁 ${L('Lap', 'Круг')} ${lap}/${LAPS}`, 1800); app.sfx('ding'); } }
+  if (racing && D.d >= LAPS * T.len) { D.done = true; const time = (Date.now() - r.start) / 1000; app.emit('rfin', { pid: app.me.pid, time }); if (app.isHost()) { r.results[app.me.pid] = time; push(app); } ui.banner(`🏁 ${L('Finished!', 'Финиш!')} ${time.toFixed(1)}s`, 3000); app.sfx('cheer'); }
+  // bumping into other cars pushes you apart and costs speed (a star knocks them aside instead)
+  for (const c of Object.values(app.cars)) { const dx = D.x - c.position.x, dz = D.z - c.position.z, dd = Math.hypot(dx, dz), min = 2.3 * (app.giantCars ? 2 : 1); if (dd < min && dd > 0.01 && !D.air) { D.x += dx / dd * (min - dd); D.z += dz / dd * (min - dd); if (!star) D.v *= 0.82; if (!D.hit || now - D.hit > 500) { D.hit = now; app.sfx(star ? 'pop' : 'bonk'); } } }
+  if (go) trackHits(app, D, now, dt);
+  // drifting: hold a hard turn at speed to charge sparks (blue, then orange); straighten up for a mini-turbo
   const slide = Math.abs(D.steer) * Math.abs(D.v) / C.max, braking = thr < 0 && D.v > 6;
-  if ((slide > 0.55 || braking) && racing) { skid(app, D, 0.95); skid(app, D, -0.95); if (Math.random() < 0.5) puff(app, D.x - Math.sin(D.h) * 1.8, D.z - Math.cos(D.h) * 1.8, 0xdddddd); }
-  if (!onRoad && Math.abs(D.v) > 4 && Math.random() < 0.6) puff(app, D.x - Math.sin(D.h) * 1.8, D.z - Math.cos(D.h) * 1.8, 0xb59a6a);
-  const cam = app.world.camera, fov = 56 + Math.min(1, Math.abs(D.v) / 40) * 16; if (Math.abs(cam.fov - fov) > 0.2) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
+  if (go && !D.air && slide > 0.5 && D.v > 12) {
+    D.charge += dt; const col = D.charge > 1.4 ? 0xff8a1c : D.charge > 0.6 ? 0x4aa3ff : 0;
+    if (col && Math.random() < 0.7) for (const s of [0.9, -0.9]) spark(app, D.x - Math.sin(D.h) * 1.9 + Math.cos(D.h) * s, D.z - Math.cos(D.h) * 1.9 - Math.sin(D.h) * s, col);
+  } else if (D.charge > 0 && slide < 0.35) {
+    if (D.charge > 1.4) { D.boostUntil = now + 1100; ui.toast('🔥 ' + L('Super mini-turbo!', 'Супер мини-турбо!')); app.sfx('whoosh'); }
+    else if (D.charge > 0.6) { D.boostUntil = now + 550; app.sfx('zip'); }
+    D.charge = 0;
+  } else if (slide < 0.35) D.charge = 0;
+  // in the air off the ramp: press jump for a flip, land it for a turbo
+  if (D.air) {
+    D.y += D.vy * dt; D.vy -= 20 * dt; D.airT += dt;
+    if ((k.Space || w.joyJump) && D.flip === undefined) { D.flip = 0; app.sfx('whoosh'); }
+    if (D.flip !== undefined && D.flip < 1) D.flip = Math.min(1, D.flip + dt * 1.7);
+    if (D.y <= 0) {
+      D.y = 0; D.air = false; app.sfx('hit'); puff(app, D.x, D.z, 0xdddddd); puff(app, D.x, D.z, 0xdddddd);
+      if (D.flip === 1) { D.boostUntil = now + 1600; ui.banner('🤸 ' + L('FLIP! Turbo!', 'САЛЬТО! Турбо!'), 1600); app.sfx('cheer'); app.people.hype = 1; setTimeout(() => (app.people.hype = 0), 2000); }
+      else if (D.flip !== undefined) { D.spinUntil = now + 900; D.v *= 0.4; ui.toast('😵 ' + L('Crash landing!', 'Неудачное приземление!')); }
+      else if (D.airT > 0.5) { D.boostUntil = now + 700; ui.toast('🛫 ' + L('Big air!', 'Полёт!')); }
+      D.flip = undefined;
+    }
+  }
+  w.joyJump = false;
+  if ((slide > 0.55 || braking) && go && !D.air) { skid(app, D, 0.95); skid(app, D, -0.95); if (Math.random() < 0.5) puff(app, D.x - Math.sin(D.h) * 1.8, D.z - Math.cos(D.h) * 1.8, 0xdddddd); }
+  if (!onRoad && !D.air && Math.abs(D.v) > 4 && Math.random() < 0.6) puff(app, D.x - Math.sin(D.h) * 1.8, D.z - Math.cos(D.h) * 1.8, 0xb59a6a);
+  const cam = app.world.camera, fov = 56 + Math.min(1, Math.abs(D.v) / 40) * 16 + (boost ? 10 : 0); if (Math.abs(cam.fov - fov) > 0.2) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 3); cam.updateProjectionMatrix(); }
   const sc = app.giantCars ? 2 : 1, body = D.car.userData.body;
   // the body leans out of corners and dips when braking, like a real car
   const roll = -D.steer * Math.min(1, Math.abs(D.v) / C.max) * 0.09, pitch = (D.v - (D.pv ?? D.v)) / Math.max(dt, 0.001) * -0.004; D.pv = D.v;
   body.rotation.z += (roll - body.rotation.z) * Math.min(1, dt * 6); body.rotation.x += (Math.max(-0.05, Math.min(0.05, pitch)) - body.rotation.x) * Math.min(1, dt * 6);
   D.car.userData.front.forEach(f => (f.rotation.y = D.steer * 0.45));
   if (D.car.userData.tail) D.car.userData.tail.emissiveIntensity = thr < 0 ? 3 : 0.6;
-  D.car.position.set(D.x, 0.05, D.z); D.car.rotation.y = D.h; D.car.scale.setScalar(sc); spin(D.car, D.v, dt);
-  engine(app, Math.abs(D.v) / C.max, thr);
-  p.set(D.x - Math.sin(D.h) * 0.2 * sc, 0.25 * sc, D.z - Math.cos(D.h) * 0.2 * sc); meAv.group.rotation.y = D.h; meAv.animate(0, dt, false);
+  D.flame.visible = boost; if (boost) { D.flame.scale.set(1, 1, 0.8 + Math.random() * 0.6); D.flame.material.color.setHex(star ? 0xffb020 : 0x66c8ff); if (Math.random() < 0.4) puff(app, D.x - Math.sin(D.h) * 2.6, D.z - Math.cos(D.h) * 2.6, 0x9fd8ff); }
+  D.aura.visible = star; if (star) { D.aura.material.color.setHSL((now / 300) % 1, 1, 0.6); D.aura.material.opacity = 0.18 + Math.sin(now / 60) * 0.06; }
+  boostFx(app, boost, star);
+  const spinA = spun ? (D.spinUntil - now) / 1000 * Math.PI * 4 : 0;
+  D.car.position.set(D.x, 0.05 + D.y, D.z); D.car.rotation.y = D.h + spinA; D.car.rotation.x = D.flip !== undefined ? -D.flip * Math.PI * 2 : D.air ? -Math.max(-0.25, Math.min(0.25, D.vy * 0.03)) : 0; D.car.scale.setScalar(sc); spin(D.car, D.v, dt);
+  engine(app, Math.abs(D.v) / C.max * (boost ? 1.2 : 1), thr);
+  p.set(D.x - Math.sin(D.h) * 0.2 * sc, 0.25 * sc + D.y, D.z - Math.cos(D.h) * 0.2 * sc); meAv.group.rotation.y = D.h + spinA; meAv.animate(0, dt, false);
 }
 function endDrive(app) {
   const D = app.drive, w = app.world; if (!D) return; engine(app, 0, 0, true); w.camera.fov = 56; w.camera.updateProjectionMatrix();
   w.scene.remove(D.car); app.drive = null; w.carrier = null; w.cameraOverride = null; w.me.emote = null;
+  app.itemBtn.classList.add('hidden'); app.exitBtn.classList.add('hidden'); boostFx(app, false, false);
   w.teleport(app.pad.x - 4, app.pad.z, Math.PI);
 }
+
+// ---------- fun on the track: boost pads, ❔ item boxes, bananas, coins and a jump ramp ----------
+const ITEMS = {
+  turbo: { icon: '🚀', en: 'Turbo', ru: 'Турбо' },
+  triple: { icon: '🍄', en: 'Triple turbo', ru: 'Тройное турбо' },
+  star: { icon: '⭐', en: 'Super star', ru: 'Суперзвезда' },
+  banana: { icon: '🍌', en: 'Banana', ru: 'Банан' },
+  coins: { icon: '💰', en: 'Coin bag', ru: 'Мешок монет' },
+};
+function trackFun(app) {
+  const w = app.world, S = w.scene, T = app.T;
+  app.coins = new Coins(app, { respawn: 25, reach: 1.7 });
+  // boost pads: glowing arrows on the road
+  const chev = canvasTexture(128, 256, (g, Wd, Hh) => { g.clearRect(0, 0, Wd, Hh); g.strokeStyle = '#7fe7ff'; g.lineWidth = 16; g.lineCap = 'round'; for (let k = 0; k < 3; k++) { const y = 40 + k * 80; g.beginPath(); g.moveTo(16, y + 50); g.lineTo(64, y); g.lineTo(112, y + 50); g.stroke(); } });
+  chev.wrapT = THREE.RepeatWrapping; app.chev = chev;
+  const padM = new THREE.MeshBasicMaterial({ map: chev, transparent: true, color: 0xffffff, depthWrite: false, blending: THREE.AdditiveBlending });
+  const baseM = new THREE.MeshStandardMaterial({ color: 0x0b2a4a, emissive: 0x1a6aff, emissiveIntensity: 0.8, roughness: 0.3 });
+  app.pads = [0.1, 0.27, 0.45, 0.63, 0.8, 0.94].map((f, i) => {
+    const d = f * T.len, off = i % 2 ? 3.5 : -3.5, q = at(T, d, off);
+    mesh(w, new THREE.PlaneGeometry(3.4, 5.2).rotateX(-Math.PI / 2), baseM, q.p.x, 0.05, q.p.z, { ry: q.h, cast: false });
+    mesh(w, new THREE.PlaneGeometry(3, 4.8).rotateX(-Math.PI / 2), padM, q.p.x, 0.07, q.p.z, { ry: q.h, cast: false });
+    return { x: q.p.x, z: q.p.z, t: 0 };
+  });
+  // item boxes: rows of spinning rainbow ❔ cubes
+  const qTex = canvasTexture(128, 128, (g, Wd) => { g.fillStyle = '#fff'; g.fillRect(0, 0, Wd, Wd); g.fillStyle = '#111'; g.font = '900 96px Manrope, system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', Wd / 2, Wd / 2 + 6); });
+  app.boxMat = new THREE.MeshStandardMaterial({ map: qTex, color: 0xffffff, emissive: 0xff66cc, emissiveIntensity: 0.45, transparent: true, opacity: 0.88, roughness: 0.15, metalness: 0.2 });
+  const boxGeo = new RoundedBox(1.3, 1.3, 1.3, 3, 0.18);
+  app.boxes = [];
+  for (const f of [0.18, 0.52, 0.86]) for (const off of [-5.4, -1.8, 1.8, 5.4]) { const q = at(T, f * T.len, off), m = new THREE.Mesh(boxGeo, app.boxMat); m.position.set(q.p.x, 1.1, q.p.z); m.castShadow = true; S.add(m); app.boxes.push({ m, x: q.p.x, z: q.p.z, back: 0 }); }
+  // coins along the racing line
+  for (let k = 0; k < 14; k++) { const d0 = (0.04 + k * 0.069) * T.len, off = Math.sin(k * 2.3) * 4.5; for (let j = 0; j < 6; j++) { const q = at(T, d0 + j * 3.2, off); app.coins.add(q.p.x, 1, q.p.z, 10); } }
+  // the jump ramp: on the straightest bit of the back half, covering the right half of the road
+  let bestD = 0, bestK = 9;
+  for (let d = 0.3 * T.len; d < 0.78 * T.len; d += 2) { const a = at(T, d - 18).h, b = at(T, d + 22).h, kk = Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))); if (kk < bestK) { bestK = kk; bestD = d; } }
+  const R = app.ramp = { d: bestD, off: W / 4, len: 7, hgt: 1.3, half: W / 4 - 0.3 };
+  const shape = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(R.len, 0), new THREE.Vector2(R.len, R.hgt)]);
+  const rg = new THREE.ExtrudeGeometry(shape, { depth: R.half * 2, bevelEnabled: false }); rg.translate(-R.len / 2, 0, -R.half);
+  const stripes = canvasTexture(256, 256, (g, Wd) => { for (let k = -4; k < 8; k++) { g.fillStyle = k % 2 ? '#ffc21a' : '#1b1b1b'; g.beginPath(); g.moveTo(k * 40, 0); g.lineTo(k * 40 + 40, 0); g.lineTo(k * 40 + 40 + Wd, Wd); g.lineTo(k * 40 + Wd, Wd); g.fill(); } });
+  stripes.wrapS = stripes.wrapT = THREE.RepeatWrapping; stripes.repeat.set(0.25, 0.25);
+  const q = at(T, R.d, R.off), ramp = mesh(w, rg, std(0xffffff, { map: stripes, roughness: 0.5 }), q.p.x, 0.04, q.p.z, { ry: q.h - Math.PI / 2 });
+  void ramp; const rl = labelSprite('🛫 ' + L('JUMP! (Space = flip)', 'ПРЫЖОК! (Пробел = сальто)'), 0.5, { bg: 'rgba(255,194,26,0.95)', color: '#111' }); const ql = at(T, R.d - 14, R.off); rl.position.set(ql.p.x, 3, ql.p.z); S.add(rl);
+  // bananas other drivers dropped
+  app.bananas = {};
+  app.onEvent(ev => { if (ev.type === 'banana') addBanana(app, ev.data); if (ev.type === 'bgone' && app.bananas[ev.data.id]) { S.remove(app.bananas[ev.data.id].m); delete app.bananas[ev.data.id]; } });
+  // buttons: use your item, and get out of the car in free drive
+  app.itemBtn = document.createElement('button'); app.itemBtn.className = 'x-act hidden'; app.itemBtn.onclick = () => useItem(app); document.body.appendChild(app.itemBtn);
+  app.exitBtn = document.createElement('button'); app.exitBtn.className = 'x-act x-act2 hidden'; app.exitBtn.innerHTML = '🚪<small>X</small>'; app.exitBtn.onclick = () => { if (app.drive && app.drive.free) endDrive(app); }; document.body.appendChild(app.exitBtn);
+  addEventListener('keydown', e => { if (/INPUT|TEXTAREA/.test(e.target.tagName)) return; if (e.code === 'KeyE') useItem(app); if (e.code === 'KeyX' && app.drive && app.drive.free) endDrive(app); });
+  app.boostEl = document.createElement('div'); app.boostEl.className = 'r-boost'; document.body.appendChild(app.boostEl);
+  // the free-drive pad
+  const F = { x: 4, z: -46 };
+  mesh(w, new THREE.CylinderGeometry(2.4, 2.6, 0.3, 40), std(0x111111, { emissive: 0x22a06b, emissiveIntensity: 0.9 }), F.x, 0.15, F.z, { cast: false });
+  const fl = labelSprite('🚗 ' + L('Free drive', 'Свободная езда'), 0.6, { bg: 'rgba(34,160,107,0.95)' }); fl.position.set(F.x, 2.8, F.z); S.add(fl);
+  w.zone({ x: F.x, z: F.z, r: 2.4, onEnter: () => freeDrive(app) });
+  app.freeDrive = () => freeDrive(app);
+}
+function addBanana(app, b) {
+  if (app.bananas[b.id]) return;
+  const g = new THREE.Group(), m = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.14, 8, 16, Math.PI * 1.1), std(0xffd21f, { roughness: 0.5 }));
+  m.rotation.set(Math.PI / 2, 0, 0.3); m.position.y = 0.25; g.add(m); g.position.set(b.x, 0, b.z); app.world.scene.add(g);
+  app.bananas[b.id] = { m: g, x: b.x, z: b.z, owner: b.owner, t: performance.now() };
+}
+function trackHits(app, D, now, dt) {
+  const T = app.T;
+  for (const p of app.pads) if (Math.hypot(D.x - p.x, D.z - p.z) < 2.6 && now - p.t > 1000 && !D.air) { p.t = now; D.boostUntil = Math.max(D.boostUntil || 0, now + 1300); app.sfx('whoosh'); }
+  for (const b of app.boxes) if (!b.back && Math.hypot(D.x - b.x, D.z - b.z) < 1.9) { b.back = now + 3000; b.m.visible = false; app.sfx('pop'); rollItem(app); }
+  for (const id in app.bananas) { const b = app.bananas[id]; if (Math.hypot(D.x - b.x, D.z - b.z) < 1.5 && !D.air && !(b.owner === app.me.pid && now - b.t < 2000)) {
+    app.world.scene.remove(b.m); delete app.bananas[id]; app.emit('bgone', { id });
+    if (D.starUntil > now) { app.sfx('pop'); continue; }
+    D.spinUntil = now + 1100; D.v *= 0.35; app.sfx('bonk'); ui.toast('🍌 ' + L('Slipped on a banana!', 'Поскользнулся на банане!')); } }
+  // the ramp: ride up the slope, fly off the end
+  const R = app.ramp, lp = ((D.lapD % T.len) + T.len) % T.len, s = lp - (R.d - R.len / 2);
+  const q = at(T, D.lapD, 0), side = (D.x - q.p.x) * -Math.cos(q.h) + (D.z - q.p.z) * Math.sin(q.h);
+  const onRamp = s >= 0 && s <= R.len && Math.abs(side - R.off) < R.half && D.v > 0;
+  if (!D.air) {
+    if (onRamp) { D.y = s / R.len * R.hgt; D.onRamp = true; }
+    else if (D.onRamp) { D.onRamp = false; if (s > R.len - 1 && D.v > 6) { D.air = true; D.airT = 0; D.vy = D.v * R.hgt / R.len + 2.5; D.y = R.hgt; app.sfx('whoosh'); } else D.y = 0; }
+  }
+  void dt;
+}
+function rollItem(app) {
+  const D = app.drive; if (!D || D.item || D.rolling) return;
+  D.rolling = true; app.itemBtn.classList.add('roll');
+  const keys = Object.keys(ITEMS); let n = 0;
+  const tick = setInterval(() => { app.itemBtn.innerHTML = ITEMS[keys[n++ % keys.length]].icon; app.sfx('click'); }, 80);
+  setTimeout(() => {
+    clearInterval(tick); if (app.drive !== D) return;
+    // drivers at the back get the best items
+    let f = 0.5; if (!D.free && app.race.racers) { const o = standings(app, app.race), i = o.findIndex(x => x.id === app.me.pid); f = o.length > 1 ? i / (o.length - 1) : 0; }
+    const bag = f > 0.6 ? ['star', 'triple', 'triple', 'turbo', 'star', 'coins'] : f > 0.25 ? ['turbo', 'triple', 'banana', 'coins', 'star', 'turbo'] : ['banana', 'banana', 'coins', 'turbo', 'coins', 'banana'];
+    D.item = bag[Math.floor(Math.random() * bag.length)]; D.uses = D.item === 'triple' ? 3 : 1; D.rolling = false;
+    app.itemBtn.classList.remove('roll'); itemBtn(app); app.sfx('star');
+    ui.toast(`${ITEMS[D.item].icon} ${L(ITEMS[D.item].en, ITEMS[D.item].ru)}! ${L('Press E or tap the button', 'Жми E или кнопку')}`);
+  }, 900);
+}
+function itemBtn(app) {
+  const D = app.drive, b = app.itemBtn; if (!D) return;
+  b.classList.remove('hidden'); b.classList.toggle('ready', !!D.item);
+  b.innerHTML = D.item ? `${ITEMS[D.item].icon}<small>E${D.uses > 1 ? ' ×' + D.uses : ''}</small>` : '<span style="opacity:.35">❔</span>';
+}
+function useItem(app) {
+  const D = app.drive, now = performance.now(); if (!D || !D.item) return;
+  if (!D.free && app.race.phase !== 'racing') return;
+  const it = D.item;
+  if (it === 'turbo' || it === 'triple') { D.boostUntil = now + (it === 'turbo' ? 1800 : 1200); app.sfx('whoosh'); }
+  if (it === 'star') { D.starUntil = now + 7000; D.boostUntil = now + 1500; app.sfx('champions'); ui.banner('⭐ ' + L('SUPER STAR! Nothing can stop you!', 'СУПЕРЗВЕЗДА! Тебя не остановить!'), 2000); }
+  if (it === 'banana') { const id = app.me.pid + ':' + Date.now(), b = { id, x: D.x - Math.sin(D.h) * 3, z: D.z - Math.cos(D.h) * 3, owner: app.me.pid }; addBanana(app, b); app.emit('banana', b); app.sfx('place'); }
+  if (it === 'coins') { app.coins.bonus(100); app.sfx('paid'); ui.toast('💰 +' + money(100)); }
+  if (--D.uses <= 0) D.item = null;
+  itemBtn(app);
+}
+// bots fly off the ramp too
+function rampY(app, d, lane) {
+  const R = app.ramp; if (!R || Math.abs(lane - R.off) > R.half) return 0;
+  const s = (((d % app.T.len) + app.T.len) % app.T.len) - (R.d - R.len / 2), J = 16;
+  if (s >= 0 && s <= R.len) return s / R.len * R.hgt;
+  if (s > R.len && s < R.len + J) { const x = (s - R.len) / J; return R.hgt * (1 - x) + 8 * x * (1 - x); }
+  return 0;
+}
+function funTick(app, dt, tt) {
+  const now = performance.now();
+  app.coins.update(dt, tt);
+  app.chev.offset.y = (tt * 1.5) % 1;
+  app.boxMat.emissive.setHSL((tt * 0.25) % 1, 0.9, 0.5);
+  for (const b of app.boxes) {
+    if (b.back && now > b.back) { b.back = 0; b.m.visible = true; b.m.scale.setScalar(0.05); }
+    if (!b.m.visible) continue;
+    b.m.rotation.y += dt * 1.2; b.m.rotation.x += dt * 0.7; b.m.position.y = 1.1 + Math.sin(tt * 2 + b.x) * 0.15; if (b.m.scale.x < 1) b.m.scale.setScalar(Math.min(1, b.m.scale.x + dt * 2));
+    for (const k in app.cars) { const c = app.cars[k]; if (Math.abs(c.position.x - b.x) < 1.6 && Math.abs(c.position.z - b.z) < 1.6) { b.back = now + 3000; b.m.visible = false; break; } }
+  }
+}
+function boostFx(app, boost, star) { const e = app.boostEl; if (!e) return; e.classList.toggle('on', boost || star); e.classList.toggle('star', star); }
+function spark(app, x, z, color) { const p = app.puffs[app.puffN++ % app.puffs.length]; p.position.set(x, 0.25, z); p.scale.setScalar(0.12); p.material.color.setHex(color); p.material.opacity = 0.9; p.visible = true; p.userData.spark = 0.4; }
 function results(app, r) {
   const order = standings(app, r);
   const mine = order.findIndex(x => x.id === app.me.pid);
@@ -300,18 +483,18 @@ function frame(dt, tt, app) {
     const slot = r.racers.indexOf(b), d = (-6 - Math.floor(slot / 2) * 8) + Math.min(botDist(b, t), LAPS * app.T.len + 30), lane = (slot % 2 ? 3.5 : -3.5) * Math.max(0, 1 - t / 6) + Math.sin(t * 0.5 + b.seed * 9) * 3 * Math.min(1, t / 6);
     const q = at(app.T, d, lane), dh = Math.atan2(Math.sin(q.h - (c.userData.ph ?? q.h)), Math.cos(q.h - (c.userData.ph ?? q.h))); c.userData.ph = q.h;
     const body = c.userData.body; body.rotation.z += (Math.max(-0.08, Math.min(0.08, -dh / Math.max(dt, 0.001) * 0.05)) - body.rotation.z) * Math.min(1, dt * 5); c.userData.front.forEach(f => (f.rotation.y = Math.max(-0.4, Math.min(0.4, dh / Math.max(dt, 0.001) * 0.3))));
-    c.position.set(q.p.x, 0.05, q.p.z); c.rotation.y = q.h; c.scale.setScalar(app.giantCars ? 2 : 1); spin(c, r.phase === 'racing' ? botSpeed(b) : 0, dt);
+    c.position.set(q.p.x, 0.05 + rampY(app, d, lane), q.p.z); c.rotation.y = q.h; c.scale.setScalar(app.giantCars ? 2 : 1); spin(c, r.phase === 'racing' ? botSpeed(b) : 0, dt);
   }
   // other players' cars follow their avatars
   for (const id in w.remotes) {
     const R = w.remotes[id], d = R.d || {}; if (d.rd !== undefined) app.remoteD[id] = d.rd; if (d.car) { live.add('p' + id); let c = app.cars['p' + id]; if (!c || c.userData.kind !== d.car) { if (c) w.scene.remove(c); c = app.cars['p' + id] = makeCar(d.car); w.scene.add(c); } c.position.set(R.av.group.position.x + Math.sin(d.h || 0) * 0.2, 0.05, R.av.group.position.z + Math.cos(d.h || 0) * 0.2); c.rotation.y = d.h || 0; c.scale.setScalar(d.cs || 1); spin(c, 20, dt); }
   }
   for (const k in app.cars) if (!live.has(k)) { w.scene.remove(app.cars[k]); delete app.cars[k]; }
-  fxTick(app, dt);
+  fxTick(app, dt); funTick(app, dt, tt);
   if ((app._mm = (app._mm || 0) + dt) > 0.2) { app._mm = 0; miniMap(app); }
   app.showroom.forEach((c, i) => (c.rotation.y += dt * 0.3 * (i % 2 ? 1 : -1)));
   if (app.rainbowUntil > tt) app.roadMat.color.setHSL((tt * 0.2) % 1, 0.7, 0.5); else if (app._rb) { app._rb = false; app.roadMat.color.set(0x3b3f46); }
-  if ((app._scr = (app._scr || 0) + dt) > 0.3) { app._scr = 0; drawScreen(app); if (app.drive && r.phase === 'racing') { const order = standings(app, r), pos = order.findIndex(x => x.id === app.me.pid) + 1; const el = Math.max(0, (Date.now() - r.start) / 1000), bl = localStorage.getItem('marbly_bestlap'); ui.hud(app.drive.done ? `🏁 ${L('Finished', 'Финиш')} · P${pos}` : `P${pos}/${order.length} · ${L('Lap', 'Круг')} ${Math.min(LAPS, Math.floor(Math.max(0, app.drive.d) / app.T.len) + 1)}/${LAPS} · ${Math.round(Math.abs(app.drive.v) * 3.6)} km/h · ⏱ ${Math.floor(el / 60)}:${(el % 60).toFixed(1).padStart(4, '0')}${bl ? ` · 🏆 ${(+bl).toFixed(1)}s` : ''}`); } else if (!(toGo > 0 && toGo < 5)) ui.hud(''); }
+  if ((app._scr = (app._scr || 0) + dt) > 0.3) { app._scr = 0; drawScreen(app); if (app.drive && app.drive.free) { const bl = localStorage.getItem('marbly_bestlap'); ui.hud(`🚗 ${L('Free drive', 'Свободная езда')} · ${Math.round(Math.abs(app.drive.v) * 3.6)} km/h${bl ? ` · 🏆 ${(+bl).toFixed(1)}s` : ''}`); } else if (app.drive && r.phase === 'racing') { const order = standings(app, r), pos = order.findIndex(x => x.id === app.me.pid) + 1; const el = Math.max(0, (Date.now() - r.start) / 1000), bl = localStorage.getItem('marbly_bestlap'); ui.hud(app.drive.done ? `🏁 ${L('Finished', 'Финиш')} · P${pos}` : `P${pos}/${order.length} · ${L('Lap', 'Круг')} ${Math.min(LAPS, Math.floor(Math.max(0, app.drive.d) / app.T.len) + 1)}/${LAPS} · ${Math.round(Math.abs(app.drive.v) * 3.6)} km/h · ⏱ ${Math.floor(el / 60)}:${(el % 60).toFixed(1).padStart(4, '0')}${bl ? ` · 🏆 ${(+bl).toFixed(1)}s` : ''}`); } else if (!(toGo > 0 && toGo < 5)) ui.hud(''); }
 }
 function drawScreen(app) {
   const g = app.scrG, r = app.race, W2 = 1024, H2 = 512;
@@ -415,7 +598,7 @@ function fxSetup(app) {
   const S = app.world.scene;
   app.skids = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.32, 0.9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.55, depthWrite: false }), 600);
   app.skids.count = 0; app.skids.frustumCulled = false; app.skidN = 0; S.add(app.skids);
-  app.puffs = Array.from({ length: 40 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; S.add(m); return m; });
+  app.puffs = Array.from({ length: 90 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; S.add(m); return m; });
   app.puffN = 0;
 }
 function skid(app, D, side) {
@@ -427,8 +610,8 @@ function skid(app, D, side) {
   m.compose(new THREE.Vector3((x + last.x) / 2, 0.05, (z + last.z) / 2), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(dx, dz)), new THREE.Vector3(1, 1, len / 0.9));
   app.skids.setMatrixAt(app.skidN % 600, m); app.skidN++; app.skids.count = Math.min(600, app.skidN); app.skids.instanceMatrix.needsUpdate = true;
 }
-function puff(app, x, z, color) { const p = app.puffs[app.puffN++ % app.puffs.length]; p.position.set(x + (Math.random() - 0.5), 0.4, z + (Math.random() - 0.5)); p.scale.setScalar(0.3); p.material.color.setHex(color); p.material.opacity = 0.32; p.visible = true; p.userData.t = 0; }
-function fxTick(app, dt) { for (const p of app.puffs) { if (!p.visible) continue; p.userData.t += dt; p.position.y += dt * 0.8; p.scale.setScalar(0.3 + p.userData.t * 3); p.material.opacity = Math.max(0, 0.32 - p.userData.t * 0.45); if (p.material.opacity <= 0) p.visible = false; } }
+function puff(app, x, z, color) { const p = app.puffs[app.puffN++ % app.puffs.length]; p.position.set(x + (Math.random() - 0.5), 0.4, z + (Math.random() - 0.5)); p.scale.setScalar(0.3); p.material.color.setHex(color); p.material.opacity = 0.32; p.visible = true; p.userData.t = 0; p.userData.spark = 0; }
+function fxTick(app, dt) { for (const p of app.puffs) { if (!p.visible) continue; if (p.userData.spark) { p.userData.spark -= dt; p.position.y += dt * 1.5; p.material.opacity = Math.max(0, p.userData.spark * 2.2); if (p.userData.spark <= 0) { p.visible = false; p.userData.spark = 0; } continue; } p.userData.t += dt; p.position.y += dt * 0.8; p.scale.setScalar(0.3 + p.userData.t * 3); p.material.opacity = Math.max(0, 0.32 - p.userData.t * 0.45); if (p.material.opacity <= 0) p.visible = false; } }
 
 // ---------- the track map in the corner: every car as a dot ----------
 function miniMap(app) {

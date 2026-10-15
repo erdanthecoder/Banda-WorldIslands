@@ -10,9 +10,9 @@ const X = (en, ru) => (getLang() === 'ru' ? ru : en);
 
 export const EXPERIENCES = [
   { id: 'world', icon: '🏝️', name: 'World Island', en: 'Tower, mall, hotel, jobs, minigames', ru: 'Башня, молл, отель, работа, мини-игры', bg: 'linear-gradient(135deg,#1e8fd8,#22c1a0)', href: '/', servers: CONFIG.servers.map(s => s.id) },
-  { id: 'race', icon: '🏁', name: 'Island Raceway', en: 'Buy a car with mBank and race', ru: 'Купи машину через mBank и гоняй', bg: 'linear-gradient(135deg,#e71d36,#ff9f1c)', href: '/race.html', servers: ['race-1'] },
-  { id: 'hq', icon: '🏦', name: 'mBank HQ', en: 'Open your 7-digit card, Hand Pay', ru: 'Карта из 7 цифр, оплата рукой', bg: 'linear-gradient(135deg,#1e5bd8,#6a2bd8)', href: '/hq.html', servers: ['hq-1'] },
-  { id: 'school', icon: '📚', name: 'Quiz Day', en: 'School day + iPad quiz. Lose = push-ups!', ru: 'Школьный день + викторина. Проиграл — отжимайся!', bg: 'linear-gradient(135deg,#46178f,#d82b8c)', href: '/school.html', servers: ['school-1'] },
+  { id: 'race', icon: '🏁', name: 'Island Raceway', en: 'Race with turbos, stars, bananas and a jump ramp', ru: 'Гонки с турбо, звёздами, бананами и трамплином', bg: 'linear-gradient(135deg,#e71d36,#ff9f1c)', href: '/race.html', servers: ['race-1'] },
+  { id: 'hq', icon: '🏦', name: 'mBank HQ', en: 'Gold Vault Climb, coin hunt, your 7-digit card', ru: 'Восхождение к сейфу, охота за монетами, карта', bg: 'linear-gradient(135deg,#1e5bd8,#6a2bd8)', href: '/hq.html', servers: ['hq-1'] },
+  { id: 'school', icon: '📚', name: 'Quiz Day', en: 'iPad quiz, power-ups, paper fights. Lose = push-ups!', ru: 'Викторина, бонусы, бумажный бой. Проиграл — отжимайся!', bg: 'linear-gradient(135deg,#46178f,#d82b8c)', href: '/school.html', servers: ['school-1'] },
 ];
 export const playing = (lobby, e) => e.servers.reduce((n, s) => n + ((lobby || {})[s] || 0), 0);
 

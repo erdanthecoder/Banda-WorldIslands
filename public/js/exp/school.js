@@ -9,6 +9,7 @@ import { TEX, labelSprite } from '../world.js';
 import { Avatar, randomAvatar } from '../avatar.js';
 import { say } from '../audio.js';
 import { surface } from './tex.js';
+import { Coins } from './fun.js';
 
 const Q = [ // [question en, question ru, [answers], correct index]
   ['7 × 8 = ?', '7 × 8 = ?', ['54', '56', '64', '48'], 1], ['What is the capital of Kyrgyzstan?', 'Столица Кыргызстана?', ['Osh', 'Almaty', 'Bishkek', 'Tashkent'], 2],
@@ -45,7 +46,7 @@ const SLIDES = [
 ];
 const BOT_NAMES = ['Aibek', 'Dana', 'Timur', 'Amina', 'Nurlan', 'Sofia', 'Erlan', 'Malika', 'Ruslan', 'Aruuke', 'Daniel', 'Kamila', 'Bekzat', 'Zarina', 'Max'];
 const COLORS = ['#e21b3c', '#1368ce', '#d89e00', '#26890c'], SHAPES = ['▲', '◆', '●', '■'];
-const PH = { arrive: 14, lesson: 24, ipads: 5, q: 15, reveal: 5, board: 5, podium: 8, pushups: 22, break: 10 };
+const PH = { arrive: 10, lesson: 18, ipads: 5, q: 15, reveal: 5, board: 5, podium: 8, pushups: 18, break: 25 };
 const NQ = 8;
 const C = { w: 26, d: 20 }; // the classroom, centred on 0,0; the board is on the north wall
 let A;
@@ -128,8 +129,9 @@ function build(app) {
   // ---------- the quiz state (run by the host) ----------
   app.day = { phase: 'arrive', phaseEnds: Date.now() + 8000, qs: pickQs(), qi: 0, scores: {}, ans: {}, last: {} };
   app.net.onState('day', d => d && setDay(app, d));
-  app.onEvent(ev => { if (ev.type === 'qa' && app.isHost() && app.day.phase === 'q' && ev.data.qi === app.day.qi) { app.day.ans[ev.data.pid] = { c: ev.data.c, ms: ev.data.ms, name: ev.data.name }; } });
+  app.onEvent(ev => { if (ev.type === 'qa' && app.isHost() && app.day.phase === 'q' && ev.data.qi === app.day.qi) { app.day.ans[ev.data.pid] = { c: ev.data.c, ms: ev.data.ms, name: ev.data.name, x2: !!ev.data.x2 }; } });
   ipadDom(app);
+  paperSetup(app);
   drawBoard(app);
 }
 
@@ -144,7 +146,7 @@ function hostTick(app, now) {
     const q = Q[d.qs[d.qi]], scores = { ...d.scores }, last = {}, mult = app.double ? 2 : 1;
     for (const b of app.bots) { const ok = Math.random() < b.skill, ms = 2500 + Math.random() * 10000; const c = ok ? q[3] : (q[3] + 1 + Math.floor(Math.random() * 3)) % 4; d.ans[b.id] = { c, ms, name: b.name, bot: true }; }
     // fast right answers score more, and a streak of right answers adds a bonus (🔥 +100 per answer in a row, up to +300)
-    for (const id in d.ans) { const a = d.ans[id], ok = a.c === q[3], streak = ok ? (scores[id]?.streak || 0) + 1 : 0, bonus = ok && streak > 1 ? Math.min(300, (streak - 1) * 100) : 0, pts = ok ? Math.round((500 + 500 * (1 - Math.min(1, a.ms / (PH.q * 1000)))) * mult) + bonus : 0; scores[id] = { name: a.name, pts: (scores[id]?.pts || 0) + pts, bot: !!a.bot, streak }; last[id] = { c: a.c, pts, streak, bonus }; }
+    for (const id in d.ans) { const a = d.ans[id], ok = a.c === q[3], streak = ok ? (scores[id]?.streak || 0) + 1 : 0, bonus = ok && streak > 1 ? Math.min(300, (streak - 1) * 100) : 0, pts = ok ? (Math.round((500 + 500 * (1 - Math.min(1, a.ms / (PH.q * 1000)))) * mult) + bonus) * (a.x2 ? 2 : 1) : 0; scores[id] = { name: a.name, pts: (scores[id]?.pts || 0) + pts, bot: !!a.bot, streak }; last[id] = { c: a.c, pts, streak, bonus }; }
     for (const id in scores) if (!d.ans[id] && scores[id].streak) scores[id] = { ...scores[id], streak: 0 };
     for (const p of [app.me, ...Object.values(app.players)]) { const id = p.pid; if (!scores[id]) scores[id] = { name: p.name, pts: 0 }; }
     n = { ...n, scores, last, ans: {} };
@@ -161,13 +163,13 @@ function setDay(app, d) {
   if (d.phase !== was || d.qi !== wasQ) {
     app.answered = null;
     if (d.phase === 'arrive') { app.sfx('ding'); teacherSays(app, L2('Good morning, class! Find your seats, please.', 'Доброе утро, класс! Садитесь, пожалуйста.')); ui.banner('🔔 ' + L2('The bell rings! School starts.', 'Звенит звонок! Урок начинается.'), 3000); app.botAv.forEach(av => { av.push = false; av.play('sit'); }); }
-    if (d.phase === 'lesson') { teacherSays(app, L2('Today we revise a few facts. Then… a quiz!', 'Сегодня повторим факты. А потом… викторина!')); seat(app); }
-    if (d.phase === 'ipads') { teacherSays(app, L2('Take out your iPads! Quiz time!', 'Доставайте айпады! Время викторины!')); app.sfx('drumroll'); seat(app); pov(app, true); }
+    if (d.phase === 'lesson') { teacherSays(app, L2('Today we revise a few facts. Then… a quiz!', 'Сегодня повторим факты. А потом… викторина!')); seat(app); ui.toast('🧻 ' + L('Psst… throw paper balls when the teacher is not looking!', 'Тсс… кидай бумажки, пока учитель не смотрит!')); }
+    if (d.phase === 'ipads') { app.pw = { fifty: 1, x2: 1 }; teacherSays(app, L2('Take out your iPads! Quiz time!', 'Доставайте айпады! Время викторины!')); app.sfx('drumroll'); seat(app); pov(app, true); }
     if (d.phase === 'q') { app.qStart = Date.now(); app.sfx('countdown'); pov(app, true); }
     if (d.phase === 'reveal') { const mine = d.last[app.me.pid]; app.sfx(mine && mine.pts ? 'correct' : 'wrong'); }
     if (d.phase === 'podium') { pov(app, false); const top = rank(d); teacherSays(app, `🏆 ${top[0] ? top[0][1].name : ''} ${L2('wins today!', 'сегодня побеждает!')}`); app.world.fireworks(6); confetti(); app.sfx('champions'); const me = top.findIndex(([id]) => id === app.me.pid); if (me >= 0 && me < 3) app.net.earn([300, 200, 100][me]).then(b => { app.setMoney(b); ui.toast(`🏆 +${money([300, 200, 100][me])}`); }).catch(() => {}); }
     if (d.phase === 'pushups') pushups(app, d);
-    if (d.phase === 'break') { stand(app); teacherSays(app, L2('Great job! Short break, then a new quiz.', 'Молодцы! Перемена, потом новая викторина.')); app.botAv.forEach(av => { av.push = false; av.play('sit'); }); }
+    if (d.phase === 'break') { stand(app); teacherSays(app, L2('Great job! Break time, then a new quiz.', 'Молодцы! Перемена, потом новая викторина.')); ui.banner('🧻 ' + L('PAPER FIGHT! Throw paper balls (F or 🧻). Score in the bin!', 'БУМАЖНЫЙ БОЙ! Кидай бумажки (F или 🧻). Попади в корзину!'), 4000); app.botAv.forEach(av => { av.push = false; av.play('sit'); }); }
   }
   // late joiners jump straight into the quiz
   if (['ipads', 'q', 'reveal', 'board'].includes(d.phase) && !app.pov && !app.pushing) { seat(app); pov(app, true); }
@@ -202,8 +204,12 @@ function renderIpad(app) {
   if (d.phase === 'ipads') { el.innerHTML = `${head}<div class="ip-big">📱 ${L('Get ready!', 'Приготовься!')}</div><div class="ip-sub">${L('Answer fast: faster right answers score more.', 'Отвечай быстро: чем быстрее верный ответ, тем больше очков.')}</div>`; return; }
   if (d.phase === 'q') {
     if (app.answered !== null && app.answered !== undefined) { el.innerHTML = `${head}<div class="ip-big">⏳ ${L('Answer locked!', 'Ответ принят!')}</div><div class="ip-sub">${L('Waiting for the others…', 'Ждём остальных…')}</div><div class="ip-lock" style="background:${COLORS[app.answered]}">${SHAPES[app.answered]}</div>`; return; }
-    el.innerHTML = `${head}<div class="ip-q">${esc(L(q[0], q[1]))}</div><div class="ip-timer"><i id="ipT"></i></div><div class="ip-grid">${q[2].map((o, i) => `<button class="ip-a" data-i="${i}" style="background:${COLORS[i]}"><span>${SHAPES[i]}</span>${esc(o)}</button>`).join('')}</div>`;
-    el.querySelectorAll('.ip-a').forEach(b => b.onclick = () => { if (app.answered != null) return; app.answered = +b.dataset.i; app.sfx('click'); const ms = Date.now() - (app.qStart || Date.now()); app.emit('qa', { pid: app.me.pid, qi: d.qi, c: app.answered, ms, name: app.me.name }); if (app.isHost()) app.day.ans[app.me.pid] = { c: app.answered, ms, name: app.me.name }; renderIpad(app); });
+    const pw = app.pw ||= { fifty: 1, x2: 1 }, hide = app.fiftyQi === d.qi ? app.fiftyHide : [], x2on = app.x2Qi === d.qi;
+    el.innerHTML = `${head}<div class="ip-q">${esc(L(q[0], q[1]))}</div><div class="ip-timer"><i id="ipT"></i></div><div class="ip-grid">${q[2].map((o, i) => `<button class="ip-a${hide.includes(i) ? ' gone' : ''}" data-i="${i}" style="background:${COLORS[i]}"><span>${SHAPES[i]}</span>${esc(o)}</button>`).join('')}</div>
+      <div class="ip-pw"><button id="pw50" ${pw.fifty ? '' : 'disabled'}>✌️ 50/50</button><button id="pwX2" class="${x2on ? 'on' : ''}" ${pw.x2 || x2on ? '' : 'disabled'}>⚡ ${x2on ? L('Double points ON!', 'Двойные очки!') : L('Double points', 'Двойные очки')}</button></div>`;
+    el.querySelector('#pw50').onclick = () => { if (!pw.fifty) return; pw.fifty = 0; app.fiftyQi = d.qi; app.fiftyHide = [0, 1, 2, 3].filter(i => i !== q[3]).sort(() => Math.random() - 0.5).slice(0, 2); app.sfx('zip'); renderIpad(app); };
+    el.querySelector('#pwX2').onclick = () => { if (!pw.x2) return; pw.x2 = 0; app.x2Qi = d.qi; app.sfx('airhorn'); renderIpad(app); };
+    el.querySelectorAll('.ip-a').forEach(b => b.onclick = () => { if (app.answered != null) return; app.answered = +b.dataset.i; app.sfx('click'); const ms = Date.now() - (app.qStart || Date.now()), x2 = app.x2Qi === d.qi; app.emit('qa', { pid: app.me.pid, qi: d.qi, c: app.answered, ms, name: app.me.name, x2 }); if (app.isHost()) app.day.ans[app.me.pid] = { c: app.answered, ms, name: app.me.name, x2 }; renderIpad(app); });
     return;
   }
   if (d.phase === 'reveal') { const m = d.last?.[app.me.pid], ok = m && m.pts > 0; el.innerHTML = `${head}<div class="ip-res ${ok ? 'ok' : 'bad'}">${ok ? '✅ ' + L('Correct!', 'Верно!') : m ? '❌ ' + L('Wrong!', 'Неверно!') : '⏰ ' + L("Time's up!", 'Время вышло!')}</div><div class="ip-sub">${ok ? '+' + m.pts + ' pts' + (m.streak > 1 ? `<div class="ip-streak">🔥 ${m.streak} ${L('in a row!', 'подряд!')} +${m.bonus}</div>` : '') : L('The answer was:', 'Правильный ответ:') + ' <b>' + esc(q[2][q[3]]) + '</b>'}</div>`; return; }
@@ -222,21 +228,24 @@ function pushups(app, d) {
   ui.banner('💪 ' + L('Push-ups for', 'Отжимаются') + ': ' + names.join(', '), 4500);
   // bots who lost go to the front and do push-ups
   losers.forEach((id, k) => { const i = app.bots.findIndex(b => b.id === id); if (i < 0) return; const av = app.botAv[i]; av.emote = null; av.push = true; av.pushK = k; av.group.position.set(-3 + k * 3, 0, -C.d / 2 + 4.6); av.group.rotation.y = 0; });
-  if (losers.includes(app.me.pid)) {
-    pov(app, false); const w = app.world, k = losers.indexOf(app.me.pid);
-    app.mySeat = { x: -3 + k * 3, z: -C.d / 2 + 4.6, ry: 0, standing: true }; app.pushing = true; app.pushT = 0; app.pushN = 0;
-    w.carrier = null; seat(app);
-    w.cameraOverride = (cam, dt) => { cam.position.lerp(new THREE.Vector3(app.mySeat.x + 3, 2.2, app.mySeat.z + 4), Math.min(1, dt * 4)); cam.lookAt(app.mySeat.x, 0.5, app.mySeat.z); };
-    ui.hud(`💪 ${L('Do 10 push-ups! Press Space or tap', 'Сделай 10 отжиманий! Жми Пробел или экран')} · 0/10`);
-    // one push-up per press: down and up in 0.4 s (timed by the clock, so slow phones count the same)
-    const go = () => {
-      if (!app.pushing || app.pushBusy) return; app.pushBusy = true; const t0 = performance.now();
-      const step = () => { const k = Math.min(1, (performance.now() - t0) / 400); app.pushT = Math.PI / 2 + k * Math.PI * 2; if (k < 1) requestAnimationFrame(step); };
-      step();
-      setTimeout(() => { app.pushBusy = false; app.pushN++; app.sfx('pop'); ui.hud(`💪 ${app.pushN}/10`); if (app.pushN >= 10) { app.pushing = false; ui.hud(''); ui.banner('💪 ' + L('Done! Strong!', 'Готово! Силач!'), 2500); app.sfx('cheer'); stand(app); } }, 420);
-    };
-    app.pushGo = go;
-  } else if (app.pov) { pov(app, false); stand(app); }
+  if (losers.includes(app.me.pid)) doPushups(app, 10, losers.indexOf(app.me.pid));
+  else if (app.pov) { pov(app, false); stand(app); }
+}
+
+// you do push-ups at the front of the class: n of them, one per press
+function doPushups(app, n, k) {
+  pov(app, false); const w = app.world;
+  app.mySeat = { x: -3 + k * 3, z: -C.d / 2 + 4.6, ry: 0, standing: true }; app.pushing = true; app.pushT = 0; app.pushN = 0;
+  w.carrier = null; seat(app);
+  w.cameraOverride = (cam, dt) => { cam.position.lerp(new THREE.Vector3(app.mySeat.x + 3, 2.2, app.mySeat.z + 4), Math.min(1, dt * 4)); cam.lookAt(app.mySeat.x, 0.5, app.mySeat.z); };
+  ui.hud(`💪 ${L('Do', 'Сделай')} ${n} ${L('push-ups! Press Space or tap', 'отжиманий! Жми Пробел или экран')} · 0/${n}`);
+  // one push-up per press: down and up in 0.4 s (timed by the clock, so slow phones count the same)
+  app.pushGo = () => {
+    if (!app.pushing || app.pushBusy) return; app.pushBusy = true; const t0 = performance.now();
+    const step = () => { const kk = Math.min(1, (performance.now() - t0) / 400); app.pushT = Math.PI / 2 + kk * Math.PI * 2; if (kk < 1) requestAnimationFrame(step); };
+    step();
+    setTimeout(() => { app.pushBusy = false; app.pushN++; app.sfx('pop'); ui.hud(`💪 ${app.pushN}/${n}`); if (app.pushN >= n) { app.pushing = false; ui.hud(''); ui.banner('💪 ' + L('Done! Strong!', 'Готово! Силач!'), 2500); app.sfx('cheer'); stand(app); } }, 420);
+  };
 }
 
 // ---------- the teacher, the board and every frame ----------
@@ -270,6 +279,8 @@ function frame(dt, t, app) {
   const now = Date.now();
   if (app.isHost()) { hostTick(app, now); if ((app._sync = (app._sync || 0) + dt) > 3) { app._sync = 0; push(app, app.day); } }
   if ((app._b = (app._b || 0) + dt) > 0.5) { app._b = 0; drawBoard(app); drawClock(app); }
+  for (let k = 0, n = Math.ceil(dt / 0.02); k < n; k++) ballTick(app, dt / n, t);
+  app.coins.update(dt, t); if ((app._ph = (app._ph || 0) + dt) > 0.2) { app._ph = 0; paperHud(app); }
   const tb = document.querySelector('#ipT'); if (tb && app.day.phase === 'q') tb.style.width = Math.max(0, (app.day.phaseEnds - now) / (PH.q * 1000) * 100) + '%';
   app.botAv.forEach((av, i) => { if (av.push) { av.animate(0, dt, false); pushPose(av, t * 5 + i); } });
   // remote players who lost do push-ups too
@@ -302,10 +313,17 @@ function onAdmin(a, d, app) {
 function alive(app, dt, t) {
   const d = app.day, T = app.teacher, g = T.group;
   // the teacher walks along the front during the lesson and stands by the board for the quiz
-  const lesson = d.phase === 'lesson' || d.phase === 'arrive' || d.phase === 'break';
-  const tx = lesson ? Math.sin(t * 0.25) * 6 : -6.2, tz = -C.d / 2 + (lesson ? 2.6 : 3.8), dx = tx - g.position.x, dz = tz - g.position.z, dist = Math.hypot(dx, dz);
+  // in the lesson she walks, then stops and watches the class 👀, then turns to write on the board ✍️ (that's your chance to throw paper!)
+  const lesson = d.phase === 'lesson' || d.phase === 'arrive' || d.phase === 'break', angry = app.angryUntil > t, cyc = t % 15;
+  let tx = lesson ? Math.sin(t * 0.25) * 6 : -6.2, tz = -C.d / 2 + (lesson ? 2.6 : 3.8), face = 0, mode = 'walk';
+  if (d.phase === 'lesson' && !angry) { if (cyc >= 6 && cyc < 10) { mode = 'watch'; tx = app._tStop ??= g.position.x; tz = g.position.z; } else if (cyc >= 10) { mode = 'write'; tx = -1.5 + Math.sin(t * 0.3); tz = -C.d / 2 + 1.3; face = Math.PI; } }
+  if (mode !== 'watch') app._tStop = null;
+  if (angry) { tx = g.position.x; tz = g.position.z; }
+  const dx = tx - g.position.x, dz = tz - g.position.z, dist = Math.hypot(dx, dz);
   if (dist > 0.05) { const st = Math.min(dist, 1.1 * dt); g.position.x += dx / dist * st; g.position.z += dz / dist * st; g.rotation.y = Math.atan2(dx, dz); T.animate(1.1, dt, false); }
-  else { g.rotation.y += (0 - g.rotation.y) * Math.min(1, dt * 4); T.animate(0, dt, false); if (lesson && !T.emote && Math.sin(t * 0.9) > 0.6) { T.armR.rotation.set(-2.2, 0, -0.3); } }
+  else { const df = Math.atan2(Math.sin(face - g.rotation.y), Math.cos(face - g.rotation.y)); g.rotation.y += df * Math.min(1, dt * 5); T.animate(0, dt, false); if (mode === 'write' && !T.emote) T.armR.rotation.set(-2.3 + Math.sin(t * 9) * 0.25, 0, Math.sin(t * 5) * 0.2); else if (angry) { T.armR.rotation.set(-2.6, 0, -0.2); T.armL.rotation.set(-0.4, 0, 0.9); } else if (lesson && !T.emote && Math.sin(t * 0.9) > 0.6) { T.armR.rotation.set(-2.2, 0, -0.3); } }
+  const facingClass = Math.abs(Math.atan2(Math.sin(g.rotation.y), Math.cos(g.rotation.y))) < 0.7;
+  app.watching = d.phase === 'lesson' && (angry || (mode === 'watch' && facingClass));
   if (app.bubble) app.bubble.position.set(g.position.x, 2.5, g.position.z + 0.3);
   // classmates: hands up in the lesson, typing in the quiz, cheering or sad after each answer
   app.botAv.forEach((av, i) => {
@@ -316,4 +334,96 @@ function alive(app, dt, t) {
     else if (d.phase === 'reveal' && last) { if (last.pts > 0) { const j = Math.abs(Math.sin(t * 8 + i)); av.armL.rotation.set(-2.9, 0, 0.3); av.armR.rotation.set(-2.9, 0, -0.3); av.body.position.y = -0.62 + j * 0.06; } else { av.head.rotation.x = 0.5; av.armL.rotation.set(-0.3, 0, 0.6); av.armR.rotation.set(-0.3, 0, -0.6); } }
     void q;
   });
+}
+
+// ---------- 🧻 paper balls: throw them when the teacher isn't looking, and in the break it's a paper fight ----------
+const FREE = ['arrive', 'lesson', 'break', 'podium', 'pushups'];
+function paperSetup(app) {
+  const w = app.world, S = w.scene;
+  app.balls = []; app.coins = new Coins(app, { respawn: 30 });
+  app.ballGeo = new THREE.IcosahedronGeometry(0.1, 1); app.ballMat = new THREE.MeshStandardMaterial({ color: 0xf6f6f2, roughness: 0.95, flatShading: true });
+  // the bin by the board: a basket is worth the most
+  app.bin = { x: 10.5, z: -C.d / 2 + 1.4 };
+  mesh(w, new THREE.CylinderGeometry(0.34, 0.27, 0.72, 20, 1, true), std(0x2e6fd1, { side: THREE.DoubleSide, roughness: 0.5 }), app.bin.x, 0.36, app.bin.z);
+  mesh(w, new THREE.CircleGeometry(0.27, 20).rotateX(-Math.PI / 2), std(0x1b3f7a), app.bin.x, 0.03, app.bin.z, { cast: false });
+  const bl = labelSprite('🗑️ ' + L('Basket!', 'Корзина!'), 0.3, { bg: 'rgba(46,111,209,0.95)' }); bl.position.set(app.bin.x, 1.3, app.bin.z); S.add(bl);
+  app.throwBtn = document.createElement('button'); app.throwBtn.className = 'x-act hidden'; app.throwBtn.innerHTML = '🧻<small>F</small>'; app.throwBtn.onclick = e => { e.stopPropagation(); throwPaper(app); }; document.body.appendChild(app.throwBtn);
+  app.eyeEl = document.createElement('div'); app.eyeEl.className = 's-eye hidden'; document.body.appendChild(app.eyeEl);
+  addEventListener('keydown', e => { if (e.code === 'KeyF' && !/INPUT|TEXTAREA/.test(e.target.tagName)) throwPaper(app); });
+  app.onEvent(ev => {
+    if (ev.type === 'paper' && ev.data.from !== app.me.pid) spawnBall(app, ev.data, false);
+    if (ev.type === 'phit' && ev.data.pid === app.me.pid) { app.sfx('hit'); ui.toast(`💥 ${ev.data.name} ${L('got you!', 'попал в тебя!')}`); }
+  });
+}
+function throwPaper(app) {
+  const d = app.day, now = performance.now(); if (app.pov || app.pushing || !FREE.includes(d.phase)) return;
+  if (now - (app._lastThrow || 0) < 550) return; app._lastThrow = now;
+  const w = app.world, p = w.me.group.position, dir = new THREE.Vector3(); w.camera.getWorldDirection(dir);
+  const sitting = w.carrier && w.carrier.school;
+  const b = { x: p.x + dir.x * 0.5, y: p.y + (sitting ? 1.1 : 1.45), z: p.z + dir.z * 0.5, vx: dir.x * 8.5, vy: dir.y * 8.5 + 3, vz: dir.z * 8.5, from: app.me.pid, name: app.me.name };
+  spawnBall(app, b, true); app.emit('paper', b); app.sfx('whoosh');
+  w.me.play && w.me.play('wave');
+  if (app.watching) caught(app);
+}
+function caught(app) {
+  app.angryUntil = app.world.clock.elapsedTime + 4;
+  teacherSays(app, `😠 ${app.me.name}! ${L('No throwing paper! 5 push-ups!', 'Не кидай бумажки! 5 отжиманий!')}`);
+  ui.banner('😱 ' + L('CAUGHT! The teacher saw you!', 'ПОПАЛСЯ! Учитель всё видел!'), 2500); app.sfx('wrong');
+  setTimeout(() => { if (!app.pushing && !app.pov) doPushups(app, 5, 1); }, 1200);
+}
+function spawnBall(app, b, mine) {
+  const m = new THREE.Mesh(app.ballGeo, app.ballMat); m.position.set(b.x, b.y, b.z); m.castShadow = true; app.world.scene.add(m);
+  app.balls.push({ m, v: new THREE.Vector3(b.vx, b.vy, b.vz), mine, t: 0, from: b.from, name: b.name, bot: b.bot });
+}
+function kill(app, B, rest) { B.dead = true; B.rest = rest; B.v.set(0, 0, 0); if (!rest) app.world.scene.remove(B.m); }
+function ballTick(app, dt, t) {
+  const w = app.world, me = w.me.group.position, bin = app.bin;
+  for (const B of app.balls) {
+    if (B.dead) { B.rest -= dt; if (B.rest <= 0 && B.m.parent) w.scene.remove(B.m); continue; }
+    B.t += dt; B.v.y -= 9.8 * dt; const P = B.m.position; P.addScaledVector(B.v, dt); B.m.rotation.x += dt * 9; B.m.rotation.z += dt * 6;
+    // walls and ceiling of the classroom
+    if (Math.abs(P.x) > C.w / 2 - 0.3 && Math.abs(P.z) < C.d / 2) { P.x = Math.sign(P.x) * (C.w / 2 - 0.3); B.v.x *= -0.35; }
+    if (Math.abs(P.z) > C.d / 2 - 0.3 && Math.abs(P.x) < C.w / 2) { P.z = Math.sign(P.z) * (C.d / 2 - 0.3); B.v.z *= -0.35; }
+    if (P.y > 4.2) { P.y = 4.2; B.v.y = -Math.abs(B.v.y) * 0.3; }
+    if (Math.hypot(P.x - bin.x, P.z - bin.z) < 0.3 && P.y < 0.78 && B.v.y < 0) { kill(app, B, 0); if (B.mine) { app.sfx('goal'); ui.banner('🏀 ' + L('SWISH! Basket!', 'ПОПАЛ! Корзина!') + ' +' + money(20), 1800); app.coins.bonus(20, false); confetti(30); } continue; }
+    if (P.y < 0.1) { P.y = 0.08; kill(app, B, 6); continue; }
+    if (B.t < 0.12) continue;
+    if (!B.mine) { // someone else's ball hits me
+      if (B.from !== app.me.pid && Math.hypot(P.x - me.x, P.z - me.z) < 0.5 && P.y > me.y + 0.3 && P.y < me.y + 1.9) { kill(app, B, 0); app.sfx('hit'); ui.toast(`💥 ${B.name} ${L('got you!', 'попал в тебя!')}`); }
+      continue;
+    }
+    // my ball hits a classmate, the teacher or another player
+    let hit = null;
+    app.botAv.forEach((av, i) => { if (hit) return; const g = av.group.position; if (Math.hypot(P.x - g.x, P.z - g.z) < 0.5 && P.y > g.y + 0.4 && P.y < g.y + 1.6) hit = { av, name: app.bots[i].name }; });
+    const tg = app.teacher.group.position; if (!hit && Math.hypot(P.x - tg.x, P.z - tg.z) < 0.5 && P.y < 2.1) hit = { teacher: true };
+    for (const id in w.remotes) { if (hit) break; const g = w.remotes[id].av.group.position; if (Math.hypot(P.x - g.x, P.z - g.z) < 0.5 && P.y > g.y + 0.3 && P.y < g.y + 1.9) { hit = { pid: id, name: w.remotes[id].av.name || '' }; } }
+    if (!hit) continue;
+    kill(app, B, 0); app.sfx('hit');
+    if (hit.teacher) { if (app.day.phase === 'lesson') { teacherSays(app, '😠 ' + L('WHO THREW THAT?!', 'КТО ЭТО БРОСИЛ?!')); app.angryUntil = t + 4; } else teacherSays(app, '😄 ' + L('Hey! Break time only!', 'Эй! Только на перемене!')); app.coins.bonus(15, false); ui.toast('🎯 ' + L('You hit the teacher!', 'Ты попал в учителя!') + ' +' + money(15)); }
+    else if (hit.av) { hit.av.hitT = t; app.coins.bonus(5, false); ui.toast(`🎯 ${hit.name}! +${money(5)}`); botOuch(app, hit.av); }
+    else { app.emit('phit', { pid: hit.pid, name: app.me.name }); app.coins.bonus(10, false); ui.toast('🎯 ' + L('Direct hit!', 'Прямое попадание!') + ' +' + money(10)); }
+  }
+  if (app.balls.length > 80) { const old = app.balls.splice(0, app.balls.length - 80); old.forEach(B => B.m.parent && w.scene.remove(B.m)); }
+  // in the break the classmates throw back!
+  if (app.day.phase === 'break' && (app._bt = (app._bt || 0) + dt) > 0.9) {
+    app._bt = 0; const i = Math.floor(Math.random() * app.botAv.length), av = app.botAv[i]; if (av.push) return;
+    const from = av.group.position, targets = [me, ...app.botAv.filter(o => o !== av).map(o => o.group.position)], to = Math.random() < 0.35 ? me : targets[1 + Math.floor(Math.random() * (targets.length - 1))];
+    const T = 0.75, sx = to.x + (Math.random() - 0.5) * 0.8, sz = to.z + (Math.random() - 0.5) * 0.8, sy = to.y + 1.1;
+    spawnBall(app, { x: from.x, y: from.y + 1.2, z: from.z, vx: (sx - from.x) / T, vy: (sy - from.y - 1.2) / T + 4.9 * T, vz: (sz - from.z) / T, from: app.bots[i].id, name: app.bots[i].name, bot: true }, false);
+    av.armR.rotation.set(-2.8, 0, 0);
+  }
+}
+const OUCH = ['Hey! 😠', 'Ow! 😵', 'Not fair! 😤', 'Haha! 😂', 'Revenge! 😈'];
+function botOuch(app, av) {
+  const l = labelSprite(OUCH[Math.floor(Math.random() * OUCH.length)], 0.32, { bg: 'rgba(255,255,255,0.95)', color: '#1b1b1b' }); l.position.set(av.group.position.x, 2.2, av.group.position.z); app.world.scene.add(l);
+  setTimeout(() => app.world.scene.remove(l), 1500);
+  // sometimes they throw one straight back
+  const i = app.botAv.indexOf(av), from = av.group.position, me = app.world.me.group.position, T = 0.7;
+  if (Math.random() < 0.5) setTimeout(() => spawnBall(app, { x: from.x, y: from.y + 1.2, z: from.z, vx: (me.x - from.x) / T, vy: (me.y + 1.1 - from.y - 1.2) / T + 4.9 * T, vz: (me.z - from.z) / T, from: app.bots[i].id, name: app.bots[i].name, bot: true }, false), 500);
+}
+function paperHud(app) {
+  const d = app.day, free = FREE.includes(d.phase) && !app.pov && !app.pushing;
+  app.throwBtn.classList.toggle('hidden', !free);
+  const lesson = d.phase === 'lesson' && !app.pov && !app.pushing; app.eyeEl.classList.toggle('hidden', !lesson);
+  if (lesson) { app.eyeEl.classList.toggle('watch', !!app.watching); app.eyeEl.textContent = app.watching ? '👀 ' + L('The teacher is WATCHING!', 'Учитель СМОТРИТ!') : '✍️ ' + L("The teacher isn't looking… throw! (F)", 'Учитель не смотрит… кидай! (F)'); }
 }

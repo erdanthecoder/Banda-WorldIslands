@@ -9,6 +9,7 @@ import { TEX, labelSprite } from '../world.js';
 import { Avatar } from '../avatar.js';
 import { People } from './people.js';
 import { surface } from './tex.js';
+import { Coins, platform, bouncePad } from './fun.js';
 
 const H = { x: 0, z: -25, w: 64, d: 40, fh: 18 }; // the atrium
 const STYLES = [['Ocean', '#1e5bd8', '#6a2bd8', '#d82b8c'], ['Mint', '#0f9b8e', '#22c1a0', '#9be15d'], ['Sunset', '#ff6a3d', '#ff3d77', '#7b2cbf'], ['Gold', '#8a6d1f', '#d4af37', '#f7e08a'], ['Night', '#0b1530', '#23324a', '#3a86ff'], ['Candy', '#ff6fa8', '#ffb3d9', '#6ff3ff']];
@@ -144,12 +145,14 @@ async function build(app) {
     far: w.hq ? 140 : 95,
   });
   skyDeck(app);
+  funZone(app);
   app.cardsToday = 1200 + Math.floor(Math.random() * 300);
   drawLed(app, 0);
 }
 
 function frame(dt, t, app) {
   if (!app.logo) return;
+  climbTick(app, dt, t);
   // clear air on the Sky Deck so you can see far
   const high = app.world.me.group.position.y > 100, fd = high ? 0.0005 : 0.0022; app.world.scene.fog.density += (fd - app.world.scene.fog.density) * Math.min(1, dt * 2);
   app.logo.rotation.y += dt * (app.spinUntil > t ? 6 : 0.4);
@@ -161,7 +164,7 @@ function frame(dt, t, app) {
   if ((app._led = (app._led || 0) + dt) > 0.25) { app._led = 0; drawLed(app, t); }
   if (app.showUntil > t) app.bulbs.forEach((b, i) => b.material.emissive.setHSL((t * 0.3 + i * 0.04) % 1, 1, 0.55));
   else if (app._show) { app._show = false; app.bulbs.forEach(b => b.material.emissive.set(0xfff1c8)); }
-  if (app.coins) { app.coins.forEach(c => { c.position.y -= dt * c.userData.v; c.rotation.y += dt * 5; if (c.position.y < 0.1) c.position.y = 16 + Math.random() * 4; }); if (app.coinsUntil < t) { app.coins.forEach(c => app.world.scene.remove(c)); app.coins = null; } }
+  if (app.coins) { app.coins.forEach(c => { c.position.y -= dt * c.userData.v; c.rotation.y += dt * 5; if (c.position.y < 0.1) c.position.y = 16 + Math.random() * 4; const p = app.world.me.group.position; if (Math.abs(c.position.x - p.x) < 1.1 && Math.abs(c.position.z - p.z) < 1.1 && Math.abs(c.position.y - p.y - 1) < 1.2) { c.position.y = 16 + Math.random() * 4; app.hunt.bonus(5, false); app.sfx('coin'); } }); if (app.coinsUntil < t) { app.coins.forEach(c => app.world.scene.remove(c)); app.coins = null; } }
 }
 
 function drawLed(app, t) {
@@ -179,7 +182,7 @@ function onAdmin(a, d, app) {
   const w = app.world, t = w.clock.elapsedTime;
   if (a === 'goldrain') {
     if (!app.coins) { app.coins = []; const geo = new THREE.CylinderGeometry(0.35, 0.35, 0.08, 20).rotateX(Math.PI / 2), mat = std(0xffd34d, { metalness: 1, roughness: 0.2, emissive: 0x6a4a00 }); for (let i = 0; i < 160; i++) { const c = new THREE.Mesh(geo, mat); c.position.set((Math.random() - 0.5) * 60, 6 + Math.random() * 14, H.z + (Math.random() - 0.5) * 36); c.userData.v = 3 + Math.random() * 4; w.scene.add(c); app.coins.push(c); } }
-    app.coinsUntil = t + 20; ui.banner('🪙 ' + L('It is raining gold!', 'Дождь из золота!')); app.sfx('coin'); setTimeout(() => app.sfx('cheer'), 300);
+    app.coinsUntil = t + 20; ui.banner('🪙 ' + L('It is raining gold! Catch the coins!', 'Дождь из золота! Лови монеты!')); app.sfx('coin'); setTimeout(() => app.sfx('cheer'), 300);
   }
   if (a === 'lights') { app.showUntil = t + 30; app._show = true; ui.banner('🌈 ' + L('Light show!', 'Световое шоу!')); }
   if (a === 'botdance') { app.people.mode = 'dance'; setTimeout(() => (app.people.mode = ''), 25000); ui.banner('🕺 ' + L('The whole bank is dancing!', 'Весь банк танцует!')); }
@@ -289,4 +292,72 @@ function ride(app, up) {
   app.sfx('ding'); ui.banner(up ? '🛗 ' + L('Going up to the Sky Deck…', 'Едем на крышу…') : '🛗 ' + L('Going down…', 'Едем вниз…'), 1600);
   const f = document.querySelector('#xFlash'); f.style.background = '#000'; f.classList.remove('on'); f.offsetHeight; f.classList.add('on');
   setTimeout(() => { if (up) w.teleport(D.cx + 3, D.cz + 3, Math.PI, D.Y + 0.1); else w.teleport(9, -9, Math.PI); app.sfx('ding'); f.style.background = ''; app._riding = false; }, 380);
+}
+
+// ---------- 🪙 coin hunt round the bank and the 🏆 Gold Vault Climb ----------
+const V = { x: 50, z: -14, r: 7 }; // the climbing tower stands on the east side of the plaza
+function funZone(app) {
+  const w = app.world, S = w.scene, cz = H.z, hunt = app.hunt = new Coins(app, { respawn: 45 });
+  // coins: a ring round the plaza, a grid in the atrium, some high in the air over the bounce pads
+  for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, x = Math.sin(a) * 30, z = 22 + Math.cos(a) * 26; if (Math.abs(x) < 8 && z > 8 && z < 44) continue; hunt.add(x, 1, z, 10); }
+  for (let i = 0; i < 4; i++) for (let k = 0; k < 3; k++) { const x = -24 + i * 16, z = cz - 10 + k * 9; if (Math.hypot(x, z - cz) < 8) continue; hunt.add(x, 1, z, 10); }
+  const pads = [[-20, 24], [20, 24], [-34, 44], [34, 44]];
+  pads.forEach(([x, z]) => { bouncePad(w, x, z, 16, () => app.sfx('boing')); for (let k = 0; k < 3; k++) hunt.add(x, 3.2 + k * 1.2, z, 20); });
+  bouncePad(w, 38, 2, 25, () => { app.sfx('boing'); ui.toast('🚀 ' + L('MEGA BOUNCE!', 'МЕГА ПРЫЖОК!')); }, { color: 0xff3d77, r: 1.6 });
+  hunt.add(38, 9, 2, 50); hunt.add(38, 12, 2, 50);
+  const ml = labelSprite('🚀 ' + L('Mega bounce', 'Мега-батут'), 0.5, { bg: 'rgba(255,61,119,0.95)' }); ml.position.set(38, 2.6, 2); S.add(ml);
+  // gold bars hidden in hard places
+  hunt.add(0, 1.6, 44.5, 200, true); // at the end of the reflecting pool
+  hunt.add(0, 1, -80, 200, true); // behind the tower
+  if (app.deck) hunt.add(app.deck.cx + 6, app.deck.Y + 1, app.deck.cz - 6, 300, true); // up on the Sky Deck
+  // ---------- the Gold Vault Climb: a spiral of platforms round a golden pillar ----------
+  const gold = std(0xd4af37, { metalness: 1, roughness: 0.22, emissive: 0x4a3200, emissiveIntensity: 0.4 });
+  mesh(w, new THREE.CylinderGeometry(2, 2.3, 24, 32), gold, V.x, 12, V.z); w.solids.push({ x: V.x, z: V.z, r: 2.2 });
+  const glassP = new THREE.MeshStandardMaterial({ color: 0x8fd3ff, metalness: 0.3, roughness: 0.1, transparent: true, opacity: 0.8, emissive: 0x1a4a7a, emissiveIntensity: 0.4 });
+  const greenP = std(0x22c55e, { emissive: 0x0a5a2a, emissiveIntensity: 0.6, roughness: 0.4 }), pinkP = std(0xff6fa8, { emissive: 0x6a1030, emissiveIntensity: 0.5, roughness: 0.4 });
+  const steps = app.steps = []; let a = 0, y = 0.9;
+  for (let i = 0; i < 26; i++) {
+    const cp = i === 9 || i === 18, mover = i % 6 === 4, small = i % 5 === 3, sz = cp ? 3 : small ? 1.5 : 2.2;
+    const x = V.x + Math.sin(a) * V.r, z = V.z + Math.cos(a) * V.r, a0 = a;
+    const P = platform(w, x, y, z, sz, sz, cp ? greenP : mover ? pinkP : glassP, mover ? { move: t => { const rr = V.r + Math.sin(t * 1.3 + i) * 1.6; return [V.x + Math.sin(a0) * rr, V.z + Math.cos(a0) * rr]; } } : {});
+    P.size = sz; P.cp = cp; P.i = i; steps.push(P);
+    if (cp) { const l = labelSprite('🚩 ' + L('Checkpoint', 'Чекпоинт'), 0.4, { bg: 'rgba(34,197,94,0.95)' }); l.position.set(x, y + 2, z); S.add(l); }
+    if (i % 4 === 2) hunt.add(x, y + 1, z, 20);
+    a += small ? 0.38 : mover ? 0.5 : 0.44; y += i % 7 === 6 ? 0.4 : 0.82;
+  }
+  // the vault at the top
+  const topY = y + 0.4, vx = V.x, vz = V.z;
+  platform(w, vx, topY, vz, 7, 7, std(0xf3efe8, { roughness: 0.3 }), { h: 0.8 });
+  const vault = mesh(w, new THREE.CylinderGeometry(1.4, 1.4, 0.4, 32).rotateX(Math.PI / 2), std(0x9aa3ad, { metalness: 1, roughness: 0.25 }), vx, topY + 1.6, vz - 2.8);
+  mesh(w, new THREE.BoxGeometry(3.6, 3.4, 0.6), std(0x5f6772, { metalness: 0.9, roughness: 0.3 }), vx, topY + 1.7, vz - 3.2); vault.position.z = vz - 2.85;
+  app.vaultDoor = vault;
+  const chest = mesh(w, new RoundedBox(1.4, 0.9, 0.9, 2, 0.1), gold, vx, topY + 0.45, vz); void chest;
+  hunt.add(vx + 1.8, topY + 1, vz + 1, 300, true);
+  const vl = labelSprite('🏆 ' + L('Gold Vault Climb', 'Восхождение к Золотому Сейфу'), 0.8, { bg: 'rgba(212,175,55,0.95)', color: '#1b1b1b', weight: 800 }); vl.position.set(V.x, 4.5, V.z + V.r + 3); S.add(vl);
+  const vl2 = labelSprite('🏁 ' + L('Start here', 'Старт'), 0.45, { bg: 'rgba(34,160,107,0.95)' }); vl2.position.set(steps[0].x, 2.8, steps[0].z); S.add(vl2);
+  app.climb = { topY, best: +(localStorage.getItem('marbly_vault') || 0), cp: -1, t0: 0, top: false, el: Object.assign(document.createElement('div'), { className: 'o-timer hidden' }) };
+  document.body.appendChild(app.climb.el);
+}
+function climbTick(app, dt, t) {
+  const C = app.climb, w = app.world, p = w.me.group.position; if (!C) return;
+  app.hunt.update(dt, t);
+  // which platform am I standing on?
+  if (w.onGround) for (const s of app.steps) if (Math.abs(p.y - s.top) < 0.12 && Math.abs(p.x - s.x) < s.size / 2 + 0.25 && Math.abs(p.z - s.z) < s.size / 2 + 0.25) {
+    if (s.i === 0 && !C.t0) { C.t0 = performance.now(); C.top = false; C.el.classList.remove('hidden'); app.sfx('go'); ui.toast('⏱ ' + L('Climb started! Reach the vault!', 'Восхождение началось! Доберись до сейфа!')); }
+    if (s.cp && C.cp < s.i) { C.cp = s.i; app.sfx('star'); ui.toast('🚩 ' + L('Checkpoint!', 'Чекпоинт!')); }
+  }
+  if (C.t0 && !C.top) C.el.textContent = `⏱ ${((performance.now() - C.t0) / 1000).toFixed(1)}s${C.best ? ` · 🏆 ${C.best.toFixed(1)}s` : ''}`;
+  // reached the top
+  if (!C.top && C.t0 && w.onGround && Math.abs(p.y - C.topY) < 0.15 && Math.hypot(p.x - V.x, p.z - V.z) < 3.6) {
+    C.top = true; const time = (performance.now() - C.t0) / 1000; C.t0 = 0; C.cp = -1;
+    const rec = !C.best || time < C.best; if (rec) { C.best = time; try { localStorage.setItem('marbly_vault', time.toFixed(2)); } catch (e) {} }
+    ui.banner(`🏆 ${L('Vault cracked!', 'Сейф открыт!')} ${time.toFixed(1)}s${rec ? ' · ' + L('NEW RECORD!', 'НОВЫЙ РЕКОРД!') : ''}`, 4000);
+    app.sfx('champions'); confetti(); w.fireworks(4); app.vaultOpen = t + 6;
+    let last = 0; try { last = +(localStorage.getItem('marbly_vault_paid') || 0); } catch (e) {}
+    if (Date.now() - last > 10 * 60 * 1000) { app.hunt.bonus(300); ui.toast('💰 ' + L('Vault prize', 'Приз из сейфа') + ' +' + money(300)); try { localStorage.setItem('marbly_vault_paid', Date.now()); } catch (e) {} }
+    setTimeout(() => C.el.classList.add('hidden'), 4000);
+  }
+  // fell off? back to your last checkpoint
+  if (C.cp >= 0 && p.y < 0.4 && w.onGround && Math.hypot(p.x - V.x, p.z - V.z) < V.r + 4) { const s = app.steps[C.cp]; w.teleport(s.x, s.z); p.y = s.top + 0.1; app.sfx('teleport'); }
+  if (app.vaultDoor) app.vaultDoor.rotation.y = app.vaultOpen > t ? Math.min(1.6, app.vaultDoor.rotation.y + dt * 2) : Math.max(0, app.vaultDoor.rotation.y - dt);
 }

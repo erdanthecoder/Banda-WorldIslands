@@ -56,3 +56,24 @@ body:has(.x-touch:not(.hidden)) .x-chat { bottom: 160px; }
 .r-map { position: fixed; right: 12px; bottom: 14px; width: 150px; height: 150px; z-index: 16; pointer-events: none; filter: drop-shadow(0 6px 16px rgba(0,0,0,.4)); }
 body:has(.x-touch:not(.hidden)) .r-map { bottom: 130px; width: 120px; height: 120px; }
 .ip-streak { margin-top: 8px; display: inline-block; padding: 6px 14px; border-radius: 999px; background: linear-gradient(90deg,#ff9f1c,#e21b3c); font-weight: 900; animation: mpPop .5s; }
+/* fun kit: coin counter, action buttons, power-ups */
+.x-coins { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 16; padding: 6px 14px; border-radius: 99px; background: rgba(10,16,28,.78); color: #ffd34d; font-weight: 800; backdrop-filter: blur(6px); border: 1px solid rgba(255,211,77,.35); pointer-events: none; }
+.x-coins.pop { animation: xCoin .35s cubic-bezier(.2,1.8,.4,1); } @keyframes xCoin { from { transform: translateX(-50%) scale(1.45); } }
+body:has(.x-hud:not(.hidden)) .x-coins { top: 118px; }
+.x-act { position: fixed; right: 120px; bottom: 40px; z-index: 19; width: 74px; height: 74px; border-radius: 50%; border: 3px solid rgba(255,255,255,.5); background: rgba(10,16,28,.72); color: #fff; font-size: 34px; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; backdrop-filter: blur(6px); }
+.x-act small { position: absolute; bottom: -20px; font-size: 11px; font-weight: 800; white-space: nowrap; text-shadow: 0 1px 3px #000; }
+.x-act.hidden { display: none; } .x-act.ready { border-color: #ffd34d; box-shadow: 0 0 22px rgba(255,211,77,.7); animation: xReady 1s infinite alternate; }
+@keyframes xReady { to { transform: scale(1.08); } }
+.x-act.roll { animation: xRoll .12s linear infinite; } @keyframes xRoll { 50% { transform: rotate(8deg) scale(.95); } }
+.x-act2 { right: 210px; width: 60px; height: 60px; font-size: 26px; }
+.r-boost { position: fixed; inset: 0; pointer-events: none; z-index: 14; opacity: 0; transition: opacity .25s; background: radial-gradient(ellipse at center, transparent 45%, rgba(120,200,255,.35) 100%); }
+.r-boost.on { opacity: 1; } .r-boost.star { background: radial-gradient(ellipse at center, transparent 40%, rgba(255,220,80,.45) 100%); }
+.ip-pw { display: flex; gap: 8px; justify-content: center; }
+.ip-pw button { padding: 6px 12px; border-radius: 99px; border: 2px solid rgba(255,255,255,.4); background: rgba(255,255,255,.12); color: #fff; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+.ip-pw button:disabled { opacity: .35; cursor: default; } .ip-pw button.on { background: #ffd34d; color: #1b1b1b; border-color: #ffd34d; }
+.ip-a.gone { visibility: hidden; }
+.s-eye { position: fixed; top: 112px; left: 50%; transform: translateX(-50%); z-index: 16; padding: 6px 14px; border-radius: 99px; font-weight: 800; color: #fff; background: rgba(34,160,107,.85); pointer-events: none; }
+.s-eye.watch { background: rgba(214,69,69,.9); animation: xReady .4s infinite alternate; } .s-eye.hidden { display: none; }
+.o-timer { position: fixed; top: 118px; left: 50%; transform: translateX(-50%); z-index: 16; padding: 6px 16px; border-radius: 99px; background: rgba(120,20,40,.85); color: #fff; font-weight: 800; font-variant-numeric: tabular-nums; pointer-events: none; }
+.o-timer.hidden { display: none; }
+@media (pointer: fine) { .x-act { right: 180px; bottom: 30px; } .x-act2 { right: 266px; } }
