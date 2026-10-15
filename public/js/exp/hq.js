@@ -8,6 +8,7 @@ import { Building } from '../buildings.js';
 import { TEX, labelSprite } from '../world.js';
 import { Avatar } from '../avatar.js';
 import { People } from './people.js';
+import { surface } from './tex.js';
 
 const H = { x: 0, z: -25, w: 64, d: 40, fh: 18 }; // the atrium
 const STYLES = [['Ocean', '#1e5bd8', '#6a2bd8', '#d82b8c'], ['Mint', '#0f9b8e', '#22c1a0', '#9be15d'], ['Sunset', '#ff6a3d', '#ff3d77', '#7b2cbf'], ['Gold', '#8a6d1f', '#d4af37', '#f7e08a'], ['Night', '#0b1530', '#23324a', '#3a86ff'], ['Candy', '#ff6fa8', '#ffb3d9', '#6ff3ff']];
@@ -30,9 +31,9 @@ async function build(app) {
   A = app; const w = app.world, S = w.scene;
   w.scene.fog.density = 0.0022;
   // ---------- the plaza ----------
-  const stone = w.texMat(TEX.cobble, 40, 40, { color: 0xe8e2d6, roughness: 0.7 });
+  const stone = surface('concrete', [52, 52], { color: 0xf2efe8 });
   mesh(w, new THREE.CircleGeometry(78, 72).rotateX(-Math.PI / 2), stone, 0, 0.02, 10, { cast: false });
-  mesh(w, new THREE.CircleGeometry(400, 48).rotateX(-Math.PI / 2), w.texMat(TEX.grass, 600, 600, { color: 0x7fb069 }), 0, -0.02, 0, { cast: false });
+  mesh(w, new THREE.CircleGeometry(400, 48).rotateX(-Math.PI / 2), surface('grass', [130, 130]), 0, -0.02, 0, { cast: false });
   // reflecting pool leading to the door, with fountain jets
   const water = new THREE.MeshStandardMaterial({ color: 0x2a7fb8, metalness: 0.6, roughness: 0.05, transparent: true, opacity: 0.85 });
   mesh(w, new THREE.BoxGeometry(14, 0.5, 34), std(0xf3efe8), 0, 0.25, 26, { solid: true });
@@ -75,7 +76,7 @@ async function build(app) {
   for (const sx of [-1, 1]) mesh(w, new THREE.CylinderGeometry(0.25, 0.25, 5.6, 12), std(0xd4af37, { metalness: 1, roughness: 0.2 }), sx * 8, 2.8, maxZ + 6);
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(26, 4.5), new THREE.MeshBasicMaterial({ map: wordmark('mBank HEADQUARTERS'), transparent: true })); sign.position.set(0, H.fh + 3.2, maxZ + 0.5); S.add(sign);
   // floor: polished white stone with a gold inlay ring
-  mesh(w, new THREE.BoxGeometry(H.w, 0.1, H.d), w.texMat(TEX.tile, H.w / 2, H.d / 2, { color: 0xf8f6f2, roughness: 0.12, metalness: 0.1 }), 0, 0.05, cz, { cast: false });
+  mesh(w, new THREE.BoxGeometry(H.w, 0.1, H.d), surface('marble', [H.w / 4, H.d / 4], { roughness: 0.12, envMapIntensity: 1.4 }), 0, 0.05, cz, { cast: false });
   mesh(w, new THREE.RingGeometry(8, 8.6, 64).rotateX(-Math.PI / 2), std(0xd4af37, { metalness: 1, roughness: 0.2 }), 0, 0.12, cz, { cast: false });
   // mezzanine balcony round three sides with a glass rail
   for (const [x, z, ww, dd] of [[0, minZ + 4, H.w - 2, 8], [minX + 4, cz + 2, 8, H.d - 12], [maxX - 4, cz + 2, 8, H.d - 12]]) {

@@ -3,6 +3,7 @@
 // shows everyone else who is playing, the HUD, phone controls, mPAY payments and admin abuse.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { World } from '../world.js';
 import { Avatar, EMOTES } from '../avatar.js';
 import { currentAccount } from '../auth.js';
@@ -59,6 +60,12 @@ export async function experience(def) {
   world.water.position.y = def.sea ?? -3; // the sea sits below the game's floor
   // realistic reflections on glass, metal and car paint
   try { world.scene.environment = world.pmrem.fromScene(new RoomEnvironment(), 0.04).texture; world.scene.environmentIntensity = 0.55; } catch (e) {}
+  // soft contact shadows where things meet the floor and each other (Beautiful graphics only)
+  if (world.composer) try {
+    const ao = new GTAOPass(world.scene, world.camera, innerWidth, innerHeight); ao.output = GTAOPass.OUTPUT.Default; ao.blendIntensity = 0.85;
+    ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1, samples: 12 }); ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+    world.composer.insertPass(ao, 1); addEventListener('resize', () => ao.setSize(innerWidth, innerHeight));
+  } catch (e) {}
   app.shop = new Shop(app); app.mpay = new MPay(app);
   app.emit = (type, data) => net.emit(type, data);
   app.onEvent = cb => app.evCbs.push(cb);

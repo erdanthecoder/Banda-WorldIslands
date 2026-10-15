@@ -8,6 +8,7 @@ import { Building } from '../buildings.js';
 import { TEX, labelSprite } from '../world.js';
 import { Avatar, randomAvatar } from '../avatar.js';
 import { say } from '../audio.js';
+import { surface } from './tex.js';
 
 const Q = [ // [question en, question ru, [answers], correct index]
   ['7 × 8 = ?', '7 × 8 = ?', ['54', '56', '64', '48'], 1], ['What is the capital of Kyrgyzstan?', 'Столица Кыргызстана?', ['Osh', 'Almaty', 'Bishkek', 'Tashkent'], 2],
@@ -65,13 +66,13 @@ experience({
 function build(app) {
   A = app; const w = app.world, S = w.scene;
   // ---------- outside ----------
-  mesh(w, new THREE.CircleGeometry(300, 40).rotateX(-Math.PI / 2), w.texMat(TEX.grass, 300, 300, { color: 0x7fb069 }), 0, -0.05, 0, { cast: false });
+  mesh(w, new THREE.CircleGeometry(300, 40).rotateX(-Math.PI / 2), surface('grass', [100, 100]), 0, -0.05, 0, { cast: false });
   mesh(w, new THREE.BoxGeometry(60, 0.06, 30), w.texMat(TEX.concrete, 60, 30, { color: 0xbfc4cc }), 0, 0, 22, { cast: false });
   const brick = w.texMat(TEX.brick, 30, 8, { color: 0xc8735a });
   // ---------- the classroom ----------
   const B = new Building(w, { x: 0, z: 0, w: C.w, d: C.d, floors: 1, fh: 4.4, base: 0, door: { side: 's', at: 9, width: 2.6 } });
   const { minX, maxX, minZ, maxZ } = B, H = 4.4;
-  const wallIn = std(0xf3ead8, { roughness: 0.9 });
+  const wallIn = surface('plaster', [6, 1.2]);
   mesh(w, new THREE.BoxGeometry(C.w, H, 0.3), wallIn, 0, H / 2, minZ);
   mesh(w, new THREE.BoxGeometry(0.3, H, C.d), wallIn, maxX, H / 2, 0);
   for (const [a, b] of [[minX, 7.7], [10.3, maxX]]) mesh(w, new THREE.BoxGeometry(b - a, H, 0.3), wallIn, (a + b) / 2, H / 2, maxZ);
@@ -84,13 +85,21 @@ function build(app) {
   mesh(w, new THREE.BoxGeometry(C.w + 1, H + 0.6, 0.4), brick, 0, (H + 0.6) / 2, minZ - 0.4);
   mesh(w, new THREE.BoxGeometry(0.4, H + 0.6, C.d + 1), brick, maxX + 0.4, (H + 0.6) / 2, 0);
   mesh(w, new THREE.BoxGeometry(C.w + 2, 0.4, C.d + 2), std(0x5a3a28), 0, H + 0.4, 0);
-  mesh(w, new THREE.BoxGeometry(C.w, 0.1, C.d), w.texMat(TEX.wood, C.w, C.d, { color: 0xc49a6c, roughness: 0.55 }), 0, 0.03, 0, { cast: false });
+  mesh(w, new THREE.BoxGeometry(C.w, 0.1, C.d), surface('wood', [C.w / 4, C.d / 4], { roughness: 0.45 }), 0, 0.03, 0, { cast: false });
   const sign = labelSprite('🏫 Marbly School', 1, { bg: 'rgba(200,60,40,0.95)', weight: 800 }); sign.position.set(4, H + 1.6, maxZ + 0.6); S.add(sign);
+  // a tiled ceiling, skirting boards and radiators under the windows: a real classroom
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(C.w, C.d).rotateX(Math.PI / 2), surface('ceiling', [C.w / 2.4, C.d / 2.4])); ceil.position.set(0, H - 0.04, 0); S.add(ceil);
+  const skirt = std(0x5a4632, { roughness: 0.6 });
+  mesh(w, new THREE.BoxGeometry(C.w, 0.14, 0.05), skirt, 0, 0.07, minZ + 0.17, { cast: false }); mesh(w, new THREE.BoxGeometry(0.05, 0.14, C.d), skirt, maxX - 0.17, 0.07, 0, { cast: false });
+  for (let i = 0; i < 3; i++) { const z = -6 + i * 6; mesh(w, new THREE.BoxGeometry(0.14, 0.6, 1.8), std(0xf4f4f2, { roughness: 0.4 }), minX + 0.25, 0.55, z); for (let k = 0; k < 9; k++) mesh(w, new THREE.BoxGeometry(0.16, 0.56, 0.04), std(0xe6e6e2), minX + 0.25, 0.55, z - 0.8 + k * 0.2, { cast: false }); }
+  // real light from the ceiling lamps and the big windows (without it a closed room looks grey)
+  for (let i = 0; i < 3; i++) for (let k = 0; k < 2; k++) { const l = new THREE.PointLight(0xfff4e0, 22, 16, 1.6); l.position.set(-6 + i * 6, H - 0.5, -3 + k * 7); S.add(l); }
+  const sunIn = new THREE.DirectionalLight(0xfff1d6, 1.2); sunIn.position.set(minX - 10, H + 6, 2); sunIn.target.position.set(0, 0, 0); S.add(sunIn, sunIn.target);
   // ceiling lights
   for (let i = 0; i < 3; i++) for (let k = 0; k < 2; k++) mesh(w, new THREE.BoxGeometry(3, 0.08, 0.6), std(0xffffff, { emissive: 0xfffbea, emissiveIntensity: 1.6 }), -6 + i * 6, H - 0.1, -3 + k * 7, { cast: false });
   // the smart board
   app.bd = canvasTexture(1024, 576, () => {}); app.bdG = app.bd.image.getContext('2d');
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(9, 5.06), new THREE.MeshBasicMaterial({ map: app.bd })); board.position.set(0, 2.4, minZ + 0.2); S.add(board);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(9, 5.06), new THREE.MeshBasicMaterial({ map: app.bd, color: 0xc8c8c8 })); board.position.set(0, 2.4, minZ + 0.2); S.add(board);
   mesh(w, new THREE.BoxGeometry(9.4, 5.4, 0.12), std(0x23272d), 0, 2.4, minZ + 0.12);
   // posters and a clock
   ['🔢 MATH', '🌍 GEO', '🔬 SCIENCE', '📖 ENGLISH'].forEach((p, i) => { const l = labelSprite(p, 0.45, { bg: ['#e21b3c', '#1368ce', '#d89e00', '#26890c'][i] }); l.position.set(maxX - 0.3, 2.6, -6 + i * 4); S.add(l); });
@@ -101,7 +110,7 @@ function build(app) {
   app.seats = [];
   for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) {
     const x = -8 + c * 4, z = -3.2 + r * 3;
-    mesh(w, new THREE.BoxGeometry(1.3, 0.06, 0.75), std(0xe8d5b0, { roughness: 0.5 }), x, 0.76, z); mesh(w, new THREE.BoxGeometry(1.2, 0.73, 0.06), std(0x5d6b7a, { metalness: 0.5 }), x, 0.37, z - 0.3);
+    mesh(w, new THREE.BoxGeometry(1.3, 0.06, 0.75), app.deskTop ||= surface('wood', [0.6, 0.4], { color: 0xf0dcc0, roughness: 0.5 }), x, 0.76, z); mesh(w, new THREE.BoxGeometry(1.2, 0.73, 0.06), std(0x5d6b7a, { metalness: 0.5 }), x, 0.37, z - 0.3);
     mesh(w, new THREE.BoxGeometry(0.5, 0.05, 0.5), std(0x2e6fd1), x, 0.46, z + 0.62); mesh(w, new THREE.BoxGeometry(0.5, 0.5, 0.05), std(0x2e6fd1), x, 0.72, z + 0.88);
     // an iPad on every desk
     mesh(w, new THREE.BoxGeometry(0.42, 0.02, 0.3), std(0x111111, { metalness: 0.6 }), x, 0.8, z + 0.05, { cast: false });

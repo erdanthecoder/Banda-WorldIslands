@@ -1,6 +1,7 @@
 // World Islands 2.0 — everything that is new, shown once after an update (and from Menu → What's new).
 export const VERSION = '2.0';
 const NEW = [
+  ['📸', 'Much more realistic Marbly games: real asphalt, concrete, marble, wood and plaster surfaces, curved cars with tinted glass, chrome wheels and working brake lights, catch fences and floodlights at the raceway, a properly lit classroom with a tiled ceiling, smoother people and soft contact shadows on Beautiful graphics.', 'Игры Marbly стали намного реалистичнее: настоящий асфальт, бетон, мрамор, дерево и штукатурка, обтекаемые машины с тонированными стёклами, хромированными дисками и стоп-сигналами, сетка и прожекторы на трассе, освещённый класс с потолочной плиткой, более гладкие люди и мягкие тени на графике «Красиво».'],
   ['💬', 'Chat in every Marbly game: press Enter or 💬, and your message shows as a bubble over your head. Rude words are hidden automatically.', 'Чат во всех играх Marbly: нажми Enter или 💬 — сообщение появится облачком над головой. Грубые слова скрываются.'],
   ['⏱', 'Raceway: lap timer, your best lap record and a live track map with every car.', 'Гонки: таймер круга, твой лучший круг и карта трассы со всеми машинами.'],
   ['🌆', 'mBank HQ: take the glass lift to the Sky Deck on top of the tower, with telescopes and a view over all of Marbly.', 'mBank HQ: стеклянный лифт на смотровую площадку на крыше башни с телескопами и видом на весь Marbly.'],

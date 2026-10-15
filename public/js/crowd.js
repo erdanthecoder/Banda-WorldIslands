@@ -4,6 +4,7 @@
 //  - StreetCrowd: people walk along every path and across the plaza, friends stand and chat, and football fans
 //    fill the stadium stands (and do a Mexican wave!).
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { SKINS, HAIR_COLORS, CLOTH, PANTS } from './avatar.js';
 import { PATHS, PLAZA_R, PITCH, PLAYGROUND, heightAt } from './world.js';
 
@@ -26,13 +27,14 @@ export class Bodies {
     this.n = n;
     const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65 });
     FACE = FACE || new THREE.MeshBasicMaterial({ map: faceTex(), transparent: true, depthWrite: false });
-    const part = (geo, count, m = mat) => { const im = new THREE.InstancedMesh(geo, m, count); im.frustumCulled = false; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); world.scene.add(im); return im; };
-    this.torso = part(new THREE.BoxGeometry(2 * S, 2 * S, S), n);
-    this.head = part(new THREE.CylinderGeometry(0.62 * S, 0.62 * S, 1.55 * S, 10), n);
+    // rounded parts (like real avatars), and shadows on the beautiful setting
+    const part = (geo, count, m = mat) => { const im = new THREE.InstancedMesh(geo, m, count); im.frustumCulled = false; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.castShadow = !!world.hq && m !== FACE; world.scene.add(im); return im; };
+    this.torso = part(new RoundedBoxGeometry(2 * S, 2 * S, S, 2, 0.06), n);
+    this.head = part(new THREE.CylinderGeometry(0.62 * S, 0.62 * S, 1.55 * S, 16), n);
     this.face = part(new THREE.PlaneGeometry(1.0 * S, 1.0 * S), n, FACE);
-    this.hair = part(new THREE.BoxGeometry(1.3 * S, 0.42 * S, 1.32 * S), n);
-    this.arms = part(new THREE.BoxGeometry(0.95 * S, 2 * S, 0.95 * S).translate(0, -S, 0), n * 2);
-    this.legs = part(new THREE.BoxGeometry(0.95 * S, 2 * S, 0.95 * S).translate(0, -S, 0), n * 2);
+    this.hair = part(new RoundedBoxGeometry(1.3 * S, 0.42 * S, 1.32 * S, 2, 0.08), n);
+    this.arms = part(new RoundedBoxGeometry(0.95 * S, 2 * S, 0.95 * S, 2, 0.06).translate(0, -S, 0), n * 2);
+    this.legs = part(new RoundedBoxGeometry(0.95 * S, 2 * S, 0.95 * S, 2, 0.06).translate(0, -S, 0), n * 2);
     this.bags = part(new THREE.BoxGeometry(0.75 * S, 0.9 * S, 0.3 * S), n);
     this.all = [this.torso, this.head, this.face, this.hair, this.arms, this.legs, this.bags];
     const col = new THREE.Color(), set = (im, i, hex) => im.setColorAt(i, col.set(hex));
