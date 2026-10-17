@@ -942,7 +942,7 @@ export class World {
   start(onFrame) {
     this._onFrame = onFrame;
     const loop = () => {
-      const raw = this.clock.getDelta(), dt = Math.min(0.05, raw), t = this.clock.elapsedTime;
+      const raw = this.clock.getDelta(), dt = Math.min(0.05, raw) * (this.timeScale ?? 1), t = this.clock.elapsedTime;
       this._watch(raw);
       if (this.me) { this._physics(dt); this._camera(dt); this._stars(dt); this._zones(); }
       this._remotes(dt);

@@ -60,6 +60,12 @@ experience({
     { a: 'teacherdance', icon: '🕺', en: 'Teacher dances', ru: 'Учитель танцует' },
     { a: 'pizza', icon: '🍕', en: 'Pizza party', ru: 'Пицца-вечеринка' },
     { a: 'snow', icon: '❄️', en: 'Snow in class', ru: 'Снег в классе' },
+    { a: 'sleep', icon: '😴', en: 'Teacher falls asleep', ru: 'Учитель уснул' },
+    { a: 'paperstorm', icon: '🧻', en: 'Paper storm', ru: 'Бумажный шторм' },
+    { a: 'holiday', icon: '🏖️', en: 'Surprise holiday!', ru: 'Внезапные каникулы!' },
+    { a: 'popquiz', icon: '📝', en: 'Pop quiz now', ru: 'Внезапная викторина' },
+    { a: 'triple', icon: '✖️3', en: 'Triple points', ru: 'Тройные очки' },
+    { a: 'floss', icon: '🕺', en: 'Class does the floss', ru: 'Класс танцует' },
   ],
   build, frame, onAdmin,
 });
@@ -143,7 +149,7 @@ function hostTick(app, now) {
   app.skip = false;
   let n = { ...d, phase: NEXT[d.phase] };
   if (d.phase === 'q') { // score everyone: players' answers, and the bots answer too
-    const q = Q[d.qs[d.qi]], scores = { ...d.scores }, last = {}, mult = app.double ? 2 : 1;
+    const q = Q[d.qs[d.qi]], scores = { ...d.scores }, last = {}, mult = app.triple ? 3 : app.double ? 2 : 1;
     for (const b of app.bots) { const ok = Math.random() < b.skill, ms = 2500 + Math.random() * 10000; const c = ok ? q[3] : (q[3] + 1 + Math.floor(Math.random() * 3)) % 4; d.ans[b.id] = { c, ms, name: b.name, bot: true }; }
     // fast right answers score more, and a streak of right answers adds a bonus (🔥 +100 per answer in a row, up to +300)
     for (const id in d.ans) { const a = d.ans[id], ok = a.c === q[3], streak = ok ? (scores[id]?.streak || 0) + 1 : 0, bonus = ok && streak > 1 ? Math.min(300, (streak - 1) * 100) : 0, pts = ok ? (Math.round((500 + 500 * (1 - Math.min(1, a.ms / (PH.q * 1000)))) * mult) + bonus) * (a.x2 ? 2 : 1) : 0; scores[id] = { name: a.name, pts: (scores[id]?.pts || 0) + pts, bot: !!a.bot, streak }; last[id] = { c: a.c, pts, streak, bonus }; }
@@ -153,7 +159,7 @@ function hostTick(app, now) {
   }
   if (d.phase === 'board') { if (d.qi + 1 >= NQ) n.phase = 'podium'; else n.qi = d.qi + 1; }
   if (n.phase === 'pushups') { const order = Object.entries(d.scores).sort((a, b) => a[1].pts - b[1].pts); n.losers = order.slice(0, 3).map(([id]) => id); }
-  if (n.phase === 'arrive') { n = { phase: 'arrive', qs: pickQs(), qi: 0, scores: {}, ans: {}, last: {} }; app.double = false; }
+  if (n.phase === 'arrive') { n = { phase: 'arrive', qs: pickQs(), qi: 0, scores: {}, ans: {}, last: {} }; app.double = false; app.triple = false; }
   n.phaseEnds = now + PH[n.phase] * 1000;
   push(app, n);
 }
@@ -283,6 +289,8 @@ function frame(dt, t, app) {
   app.coins.update(dt, t); if ((app._ph = (app._ph || 0) + dt) > 0.2) { app._ph = 0; paperHud(app); }
   const tb = document.querySelector('#ipT'); if (tb && app.day.phase === 'q') tb.style.width = Math.max(0, (app.day.phaseEnds - now) / (PH.q * 1000) * 100) + '%';
   app.botAv.forEach((av, i) => { if (av.push) { av.animate(0, dt, false); pushPose(av, t * 5 + i); } });
+  // admin: the whole class dances
+  if (app.flossUntil > t) { app._floss = true; app.botAv.forEach(av => { if (!av.push && av.emote !== 'dance') av.play('dance'); }); } else if (app._floss) { app._floss = false; app.botAv.forEach(av => { if (!av.push) av.play('sit'); }); }
   // remote players who lost do push-ups too
   if (app.day.phase === 'pushups') for (const id in app.world.remotes) if ((app.day.losers || []).includes(id)) pushPose(app.world.remotes[id].av, t * 5);
   if (app.teacherDance) { if (app.teacher.emote !== 'dance') app.teacher.play('dance'); app.teacher.animate(0, dt, false); }
@@ -301,6 +309,13 @@ addEventListener('keydown', e => { if (e.code === 'Space' && A && A.pushing) { e
 addEventListener('pointerdown', e => { if (A && A.pushing && !e.target.closest('button, a, input')) A.pushGo && A.pushGo(); });
 
 function onAdmin(a, d, app) {
+  const t0 = app.world.clock.elapsedTime;
+  if (a === 'sleep') { app.sleepUntil = t0 + 30; teacherSays(app, '😴 Zzz… zzz…'); ui.banner('😴 ' + L('The teacher fell asleep! Throw paper, she cannot see!', 'Учитель уснул! Кидай бумажки!')); }
+  if (a === 'paperstorm') { app.stormUntil = t0 + 20; ui.banner('🧻 ' + L('PAPER STORM!', 'БУМАЖНЫЙ ШТОРМ!')); app.sfx('whoosh'); }
+  if (a === 'holiday') { if (app.isHost()) push(app, { ...app.day, phase: 'break', phaseEnds: Date.now() + 40000 }); app.coins.bonus(50); ui.banner('🏖️ ' + L('SURPRISE HOLIDAY! +$0.50 for everyone!', 'ВНЕЗАПНЫЕ КАНИКУЛЫ! +$0.50 всем!'), 4000); confetti(); }
+  if (a === 'popquiz') { if (app.isHost() && !['ipads', 'q', 'reveal', 'board'].includes(app.day.phase)) push(app, { ...app.day, phase: 'ipads', qi: 0, scores: {}, ans: {}, last: {}, qs: pickQs(), phaseEnds: Date.now() + PH.ipads * 1000 }); ui.banner('📝 ' + L('POP QUIZ! iPads out!', 'ВНЕЗАПНАЯ ВИКТОРИНА! Айпады!')); app.sfx('drumroll'); }
+  if (a === 'triple') { app.triple = true; ui.banner('✖️3 ' + L('TRIPLE points this round!', 'ТРОЙНЫЕ очки в этом раунде!')); app.sfx('airhorn'); }
+  if (a === 'floss') { app.flossUntil = t0 + 15; ui.banner('🕺 ' + L('The whole class dances!', 'Весь класс танцует!')); }
   if (a === 'skip') { if (app.isHost()) app.skip = true; ui.banner('⏭️ ' + L('Admin skips ahead!', 'Админ перематывает!')); }
   if (a === 'double') { app.double = true; ui.banner('✖️2 ' + L('Double points this round!', 'Двойные очки в этом раунде!')); app.sfx('airhorn'); }
   if (a === 'allpush') { app.allPush = true; ui.banner('💪 ' + L('EVERYONE does push-ups!', 'ВСЕ отжимаются!')); setTimeout(() => { app.allPush = false; app.botAv.forEach(av => { if (!av.push) av.play('sit'); }); }, 12000); }
@@ -323,7 +338,8 @@ function alive(app, dt, t) {
   if (dist > 0.05) { const st = Math.min(dist, 1.1 * dt); g.position.x += dx / dist * st; g.position.z += dz / dist * st; g.rotation.y = Math.atan2(dx, dz); T.animate(1.1, dt, false); }
   else { const df = Math.atan2(Math.sin(face - g.rotation.y), Math.cos(face - g.rotation.y)); g.rotation.y += df * Math.min(1, dt * 5); T.animate(0, dt, false); if (mode === 'write' && !T.emote) T.armR.rotation.set(-2.3 + Math.sin(t * 9) * 0.25, 0, Math.sin(t * 5) * 0.2); else if (angry) { T.armR.rotation.set(-2.6, 0, -0.2); T.armL.rotation.set(-0.4, 0, 0.9); } else if (lesson && !T.emote && Math.sin(t * 0.9) > 0.6) { T.armR.rotation.set(-2.2, 0, -0.3); } }
   const facingClass = Math.abs(Math.atan2(Math.sin(g.rotation.y), Math.cos(g.rotation.y))) < 0.7;
-  app.watching = d.phase === 'lesson' && (angry || (mode === 'watch' && facingClass));
+  app.watching = d.phase === 'lesson' && !(app.sleepUntil > t) && (angry || (mode === 'watch' && facingClass));
+  if (app.sleepUntil > t) { g.rotation.y = 0; T.head.rotation.x = 0.6; }
   if (app.bubble) app.bubble.position.set(g.position.x, 2.5, g.position.z + 0.3);
   // classmates: hands up in the lesson, typing in the quiz, cheering or sad after each answer
   app.botAv.forEach((av, i) => {
@@ -405,7 +421,8 @@ function ballTick(app, dt, t) {
   }
   if (app.balls.length > 80) { const old = app.balls.splice(0, app.balls.length - 80); old.forEach(B => B.m.parent && w.scene.remove(B.m)); }
   // in the break the classmates throw back!
-  if (app.day.phase === 'break' && (app._bt = (app._bt || 0) + dt) > 0.9) {
+  const storm = app.stormUntil > t;
+  if ((app.day.phase === 'break' || storm) && (app._bt = (app._bt || 0) + dt) > (storm ? 0.15 : 0.9)) {
     app._bt = 0; const i = Math.floor(Math.random() * app.botAv.length), av = app.botAv[i]; if (av.push) return;
     const from = av.group.position, targets = [me, ...app.botAv.filter(o => o !== av).map(o => o.group.position)], to = Math.random() < 0.35 ? me : targets[1 + Math.floor(Math.random() * (targets.length - 1))];
     const T = 0.75, sx = to.x + (Math.random() - 0.5) * 0.8, sz = to.z + (Math.random() - 0.5) * 0.8, sy = to.y + 1.1;

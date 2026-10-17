@@ -30,6 +30,11 @@ experience({
     { a: 'giant', icon: '🦖', en: 'Giant cars', ru: 'Гигантские машины' },
     { a: 'rainbow', icon: '🌈', en: 'Rainbow road', ru: 'Радужная дорога' },
     { a: 'wave', icon: '🙌', en: 'Crowd goes wild', ru: 'Трибуны сходят с ума' },
+    { a: 'bananarain', icon: '🍌', en: 'Banana rain on the track', ru: 'Банановый дождь' },
+    { a: 'starall', icon: '⭐', en: 'Super star for everyone', ru: 'Звезда всем' },
+    { a: 'itemall', icon: '🎁', en: 'Free item for everyone', ru: 'Предмет всем' },
+    { a: 'jumpall', icon: '🦘', en: 'All cars jump', ru: 'Все машины прыгают' },
+    { a: 'botspin', icon: '🌀', en: 'All bots spin out', ru: 'Все боты в занос' },
   ],
   build, frame, onAdmin, started, onJump: () => {},
 });
@@ -530,6 +535,12 @@ function onAdmin(a, d, app) {
   if (a === 'boost') { app.boostUntil = performance.now() + 15000; ui.banner('🚀 ' + L('TURBO for everyone!', 'ТУРБО всем!')); app.sfx('whoosh'); }
   if (a === 'giant') { app.giantCars = true; setTimeout(() => (app.giantCars = false), 30000); ui.banner('🦖 ' + L('Giant cars!', 'Гигантские машины!')); }
   if (a === 'rainbow') { app.rainbowUntil = t + 30; app._rb = true; ui.banner('🌈 ' + L('Rainbow road!', 'Радужная дорога!')); }
+  const D = app.drive, pn = performance.now();
+  if (a === 'bananarain') { if (app.isHost()) for (let k = 0; k < 30; k++) { const q = at(app.T, Math.random() * app.T.len, (Math.random() - 0.5) * (W - 3)), b = { id: 'adm' + k + ':' + Date.now(), x: q.p.x, z: q.p.z, owner: 'admin' }; addBanana(app, b); app.emit('banana', b); } ui.banner('🍌 ' + L('Banana rain! Watch out!', 'Банановый дождь! Осторожно!')); app.sfx('place'); }
+  if (a === 'starall') { if (D) { D.starUntil = pn + 10000; D.boostUntil = pn + 1500; } ui.banner('⭐ ' + L('SUPER STAR for everyone!', 'ЗВЕЗДА всем!')); app.sfx('champions'); }
+  if (a === 'itemall') { if (D) { D.item = null; D.rolling = false; rollItem(app); } ui.banner('🎁 ' + L('Free item for every driver!', 'Предмет каждому!')); }
+  if (a === 'jumpall') { if (D && !D.air) { D.air = true; D.airT = 0; D.vy = 13; D.y = Math.max(D.y, 0.1); app.sfx('boing'); } ui.banner('🦘 ' + L('Every car JUMPS! Press jump to flip!', 'Все машины ПРЫГАЮТ! Жми прыжок для сальто!')); }
+  if (a === 'botspin') { const r = app.race; if (app.isHost() && r.phase === 'racing') { const rt = (Date.now() - r.start) / 1000; r.racers.filter(x => x.bot).forEach(x => botHit(app, x.id, rt)); } ui.banner('🌀 ' + L('All the bots spin out!', 'Все боты в заносе!')); app.sfx('bonk'); }
   if (a === 'wave') { app.people.wave = true; app.people.hype = 1; setTimeout(() => { app.people.hype = 0; if (app.race.phase !== 'racing') app.people.wave = false; }, 15000); app.sfx('cheer'); ui.banner('🙌 ' + L('The crowd goes wild!', 'Трибуны сходят с ума!')); }
 }
 

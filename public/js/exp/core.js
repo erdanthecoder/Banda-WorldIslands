@@ -15,6 +15,7 @@ import { MPay } from '../mpay.js';
 import { openMenu } from '../menu.js';
 import { clean } from '../safe.js';
 import { labelSprite } from '../world.js';
+import { MORE, abuse } from './abuse.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -55,7 +56,7 @@ export async function experience(def) {
   const world = app.world = new World($('#scene'), { quality, blank: { ground: def.ground ?? 0 } });
   Avatar.blobShadows = !world.hq;
   world.setPlayer(new Avatar(app.me.avatar, app.me.name, app.me.role));
-  world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
+  world.onJump = () => { sfx('jump'); if (app.superJumpUntil > performance.now()) world.vel.y = 17; }; world.onFirework = () => sfx('firework');
   if (def.sun) world._setSun(...def.sun);
   world.water.position.y = def.sea ?? -3; // the sea sits below the game's floor
   // realistic reflections on glass, metal and car paint
@@ -205,7 +206,7 @@ function openAdmin(app) {
   const btn = x => `<button class="tile x-adm" data-a="${x.a}"><span>${x.icon} ${esc(L(x.en, x.ru))}</span></button>`;
   ui.modal('🛡️ ' + L('Admin abuse', 'Админ-абуз') + ' · ' + L(app.def.title, app.def.titleRu), `
     ${own.length ? `<h4>${esc(app.def.icon)} ${L('This game', 'Эта игра')}</h4><div class="menu-grid">${own.map(btn).join('')}</div>` : ''}
-    <h4>🌍 ${L('Everyone, everywhere', 'Для всех')}</h4><div class="menu-grid">${COMMON.map(btn).join('')}</div>
+    <h4>🌍 ${L('Everyone, everywhere', 'Для всех')}</h4><div class="menu-grid">${COMMON.concat(MORE).map(btn).join('')}</div>
     <h4>📣 ${L('Announcement', 'Объявление')}</h4><div class="x-pw"><input id="xAnn" maxlength="200" placeholder="${L('Say something to everyone…', 'Напиши всем…')}"><button class="btn" id="xAnnGo">➤</button></div>
     <h4>💰 ${L('Money', 'Деньги')}</h4><div class="x-pw"><input id="xCash" type="number" min="0.01" max="10000" step="0.01" value="10"><button class="btn" id="xCashMe">${L('To me', 'Мне')}</button><button class="btn" id="xCashAll">${L('To everyone', 'Всем')}</button></div>
     <p class="muted small">${L('Works in every Marbly game.', 'Работает во всех играх Marbly.')}</p>`);
@@ -213,7 +214,7 @@ function openAdmin(app) {
   document.querySelectorAll('#xModalB .x-adm').forEach(b => b.onclick = async () => {
     const a = b.dataset.a, mine = own.some(x => x.a === a);
     if (a === 'fireworks') await send('fireworks', {});
-    else await send('xp', { exp: mine ? app.def.id : '*', a, by: app.me.name });
+    else { const p = app.world.me.group.position; await send('xp', { exp: mine ? app.def.id : '*', a, by: app.me.name, x: +p.x.toFixed(1), y: +p.y.toFixed(1), z: +p.z.toFixed(1) }); }
     b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 600);
   });
   $('#xAnnGo').onclick = async () => { const text = $('#xAnn').value.trim(); if (text && await send('announce', { text: text.slice(0, 200), name: '🛡️ ' + app.me.name })) { $('#xAnn').value = ''; ui.toast('📣 ✓'); } };
@@ -241,7 +242,7 @@ function adminEvent(app, ev) {
     case 'disco': timed('disco', 40); playSong(5); setTimeout(() => stopSong(), 40000); ui.banner('🪩 ' + L('Disco time!', 'Диско!')); break;
     case 'dance': app.emote('dance'); ui.banner('💃 ' + L('Everybody dance!', 'Все танцуют!')); break;
     case 'confetti': confetti(); break;
-    default: app.def.onAdmin && app.def.onAdmin(d.a, d, app);
+    default: if (!abuse(app, d.a, d, { ui, L, sfx, flash, money })) app.def.onAdmin && app.def.onAdmin(d.a, d, app);
   }
 }
 

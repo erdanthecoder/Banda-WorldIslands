@@ -21,6 +21,7 @@ import { Minigames, MIN_PLAYERS } from './minigames.js';
 import { Bots } from './bots.js';
 import { Shows } from './shows.js';
 import { Admin } from './admin.js';
+import { abuse } from './exp/abuse.js';
 import { Fishing } from './fishing.js';
 import { whatsNew } from './whatsnew.js';
 import { isV2, LAUNCH_2 } from './launch.js';
@@ -135,7 +136,7 @@ async function start(serverId) {
   const world = app.world = new World($('#scene'), { quality });
   Avatar.blobShadows = !world.hq;
   world.setPlayer(new Avatar(me.avatar, me.name, me.role));
-  world.onJump = () => sfx('jump'); world.onFirework = () => sfx('firework');
+  world.onJump = () => { sfx('jump'); if (app.superJumpUntil > performance.now()) world.vel.y = 17; }; world.onFirework = () => sfx('firework');
   app.shop = new Shop(app); app.shop.loadInv(); app.mpay = new MPay(app); app.bankUI = new BankUI(app); app.phone = new Phone(app);
   buildWorld(world);
   app.fishing = new Fishing(app);
@@ -458,6 +459,7 @@ async function onEvent(ev) {
   if (ev.type === 'chat') return ui.chat(`<b>${esc(d.name)}${d.role === 'teacher' ? ' · ' + t('teacher') : ''}:</b> ${esc(clean(d.text))}`, d.role === 'teacher' ? 'tch' : '');
   if (!ev.trusted) return; // everything below comes from a verified teacher command
   switch (ev.type) {
+    case 'xp': if (d.exp === '*' || d.exp === 'world') abuse(app, d.a, d, { ui, L: (en, ru) => (getLang() === 'ru' ? ru : en), sfx, flash: () => {}, money }); break;
     case 'announce':
       $('#announceText').textContent = d.text; $('#announceBy').textContent = d.name || ''; show('#announce');
       clearTimeout(app._an); app._an = setTimeout(() => show('#announce', false), 10000);

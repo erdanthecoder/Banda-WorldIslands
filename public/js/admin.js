@@ -2,6 +2,11 @@
 // Admins can start shows, fun effects and powers on every server, give money to anyone, and set how many bots walk around.
 import { SHOWS, V2_SHOWS, V2_FX } from './shows.js';
 import { isV2 } from './launch.js';
+import { MORE } from './exp/abuse.js';
+import { getLang } from './i18n.js';
+
+// the Marbly abuse World Island doesn't already have its own version of
+const XP = ['superjump', 'bouncy', 'balloon', 'slowmo', 'spin', 'bighead', 'invisible', 'blackhole', 'boom', 'flip', 'fog', 'food', 'coinrain', 'duck'];
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,6 +52,7 @@ export class Admin {
         <button data-act="summon"><b>🧲</b>${t('summonAll')}</button>
       </div>
       <h4>🎉 ${t('funAll')}</h4><div class="adm-grid">${funList.map(([k, i]) => `<button data-fx="${k}"><b>${i}</b>${t('fxn_' + k)}</button>`).join('')}</div>
+      <h4>🎮 Marbly</h4><div class="adm-grid">${MORE.filter(x => XP.includes(x.a)).map(x => `<button data-xp="${x.a}"><b>${x.icon}</b>${esc(getLang() === 'ru' ? x.ru : x.en)}</button>`).join('')}</div>
       <h4>✨ ${t('powersAll')}</h4><div class="adm-grid">${powers.map(([k, i]) => `<button data-pow="${k}" class="${app.effects[k] ? 'on' : ''}"><b>${i}</b>${t('ab_' + k)}</button>`).join('')}</div>
       <h4>💰 ${t('giveMoney')}</h4>
       <div class="adm-money">
@@ -64,6 +70,7 @@ export class Admin {
       <button class="ph-wide" id="admLock">🔒 ${t('lockAdmin')}</button>`;
     b.querySelectorAll('[data-show]').forEach(x => x.onclick = async () => { if (await this.cmd('show', { kind: x.dataset.show })) app.phone.close(); });
     b.querySelectorAll('[data-fx]').forEach(x => x.onclick = async () => { if (await this.cmd('fx', { type: x.dataset.fx })) app.sfx('click'); });
+    b.querySelectorAll('[data-xp]').forEach(x => x.onclick = async () => { const p = app.world.me.group.position; if (await this.cmd('xp', { exp: '*', a: x.dataset.xp, by: app.me.name, x: +p.x.toFixed(1), y: +p.y.toFixed(1), z: +p.z.toFixed(1) })) app.sfx('click'); });
     b.querySelectorAll('[data-pow]').forEach(x => x.onclick = async () => { const k = x.dataset.pow, on = !app.effects[k]; if (await this.cmd('effects', { ...app.effects, [k]: on })) { x.classList.toggle('on', on); app.toast(`${t('ab_' + k)}: ${on ? t('on') : t('off')}`); } });
     b.querySelectorAll('[data-act]').forEach(x => x.onclick = async () => {
       const a = x.dataset.act;

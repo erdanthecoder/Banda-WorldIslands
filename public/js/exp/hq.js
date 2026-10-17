@@ -24,6 +24,11 @@ experience({
     { a: 'botdance', icon: '🕺', en: 'Everyone in the bank dances', ru: 'Весь банк танцует' },
     { a: 'spin', icon: '🌀', en: 'Spin the golden logo', ru: 'Крутить золотой логотип' },
     { a: 'fountain', icon: '⛲', en: 'Mega fountain', ru: 'Мега-фонтан' },
+    { a: 'cashcannon', icon: '💸', en: 'Cash cannon (grab the coins)', ru: 'Денежная пушка' },
+    { a: 'vault', icon: '🔓', en: 'Open the gold vault', ru: 'Открыть золотой сейф' },
+    { a: 'skydeck', icon: '🌆', en: 'Everyone to the Sky Deck', ru: 'Все на смотровую' },
+    { a: 'climbtop', icon: '🧗', en: 'Free ride to the vault top', ru: 'Все на вершину сейфа' },
+    { a: 'party', icon: '🎉', en: 'Bank party', ru: 'Вечеринка в банке' },
   ],
   build, frame, onAdmin,
 });
@@ -187,6 +192,11 @@ function onAdmin(a, d, app) {
   if (a === 'lights') { app.showUntil = t + 30; app._show = true; ui.banner('🌈 ' + L('Light show!', 'Световое шоу!')); }
   if (a === 'botdance') { app.people.mode = 'dance'; setTimeout(() => (app.people.mode = ''), 25000); ui.banner('🕺 ' + L('The whole bank is dancing!', 'Весь банк танцует!')); }
   if (a === 'spin') { app.spinUntil = t + 15; ui.banner('🌀 ' + L('The golden logo goes wild!', 'Золотой логотип крутится!')); }
+  if (a === 'cashcannon') { const tmp = []; for (let k = 0; k < 40; k++) { const ang = Math.random() * 6.28, r = 7 + Math.random() * 12; tmp.push(app.hunt.add(Math.cos(ang) * r, 1, H.z + Math.sin(ang) * r * 0.8, 10)); } setTimeout(() => tmp.forEach(c => { app.world.scene.remove(c.m); const i = app.hunt.list.indexOf(c); if (i >= 0) app.hunt.list.splice(i, 1); }), 40000); ui.banner('💸 ' + L('CASH CANNON! Grab the coins round the fountain!', 'ДЕНЕЖНАЯ ПУШКА! Хватай монеты у фонтана!')); app.sfx('airhorn'); confetti(60); }
+  if (a === 'vault') { app.vaultOpen = t + 30; app.hunt.add(V.x - 1.5, app.climb.topY + 1, V.z + 1.5, 200, true); ui.banner('🔓 ' + L('The gold vault is open! Climb up!', 'Золотой сейф открыт! Забирайся!')); app.sfx('ding'); }
+  if (a === 'skydeck' && app.deck) { app.world.teleport(app.deck.cx + (Math.random() - 0.5) * 8, app.deck.cz + (Math.random() - 0.5) * 8, Math.PI); app.world.me.group.position.y = app.deck.Y + 0.1; ui.banner('🌆 ' + L('Everyone to the Sky Deck!', 'Все на смотровую!')); app.sfx('teleport'); }
+  if (a === 'climbtop') { app.world.teleport(V.x + 1.5, V.z + 2); app.world.me.group.position.y = app.climb.topY + 0.1; ui.banner('🧗 ' + L('Free ride to the top of the vault!', 'Бесплатно на вершину!')); app.sfx('teleport'); }
+  if (a === 'party') { onAdmin('lights', d, app); onAdmin('botdance', d, app); onAdmin('fountain', d, app); app.world.fireworks(8); }
   if (a === 'fountain') { app.megaUntil = t + 25; ui.banner('⛲ ' + L('Mega fountain!', 'Мега-фонтан!')); app.sfx('splash'); }
 }
 
