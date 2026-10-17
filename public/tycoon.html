@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Ice Cream Tycoon · Marbly</title>
+<meta name="description" content="Claim a plot, build droppers, conveyor belts and an ice cream shop, cash in and rebirth in Ice Cream Tycoon.">
+<meta name="theme-color" content="#0e1622">
+<link rel="icon" href="/img/favicon.png" type="image/png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/exp.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }</script>
+<style>
+.ty-cash { position: fixed; left: 12px; top: 64px; z-index: 16; padding: 8px 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(255,95,160,.94), rgba(255,170,90,.94)); color: #fff; font-weight: 800; box-shadow: 0 6px 18px rgba(0,0,0,.25); pointer-events: none; min-width: 160px; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.ty-cash b { display: block; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ty-cash small { display: block; font-size: 12px; opacity: .96; } .ty-cash small:empty { display: none; } .ty-cash .fx { color: #fff6a8; }
+.ty-cash.pop { animation: tyPop .35s cubic-bezier(.2,1.8,.4,1); } @keyframes tyPop { from { transform: scale(1.22); } }
+@media (max-width: 640px) { .ty-cash { top: 58px; left: 8px; padding: 6px 10px; min-width: 0; } .ty-cash b { font-size: 19px; } .ty-cash small { font-size: 11px; } }
+</style>
+</head>
+<body class="marbly">
+<canvas id="scene"></canvas>
+<script type="module" src="/js/exp/tycoon.js"></script>
+</body>
+</html>

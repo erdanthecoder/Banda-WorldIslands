@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Party Royale · Marbly</title>
+<meta name="description" content="A minigame party in a candy stadium: tile fall, colour block, bomb tag, king of the hill and more. Five rounds, one champion.">
+<meta name="theme-color" content="#0e1622">
+<link rel="icon" href="/img/favicon.png" type="image/png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/exp.css">
+<style>
+/* Party Royale HUD */
+.p-hud { position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 15; width: min(520px, calc(100vw - 24px)); padding: 8px 14px 10px; border-radius: 18px; color: #fff; text-align: center; pointer-events: none; background: linear-gradient(135deg, rgba(122,40,200,.88), rgba(230,60,140,.88)); box-shadow: 0 10px 30px rgba(60,10,90,.35); border: 2px solid rgba(255,255,255,.35); }
+.p-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.p-name { font-size: 22px; font-weight: 900; letter-spacing: .01em; text-shadow: 0 2px 0 rgba(0,0,0,.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-rnd, .p-time { font-size: 13px; font-weight: 800; padding: 3px 10px; border-radius: 99px; background: rgba(0,0,0,.28); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.p-time { font-size: 18px; background: #fff; color: #b0207a; min-width: 62px; }
+.p-time.hurry { background: #ffd34d; color: #7a1020; animation: pPulse .5s infinite alternate; }
+.p-how { font-size: 14px; font-weight: 700; opacity: .95; margin: 3px 0 5px; }
+.p-stats { justify-content: center; gap: 10px; font-weight: 800; font-size: 14px; }
+.p-stats span { padding: 3px 10px; border-radius: 99px; background: rgba(0,0,0,.25); white-space: nowrap; }
+.p-board { position: fixed; right: 12px; top: 112px; z-index: 15; width: 190px; padding: 8px 10px; border-radius: 14px; background: rgba(16,10,40,.78); color: #fff; font-size: 13px; font-weight: 700; pointer-events: none; backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.15); }
+.p-board h5 { margin: 0 0 5px; font-size: 12px; letter-spacing: .06em; opacity: .75; }
+.p-board div { display: flex; gap: 6px; padding: 2px 4px; border-radius: 7px; } .p-board div span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-board div.me { background: #ffd34d; color: #3b2400; } .p-board div.out { opacity: .45; text-decoration: line-through; }
+.p-big { position: fixed; top: 38%; left: 50%; transform: translate(-50%, -50%); z-index: 29; padding: 16px 30px; border-radius: 24px; color: #fff; font-size: 34px; font-weight: 900; text-align: center; pointer-events: none; background: rgba(20,10,50,.86); box-shadow: 0 20px 60px rgba(0,0,0,.35); border: 3px solid rgba(255,255,255,.5); animation: pIn .35s cubic-bezier(.2,1.6,.4,1); max-width: calc(100vw - 32px); text-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.p-big small { display: block; font-size: 16px; font-weight: 700; opacity: .92; margin-top: 4px; }
+.p-big.huge { font-size: 96px; padding: 6px 40px; background: none; border: 0; box-shadow: none; -webkit-text-stroke: 3px #3a0c5a; }
+.p-big.call { top: 30%; font-size: 30px; } .p-big.bomb { background: rgba(200,20,40,.92); animation: pIn .35s, pPulse .35s infinite alternate; }
+.p-big.hidden { display: none; }
+.x-coins { top: 64px; left: auto; right: 12px; transform: none; } .x-coins.pop { animation: none; }
+@keyframes pIn { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } }
+@keyframes pPulse { to { filter: brightness(1.25); } }
+@media (max-width: 640px) { .p-hud { top: 58px; padding: 6px 10px 8px; } .p-name { font-size: 17px; } .p-how { font-size: 12px; } .p-board { top: auto; bottom: 230px; right: 8px; width: 150px; font-size: 11px; } .x-coins { top: auto; bottom: 200px; } .p-big { font-size: 24px; } .p-big.huge { font-size: 70px; } }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }</script>
+</head>
+<body class="marbly">
+<canvas id="scene"></canvas>
+<script type="module" src="/js/exp/party.js"></script>
+</body>
+</html>
