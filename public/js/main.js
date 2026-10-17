@@ -216,6 +216,10 @@ function buildWorld(world) {
   portal(world, BANK.x + 6, BANK.z, '🏦 mBank HQ', '/hq.html', 0x3a86ff);
   portal(world, -19, -9, '🏁 Island Raceway', '/race.html', 0xe71d36);
   portal(world, 19, -9, '📚 Quiz Day', '/school.html', 0x8a3ffc);
+  portal(world, -19, 12, '⛏️ Marbly Craft', '/craft.html', 0x4f9f35);
+  portal(world, 19, 12, '🧗 Mega Obby', '/obby.html', 0xff3d77);
+  portal(world, -9, 17, '🎉 Party Royale', '/party.html', 0x9b5cff);
+  portal(world, 9, 17, '🍦 Ice Cream Tycoon', '/tycoon.html', 0xff6fa8);
   app.resto = new Restaurant(world, { t, sit: seat => restoSit(seat), pass: () => app.jobs.pass() });
   app.mall = new Mall(world, { t, shop: (id, sh) => app.shop.openAisle(`${sh.icon} ${t('mall_' + id)}`, sh.items, { cafe: true }), jobs: () => app.jobs.board(), barista: on => app.jobs && app.jobs.baristaAt(on) });
   app.jobs = new Jobs(app);

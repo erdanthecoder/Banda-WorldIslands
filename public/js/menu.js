@@ -12,6 +12,10 @@ export const EXPERIENCES = [
   { id: 'world', icon: '🏝️', name: 'World Island', en: 'Tower, mall, hotel, jobs, minigames', ru: 'Башня, молл, отель, работа, мини-игры', bg: 'linear-gradient(135deg,#1e8fd8,#22c1a0)', href: '/', servers: CONFIG.servers.map(s => s.id) },
   { id: 'race', icon: '🏁', name: 'Island Raceway', en: 'Race with turbos, stars, bananas and a jump ramp', ru: 'Гонки с турбо, звёздами, бананами и трамплином', bg: 'linear-gradient(135deg,#e71d36,#ff9f1c)', href: '/race.html', servers: ['race-1'] },
   { id: 'hq', icon: '🏦', name: 'mBank HQ', en: 'Gold Vault Climb, coin hunt, your 7-digit card', ru: 'Восхождение к сейфу, охота за монетами, карта', bg: 'linear-gradient(135deg,#1e5bd8,#6a2bd8)', href: '/hq.html', servers: ['hq-1'] },
+  { id: 'craft', icon: '⛏️', name: 'Marbly Craft', en: 'Mine, craft and build together. TNT!', ru: 'Добывай, крафти и строй вместе. TNT!', bg: 'linear-gradient(135deg,#4f7f35,#8a6d1f)', href: '/craft.html', servers: ['craft-1'] },
+  { id: 'obby', icon: '🧗', name: 'Mega Obby', en: '30+ stages of lava, spinners and jumps', ru: '30+ этапов: лава, вертушки, прыжки', bg: 'linear-gradient(135deg,#ff3d77,#ffb020)', href: '/obby.html', servers: ['obby-1'] },
+  { id: 'party', icon: '🎉', name: 'Party Royale', en: 'Minigame party: last one standing wins', ru: 'Мини-игры: побеждает последний', bg: 'linear-gradient(135deg,#7b2cbf,#22c1a0)', href: '/party.html', servers: ['party-1'] },
+  { id: 'tycoon', icon: '🍦', name: 'Ice Cream Tycoon', en: 'Build your own ice cream empire', ru: 'Построй империю мороженого', bg: 'linear-gradient(135deg,#ff6fa8,#6ff3ff)', href: '/tycoon.html', servers: ['tycoon-1'] },
   { id: 'school', icon: '📚', name: 'Quiz Day', en: 'iPad quiz, power-ups, paper fights. Lose = push-ups!', ru: 'Викторина, бонусы, бумажный бой. Проиграл — отжимайся!', bg: 'linear-gradient(135deg,#46178f,#d82b8c)', href: '/school.html', servers: ['school-1'] },
 ];
 export const playing = (lobby, e) => e.servers.reduce((n, s) => n + ((lobby || {})[s] || 0), 0);
