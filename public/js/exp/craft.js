@@ -110,7 +110,7 @@ function blocked(x, z, y) {
 }
 function started(app) {
   ui.banner('⛏️ ' + L('Welcome to Marbly Craft! Hold left click (or ⛏) on a tree to get logs, then press E to craft.', 'Добро пожаловать в Marbly Крафт! Держи левую кнопку (или ⛏) на дереве, потом нажми E для крафта.'), 6500);
-  app.emit('creq', { pid: app.me.pid });
+  app.emit('creq', { pid: app.me.pid }); setTimeout(() => (app.synced = true), 7000);
 }
 
 // ---------- the camera: over the shoulder (crosshair in the middle) or first person ----------
@@ -297,7 +297,7 @@ function net(app) {
   app.onEvent(ev => {
     const d = ev.data || {}; if (ev.from === app.me.pid && !ev.trusted) return;
     if (ev.type === 'cb' && d.g === vx.gen && d.c) for (let k = 0; k + 1 < d.c.length; k += 2) change(app, d.c[k], d.c[k + 1], false);
-    if (ev.type === 'creq' && app.isHost()) setTimeout(() => pushState(app), 300);
+    if (ev.type === 'creq' && app.synced && (app.isHost() || app.vx.changes.size)) setTimeout(() => pushState(app, true), 300 + Math.random() * 700);
     if (ev.type === 'cfuse' && d.g === vx.gen) fuse(app, d.c, d.t);
     if (ev.type === 'boom' && d.g === vx.gen) boom(app, d);
     if (ev.type === 'cfall' && d.g === vx.gen) d.f.forEach(f => fall(app, ...f));
@@ -309,14 +309,15 @@ function onPlayers(app) {
   const grew = Object.keys(app.players).some(id => !(app._known || new Set()).has(id)); app._ids = ids; app._known = new Set(Object.keys(app.players));
   if (grew && app.isHost()) setTimeout(() => pushState(app), 600);
 }
-function pushState(app) {
-  const vx = app.vx; app.dirty = false; app._pushed = Date.now();
+function pushState(app, force) {
+  // a newcomer waits for the world from the others before it may speak for it
+  const vx = app.vx; if (!app.synced || (!force && !app.isHost())) return; app.dirty = false; app._pushed = Date.now();
   // keep it bounded: the oldest changes fade back to the original island
   if (vx.changes.size > MAXC) { const old = [...vx.changes.keys()].slice(0, vx.changes.size - MAXC); old.forEach(c => change(app, c, vx.base[c])); app.dirty = false; }
   app.net.setState('blocks', { g: vx.gen, seed: vx.seed, d: vx.encode(MAXC) });
 }
 function applyState(app, s) {
-  if (!s || typeof s.d !== 'string') return; const vx = app.vx, now = Date.now();
+  if (!s || typeof s.d !== 'string') return; const vx = app.vx, now = Date.now(); app.synced = true;
   if (s.g !== vx.gen || s.seed !== vx.seed) newWorld(app, s.seed, s.g);
   const m = Voxels.decode(s.d), fresh = c => now - (app.recent.get(c) || 0) < 5000;
   for (const [c, v] of m) if (vx.vox[c] !== v && !fresh(c)) change(app, c, v, false);

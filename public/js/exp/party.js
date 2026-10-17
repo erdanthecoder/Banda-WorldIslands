@@ -237,7 +237,7 @@ function arena(app) {
   // Coin Rush: coins and four bounce pads
   const cg = grp('coins');
   app.coinIM = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 20).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xffd34d, metalness: 1, roughness: 0.25, emissive: 0x7a5400, emissiveIntensity: 0.6 }), 150); app.coinIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage); cg.add(app.coinIM);
-  for (const [x, z] of PADS) { add(cg, new THREE.CylinderGeometry(1.2, 1.3, 0.2, 28), std(0x1b1d21, { emissive: 0x39d3ff, emissiveIntensity: 1.4 }), x, Y0 + 0.1, z, false); }
+  for (const [x, z] of PADS) { add(cg, new THREE.CylinderGeometry(1.2, 1.3, 0.2, 28), std(0x1b1d21, { emissive: 0x1a8cff, emissiveIntensity: 2.2 }), x, Y0 + 0.1, z, false); const rg = add(cg, new THREE.TorusGeometry(0.8, 0.07, 8, 32).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff }), x, Y0 + 0.25, z, false); rg.userData.pad = 1; }
   // podium for the results
   const pod = grp('podium'); app.podSpots = [[0, 1.5], [-2.3, 1.0], [2.3, 0.6]];
   app.podSpots.forEach(([x, h], i) => { add(pod, new RoundedBox(2.2, h, 2.2, 2, 0.12), std([0xffd34d, 0xdfe5ee, 0xd08a4a][i], { metalness: 0.5, roughness: 0.3 }), x, Y0 + h / 2, 0); const l = labelSprite(String(i + 1), 0.7, { bg: null, color: '#3a1a5a', weight: 900 }); l.position.set(x, Y0 + h / 2, 1.15); pod.add(l); });
@@ -654,7 +654,7 @@ function brain(app, b, id, t, now, dt) {
     if (go(b, b.tx, b.tz, 1.8) < 0.3) b.wx = b.wz = 0;
     if (b.ground && now > (b.jcd || 0) && r > 1.3) {
       const th = beamAng(P, now), w = beamW(P, now), phi = Math.atan2(b.x, b.z);
-      for (let a = 0; a < (t > 25 ? 2 : 1); a++) { let d = wrap(phi - th - a * Math.PI); if (d < 0) continue; const tt = d / w; if (tt > 0.06 && tt < 0.3) { b.jcd = now + 700; const p = Math.max(0.3, Math.min(0.98, 0.985 - (1 - b.skill) * 0.35 - Math.max(0, w - 1.8) * 0.12)); if (Math.random() < p) b.jump = true; break; } }
+      for (let a = 0; a < (t > 25 ? 2 : 1); a++) { let d = wrap(phi - th - a * Math.PI); if (d < 0) continue; const tt = d / w; if (tt > 0.06 && tt < 0.3) { b.jcd = now + 700; const p = Math.max(0.3, Math.min(0.98, 0.99 - (1 - b.skill) * 0.22 - Math.max(0, w - 1.8) * 0.1)); if (Math.random() < p) b.jump = true; break; } }
     }
     return;
   }

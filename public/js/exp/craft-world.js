@@ -170,7 +170,8 @@ export function icon(key) {
     lay(top, [20 / 16, 10 / 16, -20 / 16, 10 / 16, 24, 3]); lay(side, [20 / 16, 10 / 16, 0, 23 / 16, 4, 13], 0.2); lay(side, [20 / 16, -10 / 16, 0, 23 / 16, 24, 23], 0.4);
     return (ICONS[key] = c2.toDataURL());
   }
-  const tile = b ? TL[id][1] : T[key]; g.drawImage(ATLAS.tiles[tile], 0, 0, 16, 16, 4, 4, 40, 40);
+  const tile = b ? TL[id][1] : T[key];
+  if (b && b.shape === 'torch') g.drawImage(ATLAS.tiles[tile], 0, 0, 16, 16, 19, 4, 10, 40); else g.drawImage(ATLAS.tiles[tile], 0, 0, 16, 16, 4, 4, 40, 40);
   return (ICONS[key] = c.toDataURL());
 }
 
