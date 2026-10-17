@@ -248,7 +248,7 @@ export function generate(seed) {
   for (let gj = 0; gj < N; gj += 5) for (let gi = 0; gi < N; gi += 5) {
     const i = gi + (hash(gi, gj, 1, seed) * 4 | 0), j = gj + (hash(gi, gj, 2, seed) * 4 | 0); if (!inb(i, 1, j)) continue;
     const h = H0(i, j), k0 = h - Y0, near = (p, r) => Math.hypot(i - p[0] - OFF, j - p[1] - OFF) < r;
-    if (v[idx(i, k0 - 1, j)] !== ID.grass || near(info.spawn, 4) || near(info.cave, 4) || Math.hypot(i - ti, j - tj) < 3 || get(i, k0, j)) continue;
+    if (v[idx(i, k0 - 1, j)] !== ID.grass || near(info.spawn, 6) || near(info.cave, 4) || Math.hypot(i - ti, j - tj) < 3 || get(i, k0, j)) continue;
     if (hash(gi, gj, 4, seed) < 0.72) tree(i, j, k0, 4 + (hash(gi, gj, 5, seed) < 0.4 ? 1 : 0));
     else if (hash(gi, gj, 6, seed) < 0.5) set(i, k0, j, ID.pumpkin);
   }

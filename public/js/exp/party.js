@@ -50,7 +50,7 @@ function cLayout(app, P, k) {
   const r = rng(P.seed * 977 + k * 131), c = Math.floor(r() * 6), cols = [];
   for (let i = 0; i < 64; i++) cols.push((c + 1 + Math.floor(r() * 5)) % 6);
   const ids = [...Array(64).keys()]; for (let i = 63; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-  ids.slice(0, Math.max(4, 14 - k)).forEach(i => (cols[i] = c));
+  ids.slice(0, Math.max(3, 13 - k)).forEach(i => (cols[i] = c));
   const v = { c: P.cOver && P.cOver.k === k ? P.cOver.c : c, cols }; app._cl = { key, v }; return v;
 }
 // Spinner: the beam angle is the same for everyone (worked out from the round clock)
@@ -289,8 +289,8 @@ function groundY(app, x, z, y) {
   const r = Math.hypot(x, z), L2 = app.lay, now = Date.now();
   if (L2 === 'tiles') {
     const i = hexAt(x, z); if (i < 0) return null;
-    if (y >= Y0 - 0.6 && !(app.fall[i] && now >= app.fall[i])) return Y0;
-    if (y >= Y1 - 0.6 && !(app.fall[NT + i] && now >= app.fall[NT + i])) return Y1;
+    if (y >= Y0 - 1.2 && !(app.fall[i] && now >= app.fall[i])) return Y0;
+    if (y >= Y1 - 1.2 && !(app.fall[NT + i] && now >= app.fall[NT + i])) return Y1;
     return null;
   }
   if (L2 === 'color') { const i = sqAt(x, z); return i >= 0 && sqSolid(app, i, now) ? Y0 : null; }
@@ -613,21 +613,21 @@ function brain(app, b, id, t, now, dt) {
   }
   const r = Math.hypot(b.x, b.z);
   if (P.g === 'tiles') {
-    if (!b.ground) return;
-    const L2 = b.y > (Y0 + Y1) / 2 ? 0 : 1, i = hexAt(b.x, b.z), base = L2 * NT;
+    const L2 = b.y > (Y0 + Y1) / 2 - 1 ? 0 : 1, i = hexAt(b.x, b.z), base = L2 * NT;
+    if (!b.ground) { if (b.tgt >= 0) go(b, HEX[b.tgt][0], HEX[b.tgt][1], b.far ? 6.2 : 5.2); return; }
     if (b.tgt >= 0) { const [x, z] = HEX[b.tgt], f = app.fall[base + b.tgt]; if (f && f - now < 250) b.tgt = -1; else { if (go(b, x, z, b.far ? 6.2 : 5.2) < 0.35) b.tgt = -1; return; } }
     if (i < 0) { go(b, 0, 0, 4); return; }
     b.wx = b.wz = 0;
     if (app.fall[base + i]) {
-      if (b.react == null) b.react = app.fall[base + i] - (0.28 + b.skill * 0.3 - (Math.random() < 0.07 ? 0.5 : 0)) * 1000; // wait until the tile is about to go
-      if (now >= b.react) { b.react = null; let c = NB[i].filter(j => !app.fall[base + j]); b.far = false; if (!c.length && Math.random() < b.skill) { c = NB2[i].filter(j => !app.fall[base + j]); b.far = true; } if (c.length) { const free = j => NB[j].filter(m => !app.fall[base + m]).length + Math.random() * 2 * (1 - b.skill); c.sort((x, y) => free(y) - free(x)); b.tgt = c[0]; if (b.far) b.jump = true; } }
+      if (b.react == null || b.rt !== base + i) b.rt = base + i, b.react = app.fall[base + i] - (0.28 + b.skill * 0.3 - (Math.random() < 0.015 ? 0.5 : 0)) * 1000; // wait until the tile is about to go
+      if (now >= b.react) { b.react = null; let c = NB[i].filter(j => !app.fall[base + j]); b.far = false; if (!c.length && Math.random() < b.skill) { c = NB2[i].filter(j => !app.fall[base + j]); b.far = true; } if (c.length) { const free = j => NB[j].filter(m => !app.fall[base + m]).length + Math.random() * 2 * (1 - b.skill); c.sort((x, y) => free(y) - free(x)); b.tgt = c[0]; go(b, HEX[b.tgt][0], HEX[b.tgt][1], b.far ? 6.2 : 5.2); if (b.far) b.jump = true; } }
     }
     return;
   }
   if (P.g === 'color') {
     const W = cWave(t), lay = cLayout(app, P, W.k);
     if (t >= W.call && t < W.back) {
-      if (b.ck !== W.k) { b.ck = W.k; b.react = now + (0.25 + (1 - b.skill) * 1.4) * 1000; b.wrong = Math.random() < 0.15 * (1 - b.skill); b.tgt = -1; }
+      if (b.ck !== W.k) { b.ck = W.k; b.react = now + (0.2 + (1 - b.skill) * 2 + Math.random() * 0.3) * 1000; b.wrong = Math.random() < 0.03 + 0.2 * (1 - b.skill); b.tgt = -1; }
       if (now < b.react) { b.wx *= 0.9; b.wz *= 0.9; return; }
       const want = b.wrong ? (lay.c + 1) % 6 : lay.c, cur = sqAt(b.x, b.z);
       if (b.tgt < 0 || lay.cols[b.tgt] !== want) { let best = -1, bd = 1e9; for (let i = 0; i < 64; i++) if (lay.cols[i] === want) { const [x, z] = sqXZ(i), d = Math.hypot(x - b.x, z - b.z) + Math.random() * 0.8; if (d < bd) { bd = d; best = i; } } b.tgt = best; b.off = [(Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 1.6]; }
@@ -654,7 +654,7 @@ function brain(app, b, id, t, now, dt) {
     if (go(b, b.tx, b.tz, 1.8) < 0.3) b.wx = b.wz = 0;
     if (b.ground && now > (b.jcd || 0) && r > 1.3) {
       const th = beamAng(P, now), w = beamW(P, now), phi = Math.atan2(b.x, b.z);
-      for (let a = 0; a < (t > 25 ? 2 : 1); a++) { let d = wrap(phi - th - a * Math.PI); if (d < 0) continue; const tt = d / w; if (tt > 0.06 && tt < 0.3) { b.jcd = now + 700; const p = Math.max(0.3, Math.min(0.98, 0.98 - (1 - b.skill) * 0.5 - Math.max(0, w - 1.5) * 0.12)); if (Math.random() < p) b.jump = true; break; } }
+      for (let a = 0; a < (t > 25 ? 2 : 1); a++) { let d = wrap(phi - th - a * Math.PI); if (d < 0) continue; const tt = d / w; if (tt > 0.06 && tt < 0.3) { b.jcd = now + 700; const p = Math.max(0.3, Math.min(0.98, 0.985 - (1 - b.skill) * 0.35 - Math.max(0, w - 1.8) * 0.12)); if (Math.random() < p) b.jump = true; break; } }
     }
     return;
   }
@@ -678,7 +678,7 @@ function botPhys(app, b, dt, now) {
   b.blocked = b.ground && g1 - g0 > 0.6; if (b.blocked) { nx = b.x; nz = b.z; }
   b.x = nx; b.z = nz; b.y += b.vy * dt;
   const fl = groundY(app, b.x, b.z, b.y + 0.05) ?? 0.15;
-  if (b.y <= fl && b.y > fl - 1.4) { b.y = fl; b.vy = Math.max(0, b.vy); b.ground = true; } else if (b.y > fl + 0.35) b.ground = false; else if (b.vy <= 0 && b.y >= fl) { b.y = fl; b.ground = true; }
+  if (b.y <= fl && b.y > fl - 1.4) { b.y = fl; b.vy = Math.max(0, b.vy); b.ground = true; } else if (b.y > fl + 0.35) b.ground = false; else if (b.vy <= 0 && b.y >= fl) { b.y = fl; b.vy = 0; b.ground = true; }
   const hs = Math.hypot(b.vx, b.vz); if (hs > 0.4) b.ry += wrap(Math.atan2(b.vx, b.vz) - b.ry) * Math.min(1, dt * 10); b.spd = hs;
 }
 function botsIn(app, d) { Object.keys(app.botAv).forEach((id, i) => { if (d.b[i]) app.bv[id] = d.b[i]; }); }

@@ -7,7 +7,7 @@ import { experience, L, ui, confetti, flash, esc, money } from './core.js';
 import { labelSprite } from '../world.js';
 import { Coins } from './fun.js';
 import { Avatar, SKINS, HAIR_COLORS, CLOTH, PANTS, SHOES, HAIRSTYLES, FACES, TOPS } from '../avatar.js';
-import { Voxels, BLOCKS, ITEMS, ID, SOLID, OPAQUE, TL, ATLAS, N, H, Y0, OFF, idx, ci, cj, ck, inb, center, cellOf, icon, blockGeo } from './craft-world.js';
+import { Voxels, BLOCKS, ITEMS, ID, SOLID, TL, ATLAS, N, H, Y0, OFF, idx, ci, cj, ck, inb, center, cellOf, icon, blockGeo } from './craft-world.js';
 
 const SEED = 1017, MAXC = 12000, DAY = 600, PICKS = ['pick_diamond', 'pick_iron', 'pick_stone', 'pick_wood'];
 const RECIPES = [
@@ -122,7 +122,7 @@ function camera(app, cam, dt) {
   if (app.fp) cam.position.copy(head);
   else {
     const piv = head.clone().add(new THREE.Vector3(Math.cos(y) * 0.6 * s, 0.25 * s, -Math.sin(y) * 0.6 * s)), back = f.clone().negate();
-    let d = w.dist * (0.8 + s * 0.2); const hit = app.vx.ray(piv, back, d + 0.4, OPAQUE); if (hit) d = Math.max(0.3, hit.t - 0.35);
+    let d = w.dist * (0.8 + s * 0.2); const hit = app.vx.ray(piv, back, d + 0.4, SOLID); if (hit) d = Math.max(0.3, hit.t - 0.35);
     app.camD = app.camD === undefined || d < app.camD ? d : app.camD + (d - app.camD) * Math.min(1, dt * 6);
     cam.position.copy(piv).addScaledVector(back, app.camD);
   }

@@ -77,7 +77,7 @@ function started(app) {
   setTimeout(() => app.world.batchStatic(), 2500);
   if (G.cp >= 1) { respawn(); ui.banner(G.cp >= 37 ? '🏆 ' + L('Welcome back, champion! Play again from the trophy room.', 'С возвращением, чемпион! Сыграй ещё раз из комнаты трофеев.') : `🚩 ${L('Welcome back! You are on stage', 'С возвращением! Ты на этапе')} ${G.cp}`, 4500); }
   else ui.banner('🧗 ' + L('MEGA OBBY! 36 stages, 6 worlds. Run through the arch to start!', 'МЕГА ОББИ! 36 этапов, 6 миров. Беги в арку, чтобы начать!'), 5000);
-  setTimeout(() => { if (!G.bots.length && app.isHost()) seedBots(); }, 2500);
+  setTimeout(() => { if (!G.bots.length && app.isHost()) seedBots(); }, 6500);
   drawWalls(); paintFlags();
 }
 
