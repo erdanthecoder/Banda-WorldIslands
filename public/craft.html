@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Marbly Craft · Marbly</title>
+<meta name="description" content="Mine, craft and build together on a blocky island: tools, glass, torches, TNT, trampolines and a sky island.">
+<meta name="theme-color" content="#0e1622">
+<link rel="icon" href="/img/favicon.png" type="image/png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/exp.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }</script>
+<style>
+.cr-cross { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; z-index: 14; opacity: .85; }
+.cr-cross:before, .cr-cross:after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45); border-radius: 1px; }
+.cr-cross:before { left: 10px; top: 0; width: 2px; height: 22px; } .cr-cross:after { top: 10px; left: 0; height: 2px; width: 22px; }
+.cr-cross.on:before, .cr-cross.on:after { background: #ffd34d; }
+.cr-bar { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 4px; padding: 5px; background: rgba(10,16,28,.74); border-radius: 14px; z-index: 17; backdrop-filter: blur(6px); }
+.cr-slot { position: relative; width: 52px; height: 52px; border-radius: 10px; border: 2px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); display: grid; place-items: center; cursor: pointer; padding: 0; color: #fff; font: inherit; }
+.cr-slot img { width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; }
+.cr-slot b { position: absolute; right: 4px; bottom: 1px; font-size: 12px; font-weight: 800; text-shadow: 0 1px 2px #000; }
+.cr-slot i { position: absolute; left: 4px; top: 1px; font-size: 10px; font-style: normal; opacity: .55; }
+.cr-slot.on { border-color: #ffd34d; box-shadow: 0 0 14px rgba(255,211,77,.55); background: rgba(255,211,77,.16); }
+.cr-pick { position: fixed; left: 50%; bottom: 86px; transform: translateX(-50%); z-index: 17; color: #fff; font-weight: 800; text-shadow: 0 1px 3px #000; pointer-events: none; transition: opacity .4s; opacity: 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cr-pick img { width: 26px; height: 26px; image-rendering: pixelated; }
+.cr-side { position: fixed; right: 12px; top: 70px; display: grid; gap: 8px; z-index: 17; }
+.cr-side button { width: 50px; height: 50px; border-radius: 14px; border: 2px solid rgba(255,255,255,.22); background: rgba(10,16,28,.72); color: #fff; font-size: 22px; position: relative; cursor: pointer; backdrop-filter: blur(6px); }
+.cr-side small { position: absolute; right: 4px; bottom: 1px; font-size: 10px; opacity: .6; }
+.cr-quest { position: fixed; left: 12px; top: 64px; z-index: 16; max-width: min(320px, 60vw); padding: 8px 12px; border-radius: 14px; background: rgba(10,16,28,.74); color: #fff; font-size: 13px; cursor: pointer; backdrop-filter: blur(6px); border: 1px solid rgba(255,211,77,.25); }
+.cr-quest small { display: block; opacity: .7; margin-top: 2px; } .cr-gold { color: #ffd34d; font-weight: 800; }
+#xModal .sheet:has(.cr-panel) { width: min(900px, 100%); }
+.cr-inv { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; padding: 8px; border-radius: 12px; background: #8b8b8b; box-shadow: inset 0 2px 0 #555, inset 0 -2px 0 #c6c6c6; }
+.cr-inv .muted { color: #fff; grid-column: 1 / -1; margin: 6px; }
+.cr-it { position: relative; height: 64px; border: 0; border-radius: 6px; background: #6f6f6f; box-shadow: inset 2px 2px 0 #444, inset -2px -2px 0 #a8a8a8; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.cr-it img { width: 38px; height: 38px; image-rendering: pixelated; } .cr-it b { position: absolute; right: 5px; bottom: 2px; color: #fff; font-size: 12px; text-shadow: 1px 1px 0 #333; }
+.cr-it span { position: absolute; left: 3px; top: 1px; right: 3px; font-size: 8.5px; color: #eee; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
+.cr-it.tool { cursor: default; background: #7b6f58; } .cr-it:hover { background: #7f7f7f; }
+.cr-st { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 12px 0 8px; font-weight: 700; color: #8a2b2b; } .cr-st .ok { color: #23803a; }
+.cr-recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.cr-rec { display: flex; gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border-radius: 12px; border: 2px solid #3aa655; background: #f1fbf3; cursor: pointer; font: inherit; color: #14181f; }
+.cr-rec:hover { background: #dff5e4; } .cr-rec.off { border-color: #d6dbe2; background: #f3f4f6; opacity: .55; filter: grayscale(.8); }
+.cr-out { position: relative; width: 44px; height: 44px; flex: none; } .cr-out img { width: 44px; height: 44px; image-rendering: pixelated; } .cr-out b { position: absolute; right: -4px; bottom: -4px; font-size: 12px; background: #14181f; color: #fff; border-radius: 8px; padding: 0 4px; }
+.cr-name { font-weight: 800; font-size: 14px; display: grid; gap: 3px; } .cr-name em { font-style: normal; }
+.cr-need { display: flex; gap: 6px; flex-wrap: wrap; font-weight: 700; font-size: 12px; } .cr-need span { display: inline-flex; align-items: center; gap: 1px; } .cr-need img { width: 20px; height: 20px; image-rendering: pixelated; } .cr-need .miss { color: #c62828; }
+.cr-qs { display: grid; gap: 6px; } .cr-q { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; background: #f4f6f9; } .cr-q > span { font-size: 22px; text-align: center; }
+.cr-q small { display: block; color: #5b6878; font-size: 12px; } .cr-q em { font-style: normal; font-weight: 800; color: #b07d00; } .cr-q.done { background: #e9f8ec; } .cr-q.done b { text-decoration: line-through; opacity: .6; }
+body.cr-touch .cr-slot { width: 40px; height: 40px; } body.cr-touch .cr-slot img { width: 30px; height: 30px; } body.cr-touch .cr-bar { gap: 3px; padding: 4px; bottom: 6px; }
+body.cr-touch .cr-pick { bottom: 62px; } body.cr-touch .cr-quest { font-size: 12px; max-width: 46vw; }
+@media (orientation: portrait) { body.cr-touch .cr-bar { bottom: 172px; } body.cr-touch .cr-pick { bottom: 228px; } body.cr-touch .x-chat { bottom: 236px !important; } }
+@media (max-width: 560px) { .cr-slot { width: 36px; height: 36px; } .cr-slot img { width: 28px; height: 28px; } .cr-quest small { display: none; } }
+</style>
+</head>
+<body class="marbly">
+<canvas id="scene"></canvas>
+<script type="module" src="/js/exp/craft.js"></script>
+</body>
+</html>
