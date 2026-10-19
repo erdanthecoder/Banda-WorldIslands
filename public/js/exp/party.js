@@ -360,6 +360,7 @@ function playTick(app, now) {
   }
   P = app.P;
   if (G.elim && ((P.alive.length <= 1 && Object.keys(P.who).length > 1) || !P.alive.length)) app.endAt = app.endAt || now + 1800;
+  else app.endAt = 0; // (a revive cancels the ending)
   if (t >= G.dur * 1000 || (app.endAt && now >= app.endAt)) endPlay(app, now);
 }
 function bombTick(app, now, t) {
@@ -458,7 +459,7 @@ function toLobby(app, rmin = 0) { const a = Math.random() * TAU, d = rmin + Math
 function toLounge(app) { app.world.teleport(-8 + Math.random() * 16, 27 + Math.random() * 2, 0); }
 function meOut(app, P, why) {
   const k = keyOf(P); if (app.outK === k) return; app.outK = k;
-  const place = P.alive.length + 1;
+  const place = P.alive.length - (P.alive.includes(app.me.pid) ? 1 : 0) + 1;
   big(app, `💥 ${L('ELIMINATED!', 'ВЫБЫЛ!')}<small>${L('You finished', 'Твоё место')} #${place} · ${L('watch from the lounge', 'смотри из ложи')} 🎥</small>`, '', 3000);
   app.sfx('aww');
   if (why === 'boom') { const p = app.world.me.group.position; fling(app, (Math.random() - 0.5) * 6, 14, (Math.random() - 0.5) * 6, 1.2); boomFx(app, p); }
